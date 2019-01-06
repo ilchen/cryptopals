@@ -227,17 +227,22 @@ public class Set1 {
         return  aes.doFinal(fileBytes);
     }
 
+    static int  countUniqueCipherBlocks(byte cipherText[], int blockSize) {
+        Set<ByteBuffer>   uniqueBlocks = new HashSet<>();
+        for (int j=0; j < cipherText.length; j += blockSize) {
+            // We need a type that properly wraps 'blockSize' bytes and whose equals and hashCode would work properly,
+            // 'ByteBuffer' fills the bill.
+            uniqueBlocks.add(ByteBuffer.wrap(Arrays.copyOfRange(cipherText, j, j + blockSize)));
+        }
+        return  uniqueBlocks.size();
+    }
+
     static void  challenge_8(String url) throws IOException {
         List<byte[]>  ciphertexts = readFileLines(url, Encoding.HEX);
         SortedMap<Integer, Integer>   uniqueVals2lines = new TreeMap<>();
         int   numCiphertexts = ciphertexts.size();
         for (int i=0; i < numCiphertexts; i++) {
-            Set<ByteBuffer>   uniqueBlocks = new HashSet<>();
-            byte   ciphertext[] = ciphertexts.get(i);
-            for (int j=0; j < ciphertext.length; j += AES_BLOCK_SIZE) {
-                uniqueBlocks.add(ByteBuffer.wrap(Arrays.copyOfRange(ciphertext, j, j + AES_BLOCK_SIZE)));
-            }
-            uniqueVals2lines.put(uniqueBlocks.size(), i);
+            uniqueVals2lines.put(countUniqueCipherBlocks(ciphertexts.get(i), AES_BLOCK_SIZE), i);
         }
         int   lineNum = uniqueVals2lines.get(uniqueVals2lines.firstKey());
         System.out.printf("%nChallenge 8%nThe most likely ciphertext encoded in AES ECB is cyphertext #%02d:%n%s",
