@@ -23,10 +23,16 @@ public class Set2 {
             + "dXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUg"
             + "YnkK");
     private Cipher   cipher;
+    private Random   randGen,  secRandGen;
+    private byte     randPfx[];
 
     public Set2(Cipher cipher, int mode, SecretKey key) throws InvalidKeyException {
         this.cipher = cipher;
         cipher.init(mode, key);
+        randGen = new Random();
+        secRandGen = new SecureRandom();
+        randPfx = new byte[randGen.nextInt(30)];
+        secRandGen.nextBytes(randPfx);
     }
 
     private static void   xorBlock(byte trg[], byte src[]) {
@@ -93,7 +99,6 @@ public class Set2 {
     }
 
     private byte[]  encryptionOracle(byte plainText[]) throws NoSuchAlgorithmException {
-        Random   randGen = new Random(),   secRandGen = new SecureRandom();
         int    numBytesToPad = randGen.nextInt(6);
         byte   paddedPlainText[] = new byte[plainText.length + numBytesToPad << 1],  pad[] = new byte[numBytesToPad];
         System.arraycopy(plainText, 0, paddedPlainText, numBytesToPad, plainText.length);
@@ -124,6 +129,15 @@ public class Set2 {
         byte   plainText[] = new byte[myPlainText.length + unknownPlainText.length];
         System.arraycopy(myPlainText, 0, plainText, 0, myPlainText.length);
         System.arraycopy(unknownPlainText, 0, plainText, myPlainText.length, unknownPlainText.length);
+        return  cipherECB(plainText);
+    }
+
+    private byte[] challenge14Oracle(byte[] myPlainText, byte[] unknownPlainText) {
+        byte[]  plainText = new byte[randPfx.length + myPlainText.length + unknownPlainText.length];
+        System.arraycopy(randPfx, 0, plainText, 0, randPfx.length);
+        System.arraycopy(myPlainText, 0, plainText, randPfx.length, myPlainText.length);
+        System.arraycopy(unknownPlainText, 0, plainText,
+                randPfx.length + myPlainText.length, unknownPlainText.length);
         return  cipherECB(plainText);
     }
 
@@ -158,8 +172,64 @@ public class Set2 {
 
         }
 
-        // Now let's deal with
         return  res;
+    }
+
+    private int detectPrefixLength(int blockSize, byte unknownPlainText[]) {
+        // We need to ensure that the length of the array we control plus the length of the unknown plain text
+        // we want to decipher is a multiple of the blocksize.
+        StringBuilder   sb = new StringBuilder();
+        int   padSize = blockSize - unknownPlainText.length % blockSize;
+        if (unknownPlainText.length % blockSize != 0) {
+            for (int i=0; i < padSize; i++)  {
+                sb.append('A');
+            }
+        }
+
+        int   cipherTextSize = challenge14Oracle(sb.toString().getBytes(), unknownPlainText).length;
+        int   pfxOffset = 0;
+
+        // Let's detect the prefix offset
+        do {
+            sb.append('A');
+            pfxOffset++;
+        } while (challenge14Oracle(sb.toString().getBytes(), unknownPlainText).length == cipherTextSize);
+        return  (pfxOffset == 1  ?  0 : blockSize - pfxOffset)
+                + cipherTextSize - unknownPlainText.length - padSize - blockSize;
+    }
+
+    private byte[]  uncoverPlainTextHarder(int blockSize, int pfxLength, byte unknownPlainText[]) {
+        int      lenPad = blockSize - pfxLength % blockSize,  offset = pfxLength / blockSize * blockSize;
+        byte[]   testBlock = new byte[lenPad],  res = new byte[unknownPlainText.length];
+        Arrays.fill(testBlock, (byte) 'A');
+
+        // Now let's build a dictionary
+        Map<ByteBuffer, Byte> dict = new HashMap<>();
+        for (int ch = 0; ch < 256; ch++) {
+            testBlock[lenPad-1] = (byte) ch;
+            dict.put(ByteBuffer.wrap(challenge14Oracle(testBlock, unknownPlainText),
+                     offset, blockSize), (byte) ch);
+        }
+
+        testBlock = Arrays.copyOf(testBlock, lenPad - 1);
+        for (int i=0; i < unknownPlainText.length; i++) {
+            byte   shiftedPlainText[] = Arrays.copyOfRange(unknownPlainText, i, unknownPlainText.length);
+            res[i] = dict.get(ByteBuffer.wrap(challenge14Oracle(testBlock, shiftedPlainText), offset, blockSize));
+        }
+
+        return  res;
+    }
+
+    private void  triggerExceptionOnInvalidPKCS7Padding(byte plainText[]) throws BadPaddingException  {
+        int   blockSize = cipher.getBlockSize();
+        byte  padVal = plainText[plainText.length - 1];
+        if (plainText.length >= blockSize  &&  plainText.length % blockSize == 0   &&  padVal <= blockSize) {
+            for (int i=plainText.length-2; i >= plainText.length - padVal; i--) {
+                if (plainText[i] != padVal)  throw  new BadPaddingException();
+            }
+            return;
+        }
+        throw  new BadPaddingException();
     }
 
     public static void main(String[] args) {
@@ -209,6 +279,16 @@ public class Set2 {
                 System.out.println("Not ECB mode encrypted :-(");
             }
 
+            System.out.println("\nChallenge 14");
+            int   pfxLength = challenge12.detectPrefixLength(blockSize, CHALLENGE_12_UNKNOWN_PLAINTEXT);
+            plainText = challenge12.uncoverPlainTextHarder(blockSize, pfxLength, CHALLENGE_12_UNKNOWN_PLAINTEXT);
+            System.out.println("Plaintext: " + new String(plainText));
+
+            System.out.println("\nChallenge 15");
+            String   tests2[] = { "ICE ICE BABY\4\4\4\4",  "ICE ICE BABY\5\5\5\5",  "ICE ICE BABY\1\2\3\4" };
+            for (String test : tests2) {
+                challenge12.triggerExceptionOnInvalidPKCS7Padding(test.getBytes());
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
