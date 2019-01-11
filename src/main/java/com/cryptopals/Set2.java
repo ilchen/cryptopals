@@ -28,7 +28,7 @@ public class Set2 {
     private Random   randGen,  secRandGen;
     private byte     randPfx[];
 
-    Set2(int mode, SecretKey key) throws InvalidKeyException,
+    private Set2(int mode, SecretKey key) throws InvalidKeyException,
             NoSuchPaddingException, NoSuchAlgorithmException {
         this.cipher = Cipher.getInstance(AES_TRANSFORMATION);
         cipher.init(mode, key);

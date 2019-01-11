@@ -23,6 +23,7 @@ import javax.net.ssl.SSLSession;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import java.security.cert.X509Certificate;
+import java.util.stream.Collectors;
 
 public class Set1 {
     static final int   AES_BLOCK_SIZE = 16;
@@ -31,11 +32,11 @@ public class Set1 {
         BASE64,  HEX
     }
 
-    static String challenge_1(String hex) {
+    static String challenge1(String hex) {
         return DatatypeConverter.printBase64Binary(DatatypeConverter.parseHexBinary(hex));
     }
 
-    static byte[] challenge_2(byte buf1[], byte buf2[]) {
+    static byte[] challenge2(byte buf1[], byte buf2[]) {
         assert buf1.length == buf2.length;
         byte   res[] = new byte[buf1.length];
         for (int i=0; i < buf1.length; i++) {
@@ -45,13 +46,18 @@ public class Set1 {
     }
 
     @Data
-    public static class  Set1_Helper {
+    public static class FrequencyAnalysisHelper {
         final private byte   possiblePlainText[];
         final private float  score;
         final private char   key;
     }
 
-
+    @Data
+    public static class FrequencyAnalysisReportingHelper {
+        final private FrequencyAnalysisHelper candInfo;
+        final private int         line;
+        final private String      cipherText;
+    }
 
     static Map<Character, Float>   charFreqs;
     static {
@@ -68,7 +74,7 @@ public class Set1 {
         charFreqs = Collections.unmodifiableMap(charFreqs);
     }
 
-    private static Set1_Helper  challenge_3_helper(byte cypherText[]) {
+    static FrequencyAnalysisHelper challenge3Helper(byte cypherText[]) {
         char   start = ' ',  end = '~';
         byte   res[] = new byte[cypherText.length];
         SortedMap<Float, Character>   keyCands = new TreeMap<>();
@@ -85,42 +91,39 @@ public class Set1 {
 
         char   key = keyCands.get(keyCands.lastKey());
         for (int i = 0; i < cypherText.length; i++)  res[i] = (byte) (cypherText[i] ^ key);
-        return  new Set1_Helper(res, keyCands.lastKey(), key);
+        return  new FrequencyAnalysisHelper(res, keyCands.lastKey(), key);
     }
 
-    private static void  challenge_3(byte cypherText[]) {
-        Set1_Helper   res = challenge_3_helper(cypherText);
+    private static void challenge3(byte cypherText[]) {
+        FrequencyAnalysisHelper res = challenge3Helper(cypherText);
         System.out.printf("%nkey: %c -> %s%n", res.getKey(), new String(res.getPossiblePlainText()));
     }
 
 
-    static void  challenge_4(String url) throws IOException {
+    static List<FrequencyAnalysisReportingHelper> challenge4(String url) throws IOException {
         SortedMap<Float, List<Integer>>   candsScores = new TreeMap<>();
         final int   maxLines = 600;
         final String   candidates[] = new String[maxLines];
         List<Integer>   collisions;
-        Set1_Helper   helper;
+        FrequencyAnalysisHelper helper;
         String   line;
         try (InputStream is = new URL(url).openStream(); BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
             for (int i=0; i < maxLines  &&  (line = reader.readLine()) != null; i++)  {
                 candidates[i] = line;
-                helper = challenge_3_helper(DatatypeConverter.parseHexBinary(line));
+                helper = challenge3Helper(DatatypeConverter.parseHexBinary(line));
                 collisions = candsScores.computeIfAbsent(helper.getScore(), k -> new ArrayList<>());
                 collisions.add(i);
             }
         }
 
         collisions = candsScores.get(candsScores.lastKey());
-        for(int i : collisions) {
-            line = candidates[i];
-            helper = challenge_3_helper(DatatypeConverter.parseHexBinary(line));
-            System.out.printf("%nline #%02d\tscore: %02f%n%s%nkey: %c -> %s%n", i,
-                    candsScores.lastKey(), line,
-                    helper.getKey(), new String(helper.getPossiblePlainText()));
-        }
+        return  collisions.stream().map(i -> new FrequencyAnalysisReportingHelper(
+                challenge3Helper(DatatypeConverter.parseHexBinary(candidates[i])), i, candidates[i]))
+                .collect(Collectors.toList());
+
     }
 
-    private static byte[]  challenge_5_helper(byte plainTxt[], String key) {
+    private static byte[] challenge5Helper(byte plainTxt[], String key) {
         byte   k[] = key.getBytes(),  cypherTxt[] = new byte[plainTxt.length];
         for (int i=0, j=0; i < plainTxt.length; i++, j = i % k.length) {
             cypherTxt[i] = (byte) (plainTxt[i] ^ k[j]);
@@ -128,12 +131,12 @@ public class Set1 {
         return  cypherTxt;
     }
 
-    static byte[]  challenge_5(String plainText, String key) {
-        return  challenge_5_helper(plainText.getBytes(), key);
+    static byte[] challenge5(String plainText, String key) {
+        return  challenge5Helper(plainText.getBytes(), key);
     }
 
     private static int  hammingDistance(String str1, String str2) {
-        byte   xor[] = challenge_2(str1.getBytes(), str2.getBytes());
+        byte   xor[] = challenge2(str1.getBytes(), str2.getBytes());
         int   res = 0;
         for (byte b : xor) res += Integer.bitCount(b);
         return  res;
@@ -204,22 +207,22 @@ public class Set1 {
         return  blocks;
     }
 
-    static void  challenge_6(String url) throws IOException {
+    static void challenge6(String url) throws IOException {
         byte   fileBytes[] = readFile(url, Encoding.BASE64);
         for (int kSize : findProbableKeySizes(new String(fileBytes), 5)) {
             System.out.printf("%n%nTrying key size %02d%n", kSize);
             byte blocks[][] = getBlocks(fileBytes, kSize);
             StringBuilder sb = new StringBuilder(kSize);
             for (int i = 0; i < kSize; i++) {
-                Set1_Helper helper = challenge_3_helper(blocks[i]);
+                FrequencyAnalysisHelper helper = challenge3Helper(blocks[i]);
                 sb.append(helper.getKey());
             }
-            String plainText = new String(challenge_5_helper(fileBytes, sb.toString()));
+            String plainText = new String(challenge5Helper(fileBytes, sb.toString()));
             System.out.printf("key: %s%nplain text:%n%s", sb.toString(), plainText);
         }
     }
 
-    static byte[]  challenge_7(String url) throws IOException, NoSuchPaddingException,
+    static byte[] challenge7(String url) throws IOException, NoSuchPaddingException,
             NoSuchAlgorithmException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
         Cipher   aes = Cipher.getInstance("AES/ECB/NoPadding");
         aes.init(Cipher.DECRYPT_MODE, YELLOW_SUBMARINE_SK);
@@ -237,7 +240,7 @@ public class Set1 {
         return  uniqueBlocks.size();
     }
 
-    static void  challenge_8(String url) throws IOException {
+    static void challenge8(String url) throws IOException {
         List<byte[]>  ciphertexts = readFileLines(url, Encoding.HEX);
         SortedMap<Integer, Integer>   uniqueVals2lines = new TreeMap<>();
         int   numCiphertexts = ciphertexts.size();
@@ -277,38 +280,43 @@ public class Set1 {
     public static void main(String[] args) {
 
         String   hex = "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d";
-        System.out.printf("hex: %s is%nbase64: %s", hex, challenge_1(hex));
+        System.out.printf("hex: %s is%nbase64: %s", hex, challenge1(hex));
 
         hex = "1c0111001f010100061a024b53535009181c";
         String   hex2 = "686974207468652062756c6c277320657965";
 
         System.out.printf("%n%s xored with %s gives%n%s", hex, hex2, DatatypeConverter.printHexBinary(
-                challenge_2(DatatypeConverter.parseHexBinary(hex), DatatypeConverter.parseHexBinary(hex2))));
+                challenge2(DatatypeConverter.parseHexBinary(hex), DatatypeConverter.parseHexBinary(hex2))));
 
         hex = "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736";
 
-        challenge_3(DatatypeConverter.parseHexBinary(hex));
+        challenge3(DatatypeConverter.parseHexBinary(hex));
 
 
         try {
             // Import DST Root CA X3 certificate into $JAVA_HOME/jre/lib/security/cacerts or uncomment the next line
             // suppressSSLServerCertificateChecks();
-            challenge_4("https://cryptopals.com/static/challenge-data/4.txt");
+            List<FrequencyAnalysisReportingHelper>  cands = challenge4("https://cryptopals.com/static/challenge-data/4.txt");
+            for(FrequencyAnalysisReportingHelper cand : cands) {
+                System.out.printf("%nline #%02d\tscore: %02f%n%s%nkey: %c -> %s%n", cand.getLine(),
+                        cand.getCandInfo().getScore(), cand.getCipherText(), cand.getCandInfo().getKey(),
+                        new String(cand.getCandInfo().getPossiblePlainText()));
+            }
 
             hex = "Burning 'em, if you ain't quick and nimble\n" + "I go crazy when I hear a cymbal";
             hex2 = "ICE";
             System.out.printf("Challenge 5%nPlain text: %s, key: %s%nCypher text: %s%n",
-                    hex, hex2, DatatypeConverter.printHexBinary(challenge_5(hex, hex2)).toLowerCase());
+                    hex, hex2, DatatypeConverter.printHexBinary(challenge5(hex, hex2)).toLowerCase());
 
 
             System.out.println("\nChallenge 6");
             System.out.printf("Hamming distance between '%s' and '%s' is %2d%n", "this is a test", "wokka wokka!!!",
                     hammingDistance("this is a test", "wokka wokka!!!"));
 
-            challenge_6("https://cryptopals.com/static/challenge-data/6.txt");
-            byte  plainText[] = challenge_7("https://cryptopals.com/static/challenge-data/7.txt");
+            challenge6("https://cryptopals.com/static/challenge-data/6.txt");
+            byte  plainText[] = challenge7("https://cryptopals.com/static/challenge-data/7.txt");
             System.out.printf("%nChallenge 7%nPlain text:%n%s", new String(plainText));
-            challenge_8("https://cryptopals.com/static/challenge-data/8.txt");
+            challenge8("https://cryptopals.com/static/challenge-data/8.txt");
         } catch (Exception e) {
             e.printStackTrace();
         }
