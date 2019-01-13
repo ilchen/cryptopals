@@ -14,6 +14,8 @@ import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.function.Function;
+
+import lombok.Builder;
 import lombok.Data;
 
 import javax.net.ssl.HostnameVerifier;
@@ -45,21 +47,21 @@ public class Set1 {
         return  res;
     }
 
-    @Data
-    public static class FrequencyAnalysisHelper {
+    @Data @Builder
+    static class FrequencyAnalysisHelper {
         final private byte   possiblePlainText[];
         final private float  score;
         final private char   key;
     }
 
-    @Data
-    public static class FrequencyAnalysisReportingHelper {
+    @Data @Builder
+    static class FrequencyAnalysisReportingHelper {
         final private FrequencyAnalysisHelper candInfo;
         final private int         line;
         final private String      cipherText;
     }
 
-    static Map<Character, Float>   charFreqs;
+    private static Map<Character, Float>   charFreqs;
     static {
         charFreqs = new TreeMap<>();
         charFreqs.put('a', .08167f);     charFreqs.put('b', .01492f);     charFreqs.put('c', .02782f);
@@ -124,7 +126,7 @@ public class Set1 {
     }
 
     private static byte[] challenge5Helper(byte plainTxt[], String key) {
-        byte   k[] = key.getBytes(),  cypherTxt[] = new byte[plainTxt.length];
+        byte[]   k = key.getBytes(),  cypherTxt = new byte[plainTxt.length];
         for (int i=0, j=0; i < plainTxt.length; i++, j = i % k.length) {
             cypherTxt[i] = (byte) (plainTxt[i] ^ k[j]);
         }
@@ -136,7 +138,7 @@ public class Set1 {
     }
 
     private static int  hammingDistance(String str1, String str2) {
-        byte   xor[] = challenge2(str1.getBytes(), str2.getBytes());
+        byte  xor[] = challenge2(str1.getBytes(), str2.getBytes());
         int   res = 0;
         for (byte b : xor) res += Integer.bitCount(b);
         return  res;
@@ -207,8 +209,15 @@ public class Set1 {
         return  blocks;
     }
 
-    static void challenge6(String url) throws IOException {
+    @Data @Builder
+    static class VigenereCipherAttackReporter {
+        private int     keySize;
+        private String  key,  plainText;
+    }
+
+    static List<VigenereCipherAttackReporter>  challenge6(String url) throws IOException {
         byte   fileBytes[] = readFile(url, Encoding.BASE64);
+        List<VigenereCipherAttackReporter> res = new ArrayList<>();
         for (int kSize : findProbableKeySizes(new String(fileBytes), 5)) {
             System.out.printf("%n%nTrying key size %02d%n", kSize);
             byte blocks[][] = getBlocks(fileBytes, kSize);
@@ -218,13 +227,16 @@ public class Set1 {
                 sb.append(helper.getKey());
             }
             String plainText = new String(challenge5Helper(fileBytes, sb.toString()));
+            res.add(VigenereCipherAttackReporter.builder().keySize(kSize).key(sb.toString())
+                    .plainText(plainText).build());
             System.out.printf("key: %s%nplain text:%n%s", sb.toString(), plainText);
         }
+        return  res;
     }
 
     static byte[] challenge7(String url) throws IOException, NoSuchPaddingException,
             NoSuchAlgorithmException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
-        Cipher   aes = Cipher.getInstance("AES/ECB/NoPadding");
+        Cipher   aes = Cipher.getInstance("AES/ECB/PKCS5Padding"); /* The Cipher engine will deal with padding */
         aes.init(Cipher.DECRYPT_MODE, YELLOW_SUBMARINE_SK);
         byte   fileBytes[] = readFile(url, Encoding.BASE64);
         return  aes.doFinal(fileBytes);
@@ -240,16 +252,16 @@ public class Set1 {
         return  uniqueBlocks.size();
     }
 
-    static void challenge8(String url) throws IOException {
+    static FrequencyAnalysisReportingHelper  challenge8(String url) throws IOException {
         List<byte[]>  ciphertexts = readFileLines(url, Encoding.HEX);
         SortedMap<Integer, Integer>   uniqueVals2lines = new TreeMap<>();
         int   numCiphertexts = ciphertexts.size();
         for (int i=0; i < numCiphertexts; i++) {
             uniqueVals2lines.put(countUniqueCipherBlocks(ciphertexts.get(i), AES_BLOCK_SIZE), i);
         }
-        int   lineNum = uniqueVals2lines.get(uniqueVals2lines.firstKey());
-        System.out.printf("%nChallenge 8%nThe most likely ciphertext encoded in AES ECB is cyphertext #%02d:%n%s",
-                lineNum, DatatypeConverter.printHexBinary(ciphertexts.get(lineNum)));
+        int      lineNum = uniqueVals2lines.get(uniqueVals2lines.firstKey());
+        String   cipherText = DatatypeConverter.printHexBinary(ciphertexts.get(lineNum));
+        return  FrequencyAnalysisReportingHelper.builder().line(lineNum).cipherText(cipherText).build();
     }
 
     static void suppressSSLServerCertificateChecks() throws NoSuchAlgorithmException, KeyManagementException {
@@ -316,12 +328,14 @@ public class Set1 {
             challenge6("https://cryptopals.com/static/challenge-data/6.txt");
             byte  plainText[] = challenge7("https://cryptopals.com/static/challenge-data/7.txt");
             System.out.printf("%nChallenge 7%nPlain text:%n%s", new String(plainText));
-            challenge8("https://cryptopals.com/static/challenge-data/8.txt");
+
+            FrequencyAnalysisReportingHelper  res = challenge8("https://cryptopals.com/static/challenge-data/8.txt");
+            System.out.printf("%nChallenge 8%nThe most likely ciphertext encoded in AES ECB is cyphertext #%02d:%n%s",
+                    res.getLine(), res.getCipherText());
         } catch (Exception e) {
             e.printStackTrace();
         }
 
     }
-
 
 }

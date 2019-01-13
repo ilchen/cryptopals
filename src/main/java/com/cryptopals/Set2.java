@@ -65,7 +65,7 @@ public class Set2 {
         byte res[] = new byte[paddedPlainText.length];
         final int   blockSize = cipher.getBlockSize();
 
-        byte   prevCipherBlock[] = iv,  curBlock[];
+        byte[]   prevCipherBlock = iv,  curBlock;
         int    i = 0;
         for (; i < paddedPlainText.length; i+=blockSize) {
             curBlock = Arrays.copyOfRange(paddedPlainText, i, i+blockSize);
@@ -99,9 +99,9 @@ public class Set2 {
         return  res;
     }
 
-    private byte[]  encryptionOracle(byte plainText[]) throws NoSuchAlgorithmException {
+    private byte[]  encryptionOracle(byte plainText[]) {
         int    numBytesToPad = randGen.nextInt(6);
-        byte   paddedPlainText[] = new byte[plainText.length + numBytesToPad << 1],  pad[] = new byte[numBytesToPad];
+        byte[]   paddedPlainText = new byte[plainText.length + numBytesToPad << 1],  pad = new byte[numBytesToPad];
         System.arraycopy(plainText, 0, paddedPlainText, numBytesToPad, plainText.length);
         secRandGen.nextBytes(pad);
         System.arraycopy(pad, 0, paddedPlainText, 0, numBytesToPad);
