@@ -44,7 +44,7 @@ public class Set3Tests {
         // integer satisfying:
         // (1 - 1/Set3.CHALLENGE_17_UNKNOWN_PLAINTEXTS.length)^n < 0.001
         int n = (int) Math.ceil(Math.log(.001) / Math.log(1 - 1./Set3.CHALLENGE_17_UNKNOWN_PLAINTEXTS.length));
-        for (int i=0; i < Set3.CHALLENGE_17_UNKNOWN_PLAINTEXTS.length; i++) {
+        for (int i=0; i < n; i++) {
             byte[]  cipherText = encryptor.challenge17Encrypt(),
                     plainText = Set3.breakChallenge17PaddingOracle(cipherText, decryptor.new Challenge17Oracle()),
                     cipherText_ = encryptor.cipherCBCChallenge17(plainText);
