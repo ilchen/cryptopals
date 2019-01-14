@@ -15,20 +15,21 @@ import java.util.Random;
 import java.util.function.UnaryOperator;
 
 /**
- * Created by ilchen on 03/01/2019.
+ * Created by Andrei ILchenko on 03/01/2019. All methods that attack oracles are static. This deprives them of access
+ * to the instance state involved in the crypto part of oracle's implementation.
  */
 public class Set2 {
-    private static final byte   CHALLENGE_12_UNKNOWN_PLAINTEXT[] = DatatypeConverter.parseBase64Binary(
+    private static final byte[] CHALLENGE_12_UNKNOWN_PLAINTEXT = DatatypeConverter.parseBase64Binary(
             "Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkg"
-            + "aGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBq"
-            + "dXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUg"
-            + "YnkK");
+                    + "aGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBq"
+                    + "dXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUg"
+                    + "YnkK");
     private static final String  AES_TRANSFORMATION = "AES/ECB/NoPadding";
-    private Cipher   cipher;
-    private Random   randGen,  secRandGen;
-    private byte     randPfx[];
+    Cipher   cipher;
+    Random   randGen,  secRandGen;
+    private byte[] randPfx;
 
-    private Set2(int mode, SecretKey key) throws InvalidKeyException,
+    Set2(int mode, SecretKey key) throws InvalidKeyException,
             NoSuchPaddingException, NoSuchAlgorithmException {
         this.cipher = Cipher.getInstance(AES_TRANSFORMATION);
         cipher.init(mode, key);
@@ -38,31 +39,31 @@ public class Set2 {
         secRandGen.nextBytes(randPfx);
     }
 
-    private static void   xorBlock(byte trg[], byte src[]) {
+    private static void   xorBlock(byte[] trg, byte[] src) {
         for (int i=0; i < trg.length; i++) {
             trg[i] ^= src[i];
         }
     }
 
-    private byte[]  pkcs7Pad(byte plainText[]) {
+    private byte[]  pkcs7Pad(byte[] plainText) {
         final int   blockSize = cipher.getBlockSize(),
                     blockLenRem = plainText.length % blockSize,
                     padLen = blockLenRem == 0  ?  blockSize : blockSize - blockLenRem;
-        byte   res[] = new byte[plainText.length + padLen];
+        byte[] res = new byte[plainText.length + padLen];
         System.arraycopy(plainText, 0, res, 0, plainText.length);
         Arrays.fill(res, plainText.length, res.length, (byte) padLen);
         return  res;
     }
 
     @SneakyThrows  /* Padding and blocksize-related checked exceptions excluded */
-    private byte[]  cipherECB(byte plainText[]) {
-        byte paddedPlainText[] = pkcs7Pad(plainText);
+    private byte[]  cipherECB(byte[] plainText) {
+        byte[] paddedPlainText = pkcs7Pad(plainText);
         return  cipher.doFinal(paddedPlainText);
     }
 
-    private byte[]  cipherCBC(byte plainText[], byte iv[]) {
-        byte paddedPlainText[] = pkcs7Pad(plainText);
-        byte res[] = new byte[paddedPlainText.length];
+    byte[]  cipherCBC(byte[] plainText, byte[] iv) {
+        byte[] paddedPlainText = pkcs7Pad(plainText);
+        byte[] res = new byte[paddedPlainText.length];
         final int   blockSize = cipher.getBlockSize();
 
         byte[]   prevCipherBlock = iv,  curBlock;
@@ -76,12 +77,26 @@ public class Set2 {
         return  res;
     }
 
-    private byte[]  decipherCBC(byte cipherText[], byte iv[]) {
-        byte res[] = new byte[cipherText.length];
+    /**
+     * Assumes the padding is valid.
+     */
+    static byte[]  stripPKCS7Padding(byte plainText[]) {
+        // Now we need to deal with padding.
+        return  Arrays.copyOf(plainText, plainText.length - plainText[plainText.length-1]);
+    }
+
+    /**
+     * When overriden in a subclass, should check the padding for correctness.
+     */
+    void  paddingHook(byte[] plainText)  throws BadPaddingException  {   }
+
+    byte[]  decipherCBC(byte[] cipherText, byte[] iv) throws BadPaddingException {
+        byte[] res = new byte[cipherText.length];
         final int   blockSize = cipher.getBlockSize();
 
-        byte   prevCipherBlock[] = iv,  curCipherBlock[];
-        byte   plainTextBlock[];
+        byte[] prevCipherBlock = iv;
+        byte[] curCipherBlock;
+        byte[] plainTextBlock;
         int    i = 0;
         for (; i < cipherText.length-blockSize; i+=blockSize) {
             curCipherBlock = Arrays.copyOfRange(cipherText, i, i+blockSize);
@@ -94,12 +109,14 @@ public class Set2 {
         xorBlock((plainTextBlock = cipher.update(Arrays.copyOfRange(cipherText, i, i + blockSize))), prevCipherBlock);
         System.arraycopy(plainTextBlock, 0, res, i, blockSize);
 
-        // Now we need to deal with padding.
-        res = Arrays.copyOf(res, res.length - res[res.length-1]);
-        return  res;
+        // Check padding for correctness, if required
+        paddingHook(res);
+
+        // Now we need to deal with padding
+        return  stripPKCS7Padding(res);
     }
 
-    private byte[]  encryptionOracle(byte plainText[]) {
+    private byte[]  encryptionOracle(byte[] plainText) {
         int    numBytesToPad = randGen.nextInt(6);
         byte[]   paddedPlainText = new byte[plainText.length + numBytesToPad << 1],  pad = new byte[numBytesToPad];
         System.arraycopy(plainText, 0, paddedPlainText, numBytesToPad, plainText.length);
@@ -110,7 +127,7 @@ public class Set2 {
         if (randGen.nextBoolean()) {
             System.out.println("Encrypting " + new String(plainText) + " using CBC");
             // Using the CBC mode
-            byte   iv[] = new byte[cipher.getBlockSize()];
+            byte[] iv = new byte[cipher.getBlockSize()];
             secRandGen.nextBytes(iv); /* Generate a secure random IV */
             return  cipherCBC(paddedPlainText, iv);
         } else {
@@ -119,7 +136,7 @@ public class Set2 {
         }
     }
 
-    private boolean  isECB(byte cipherText[], double threashold) {
+    private boolean  isECB(byte[] cipherText, double threashold) {
         int   blockSize = cipher.getBlockSize(),  numBlocks = cipherText.length / blockSize;
         // Under ECB we have an equality Ci == Cj => Pi == Pj.
         // Under CBC we have a different equality: Ci == Cj => Pi ^ Pj == Ci-1 ^ Cj-1.
@@ -127,14 +144,14 @@ public class Set2 {
     }
 
     class Challenge12Oracle implements UnaryOperator<byte[]> {
-        byte   unknownPlainText[];
-        Challenge12Oracle(byte unknownPlainText[]) {
+        byte[] unknownPlainText;
+        Challenge12Oracle(byte[] unknownPlainText) {
             this.unknownPlainText = unknownPlainText;
         }
 
         @Override
         public byte[] apply(byte[] myPlainText) {
-            byte   plainText[] = new byte[myPlainText.length + unknownPlainText.length];
+            byte[] plainText = new byte[myPlainText.length + unknownPlainText.length];
             System.arraycopy(myPlainText, 0, plainText, 0, myPlainText.length);
             System.arraycopy(unknownPlainText, 0, plainText, myPlainText.length, unknownPlainText.length);
             return  cipherECB(plainText);
@@ -147,11 +164,10 @@ public class Set2 {
         void dropLeftmostPlainTextByte() {
             unknownPlainText = Arrays.copyOfRange(unknownPlainText, 1, unknownPlainText.length);
         }
-
     }
 
     class Challenge14Oracle extends Challenge12Oracle {
-        Challenge14Oracle(byte unknownPlainText[]) {
+        Challenge14Oracle(byte[] unknownPlainText) {
             super(unknownPlainText);
         }
 
@@ -166,7 +182,7 @@ public class Set2 {
         }
     }
 
-    private int  detectBlockSize(UnaryOperator<byte[]> oracle) {
+    private static int  detectBlockSize(UnaryOperator<byte[]> oracle) {
         StringBuilder   sb = new StringBuilder();
         int    cipherTextSize = oracle.apply(new byte[0]).length;
         int    blockSize;
@@ -198,7 +214,7 @@ public class Set2 {
         return  res;
     }
 
-    private int detectPrefixLength(int blockSize, Challenge12Oracle oracle) {
+    private static int detectPrefixLength(int blockSize, Challenge12Oracle oracle) {
         // We need to ensure that the length of the array we control plus the length of the unknown plain text
         // we want to decipher is a multiple of the blocksize.
         StringBuilder   sb = new StringBuilder();
@@ -242,10 +258,11 @@ public class Set2 {
         return  res;
     }
 
-    private void  triggerExceptionOnInvalidPKCS7Padding(byte plainText[]) throws BadPaddingException  {
+    void  triggerExceptionOnInvalidPKCS7Padding(byte[] plainText) throws BadPaddingException  {
         int   blockSize = cipher.getBlockSize();
         byte  padVal = plainText[plainText.length - 1];
-        if (plainText.length >= blockSize  &&  plainText.length % blockSize == 0   &&  padVal <= blockSize) {
+        if (plainText.length >= blockSize  &&  plainText.length % blockSize == 0   &&  padVal <= blockSize
+                                                                                   &&  padVal > 0) {
             for (int i=plainText.length-2; i >= plainText.length - padVal; i--) {
                 if (plainText[i] != padVal)  throw  new BadPaddingException();
             }
@@ -256,7 +273,7 @@ public class Set2 {
 
     class  Challenge16Oracle extends Challenge12Oracle {
         byte[]   iv,  unknownPrefix;
-        Challenge16Oracle(byte[] unknownPrefix, byte[] unknownPlainText, byte iv[]) {
+        Challenge16Oracle(byte[] unknownPrefix, byte[] unknownPlainText, byte[] iv) {
             super(unknownPlainText);
             this.iv = iv;
             this.unknownPrefix = unknownPrefix;
@@ -268,7 +285,7 @@ public class Set2 {
 
         @Override
         public byte[] apply(byte[] myPlainText) {
-            byte  fullPlainText[] = new byte[myPlainText.length + unknownPrefix.length + unknownPlainText.length];
+            byte[] fullPlainText = new byte[myPlainText.length + unknownPrefix.length + unknownPlainText.length];
             System.arraycopy(unknownPrefix, 0, fullPlainText, 0, unknownPrefix.length);
             System.arraycopy(myPlainText, 0, fullPlainText, unknownPrefix.length, myPlainText.length);
             System.arraycopy(unknownPlainText, 0, fullPlainText,
@@ -276,12 +293,12 @@ public class Set2 {
             return cipherCBC(fullPlainText, iv);
         }
 
-        private boolean  isExpectedParamPresent(byte cipherText[], Set2 decryptor) {
+        private boolean  isExpectedParamPresent(byte[] cipherText, Set2 decryptor) throws BadPaddingException {
             return  new String(decryptor.decipherCBC(cipherText, iv)).contains(";admin=true;");
         }
     }
 
-    void  breakChallenge16Oracle(Set2 decryptor, Challenge16Oracle challenge16Oracle) {
+    private static void  breakChallenge16Oracle(Set2 decryptor, Challenge16Oracle challenge16Oracle) throws BadPaddingException {
         // Now the actual challenge, which it to mount a CCA attack using the oracle to ensure that
         // we get a piece of crafted cipher text that forces the oracle to return true.
         // The left pad that 'challenge16Encrypt' prepends is 32 bytes long. So the piece of text
@@ -290,7 +307,7 @@ public class Set2 {
         String   craftedString = "\0admin\0true\0";
         int  blockLen = detectBlockSize(challenge16Oracle);
         int  pfxLen = detectPrefixLength(blockLen, challenge16Oracle);
-        byte cipherText[] = challenge16Oracle.apply(craftedString);
+        byte[] cipherText = challenge16Oracle.apply(craftedString);
         System.out.println("Submitting the encryption of the crafted string '" + craftedString
                 + "' to the Oracle directly makes it return: "
                 + challenge16Oracle.isExpectedParamPresent(cipherText, decryptor));
@@ -321,8 +338,8 @@ public class Set2 {
 
 
             System.out.println("Challenge 11");
-            String   tests[] = {"Test 1: 24xXXXXXXXXXXXXXXXXXXXXXXXX 23xYYYYYYYYYYYYYYYYYYYYYYY",
-                                "Test 2: 24xXXXXXXXXXXXXXXXXXXXXXXXX"};
+            String[] tests = {"Test 1: 24xXXXXXXXXXXXXXXXXXXXXXXXX 23xYYYYYYYYYYYYYYYYYYYYYYY",
+                    "Test 2: 24xXXXXXXXXXXXXXXXXXXXXXXXX"};
             KeyGenerator   aesKeyGen = KeyGenerator.getInstance("AES");
             aesKeyGen.init(128);
             for (String test : tests) {
@@ -338,7 +355,7 @@ public class Set2 {
             SecretKey   key = aesKeyGen.generateKey();
             Set2   encryptor = new Set2(Cipher.ENCRYPT_MODE, key);
             Challenge12Oracle   challenge12Oracle = encryptor.new Challenge12Oracle(CHALLENGE_12_UNKNOWN_PLAINTEXT);
-            int   blockSize = encryptor.detectBlockSize(challenge12Oracle);
+            int   blockSize = detectBlockSize(challenge12Oracle);
 
             // Let's confirm the Oracle is applying an ECB-mode encryption
             if (encryptor.isECB(challenge12Oracle.apply("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX".getBytes()), .91)) {
@@ -351,12 +368,13 @@ public class Set2 {
 
             System.out.println("\nChallenge 14");
             Challenge14Oracle  challenge14Oracle = encryptor.new Challenge14Oracle(CHALLENGE_12_UNKNOWN_PLAINTEXT);
-            int   pfxLength = encryptor.detectPrefixLength(blockSize, challenge14Oracle);
+            int   pfxLength = detectPrefixLength(blockSize, challenge14Oracle);
             plainText = encryptor.uncoverPlainTextHarder(blockSize, pfxLength, challenge14Oracle);
             System.out.println("Plaintext: " + new String(plainText));
 
             System.out.println("\nChallenge 15");
-            String   tests2[] = { "ICE ICE BABY\4\4\4\4",  "ICE ICE BABY\5\5\5\5",  "ICE ICE BABY\1\2\3\4" };
+            String[] tests2 = {   "ICE ICE BABY\4\4\4\4",  "ICE ICE BABY\5\5\5\5",
+                                  "ICE ICE BABY\1\2\3\4",  "ICE ICE BABY\1\2\3\0"   };
             for (String test : tests2) try {
                 System.out.print("Is '" + test + "' correctly padded? ");
                 encryptor.triggerExceptionOnInvalidPKCS7Padding(test.getBytes());
@@ -366,9 +384,10 @@ public class Set2 {
             }
 
             System.out.println("\nChallenge 16");
-            String   challenge16SecretText[] = {
+            String[] challenge16SecretText = {
                     "Will anyone manage to break it?",
-                    "Will anyone manage to break it? ;admin=true;" },  challenge16IV = "0123456789ABCdef";
+                    "Will anyone manage to break it? ;admin=true;"};
+            String challenge16IV = "0123456789ABCdef";
             Challenge16Oracle challenge16Oracle = encryptor.new Challenge16Oracle(
                     "comment1=cooking%20MCs;userdata=".getBytes(),
                     ";comment2=%20like%20a%20pound%20of%20bacon".getBytes(), challenge16IV.getBytes());
@@ -378,7 +397,7 @@ public class Set2 {
                 cipherText = challenge16Oracle.apply(sText);
                 System.out.println("Oracle returned " + challenge16Oracle.isExpectedParamPresent(cipherText, decryptor));
             }
-            encryptor.breakChallenge16Oracle(decryptor, challenge16Oracle);
+            breakChallenge16Oracle(decryptor, challenge16Oracle);
 
         } catch (Exception e) {
             e.printStackTrace();
