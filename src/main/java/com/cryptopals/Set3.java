@@ -2,6 +2,9 @@ package com.cryptopals;
 
 import javax.crypto.*;
 import javax.xml.bind.DatatypeConverter;
+import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -22,7 +25,8 @@ public class Set3 extends Set2 {
             DatatypeConverter.parseBase64Binary("MDAwMDA3SSdtIG9uIGEgcm9sbCwgaXQncyB0aW1lIHRvIGdvIHNvbG8="),
             DatatypeConverter.parseBase64Binary("MDAwMDA4b2xsaW4nIGluIG15IGZpdmUgcG9pbnQgb2g="),
             DatatypeConverter.parseBase64Binary("MDAwMDA5aXRoIG15IHJhZy10b3AgZG93biBzbyBteSBoYWlyIGNhbiBibG93"),
-    };
+        },
+        CHALLENGE_18_CIPHERTEXT[] = DatatypeConverter.parseBase64Binary("L77na/nrFsKvynd6HzOoG7GHTLXsTVu9qvY/2syLXzhPweyyMTJULu/6/kXX0KSvoOLSFQ==");
     private static final int   BLOCK_SIZE = 0x10;
 
     private byte   randomIV[];
@@ -88,8 +92,7 @@ public class Set3 extends Set2 {
 
         int numBlocks = cipherText.length / BLOCK_SIZE;
         // Assuming that the first cipherblock is the IV.
-        byte   res[] = new byte[cipherText.length - BLOCK_SIZE];
-        byte   newBlock[];
+        byte[]  res = new byte[cipherText.length - BLOCK_SIZE],  newBlock;
 
         for (int i=0; i < numBlocks - 1; i++) {
             newBlock = Arrays.copyOfRange(cipherText, 0, (i + 2) * BLOCK_SIZE);
@@ -116,6 +119,22 @@ public class Set3 extends Set2 {
         return  stripPKCS7Padding(res);
     }
 
+    byte[]  cipherCTR(byte[] plainText, long nonce) {
+        ByteBuffer   nonceBuf = ByteBuffer.allocate(2 * Long.BYTES).putLong(nonce).order(ByteOrder.LITTLE_ENDIAN);
+        byte[]   res = new byte[(plainText.length + 15) / 16 * 16],  curPRF,  curBlock,  randomPad;
+        int      i = 0;
+
+        for (; i < plainText.length; i+=16) {
+            curPRF = nonceBuf.duplicate().order(ByteOrder.LITTLE_ENDIAN).putLong(i / 16).array();
+            randomPad = cipher.update(curPRF);
+            curBlock = Arrays.copyOfRange(plainText, i, i+16);
+            Set2.xorBlock(randomPad, curBlock);
+            System.arraycopy(randomPad, 0, res, i, 16);
+        }
+
+        return  i == plainText.length  ?  res : Arrays.copyOf(res, plainText.length);
+    }
+
     public static void main(String[] args) {
 
         try {
@@ -128,8 +147,10 @@ public class Set3 extends Set2 {
                    decryptor = new Set3(Cipher.DECRYPT_MODE, key);
             byte[]   cipherText = encryptor.challenge17Encrypt(),
                      plainText = breakChallenge17PaddingOracle(cipherText, decryptor.new Challenge17Oracle());
-            System.out.printf("Challenge 17%nBroken plaintext is: %s", new String(plainText));
+            System.out.printf("Challenge 17%nBroken plaintext is: %s%n", new String(plainText));
 
+            encryptor = new Set3(Cipher.ENCRYPT_MODE, Set1.YELLOW_SUBMARINE_SK);
+            System.out.printf("%nChallenge 18%nPlaintext: %s%n", new String(encryptor.cipherCTR(CHALLENGE_18_CIPHERTEXT, 0)));
 
         } catch (Exception e) {
             e.printStackTrace();

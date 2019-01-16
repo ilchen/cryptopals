@@ -39,7 +39,7 @@ public class Set2 {
         secRandGen.nextBytes(randPfx);
     }
 
-    private static void   xorBlock(byte[] trg, byte[] src) {
+    static void   xorBlock(byte[] trg, byte[] src) {
         for (int i=0; i < trg.length; i++) {
             trg[i] ^= src[i];
         }
