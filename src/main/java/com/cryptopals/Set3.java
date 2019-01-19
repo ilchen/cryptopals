@@ -10,6 +10,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Random;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -186,6 +187,10 @@ public class Set3 extends Set2 {
                                                             Set1.Encoding.BASE64);
             int   keyStream[] = getKeyStream(cipherTexts);
             cipherTexts.stream().map(block -> new String(xorBlocks(block, keyStream))).forEach(System.out::println);
+
+            Random r = new MT19937();
+            IntStream.range(0, 100).map(x -> r.nextInt(64)).forEach(System.out::println);
+
         } catch (Exception e) {
             e.printStackTrace();
         }
