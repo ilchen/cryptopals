@@ -77,7 +77,8 @@ public class Set1 {
     }
 
     static FrequencyAnalysisHelper challenge3Helper(byte cypherText[]) {
-        char   start = ' ',  end = '~';
+        //char   start = ' ',  end = '~';
+        char   start = 0,  end = 255;
         byte   res[] = new byte[cypherText.length];
         SortedMap<Float, Character>   keyCands = new TreeMap<>();
         for (char ch = start; ch <= end; ch++) {

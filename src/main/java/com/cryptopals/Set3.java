@@ -8,7 +8,12 @@ import java.nio.ByteOrder;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * Created by Andrei Ilchenko on 13-01-19.
@@ -135,6 +140,30 @@ public class Set3 extends Set2 {
         return  i == plainText.length  ?  res : Arrays.copyOf(res, plainText.length);
     }
 
+    // If only there was Stream#mapToByte...
+    static int[]  getKeyStream(List<byte[]> cipherTexts) {
+        int   len = cipherTexts.stream().mapToInt(c -> c.length).min().orElseThrow(
+                () -> new IllegalArgumentException("cipherTexts list is empty")),  num = cipherTexts.size();
+
+        Stream<byte[]> blocks = IntStream.range(0, len).parallel().mapToObj(i -> {
+            ByteBuffer  bb = ByteBuffer.allocate(num);
+            for (byte[] cipherText : cipherTexts) {
+                bb.put(cipherText[i]);
+            }
+            return bb.array();
+        });
+
+        return  blocks.mapToInt(block -> Set1.challenge3Helper(block).getKey()).toArray();
+    }
+
+    static byte[]  xorBlocks(byte text[], int keyStream[]) {
+        byte   res[] = new byte[keyStream.length];
+        for (int i=0; i < keyStream.length; i++) {
+            res[i] = (byte) (text[i] ^ keyStream[i]);
+        }
+        return  res;
+    }
+
     public static void main(String[] args) {
 
         try {
@@ -152,6 +181,11 @@ public class Set3 extends Set2 {
             encryptor = new Set3(Cipher.ENCRYPT_MODE, Set1.YELLOW_SUBMARINE_SK);
             System.out.printf("%nChallenge 18%nPlaintext: %s%n", new String(encryptor.cipherCTR(CHALLENGE_18_CIPHERTEXT, 0)));
 
+            System.out.println("\nChallenge 20\nPlaintexts:");
+            List<byte[]>   cipherTexts = Set1.readFileLines("https://cryptopals.com/static/challenge-data/20.txt",
+                                                            Set1.Encoding.BASE64);
+            int   keyStream[] = getKeyStream(cipherTexts);
+            cipherTexts.stream().map(block -> new String(xorBlocks(block, keyStream))).forEach(System.out::println);
         } catch (Exception e) {
             e.printStackTrace();
         }

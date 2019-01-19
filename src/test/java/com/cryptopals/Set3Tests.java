@@ -13,6 +13,9 @@ import javax.xml.bind.DatatypeConverter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Collections;
@@ -21,6 +24,8 @@ import java.util.Objects;
 import java.util.Scanner;
 import java.util.stream.Stream;
 
+import static com.cryptopals.Set3.getKeyStream;
+import static com.cryptopals.Set3.xorBlocks;
 import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("Test cases for Cryptopals Set 3 challenges")
@@ -49,5 +54,33 @@ public class Set3Tests {
             assertArrayEquals(cipherText, cipherText_);
         }
 
+    }
+
+    @Test @DisplayName("https://cryptopals.com/sets/1/challenges/18")
+    void  challenge18() throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException {
+        Set3   encryptor = new Set3(Cipher.ENCRYPT_MODE, Set1.YELLOW_SUBMARINE_SK);
+        assertEquals("Yo, VIP Let's kick it Ice, Ice, baby Ice, Ice, baby ",
+                new String(encryptor.cipherCTR(Set3.CHALLENGE_18_CIPHERTEXT, 0)));
+    }
+
+    static class  Challenge20ArgumentsProvider implements ArgumentsProvider {
+        @Override
+        public Stream<? extends Arguments>  provideArguments(ExtensionContext context) throws IOException {
+            ClassLoader classLoader = getClass().getClassLoader();
+            Path path = Paths.get(Objects.requireNonNull(classLoader.getResource("challenge20_expected_plain.txt")).getFile());
+            return Stream.of(
+                    Arguments.of("challenge20.txt", Files.lines(path)));
+        }
+    }
+
+    @DisplayName("https://cryptopals.com/sets/1/challenges/20")
+    @ParameterizedTest @ArgumentsSource(Challenge20ArgumentsProvider.class)
+    void  challenge20(String fileName, Stream<String> expectedResult) throws IOException {
+        ClassLoader classLoader = getClass().getClassLoader();
+        File file = new File(Objects.requireNonNull(classLoader.getResource(fileName)).getFile());
+        List<byte[]>   cipherTexts = Set1.readFileLines(file.toURI().toURL().toString(), Set1.Encoding.BASE64);
+        int   keyStream[] = getKeyStream(cipherTexts);
+        assertArrayEquals(expectedResult.toArray(),
+            cipherTexts.stream().map(block -> new String(xorBlocks(block, keyStream))).toArray());
     }
 }
