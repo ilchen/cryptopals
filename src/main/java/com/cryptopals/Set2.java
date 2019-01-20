@@ -27,7 +27,7 @@ public class Set2 {
     private static final String  AES_TRANSFORMATION = "AES/ECB/NoPadding";
     Cipher   cipher;
     Random   randGen,  secRandGen;
-    private byte[] randPfx;
+    byte[] randPfx;
 
     Set2(int mode, SecretKey key) throws InvalidKeyException,
             NoSuchPaddingException, NoSuchAlgorithmException {

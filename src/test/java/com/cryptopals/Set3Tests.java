@@ -9,9 +9,7 @@ import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
 import javax.crypto.*;
-import javax.xml.bind.DatatypeConverter;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -19,17 +17,17 @@ import java.nio.file.Paths;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.function.UnaryOperator;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static com.cryptopals.Set3.getKeyStream;
-import static com.cryptopals.Set3.xorBlocks;
+import static com.cryptopals.Set3.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("Test cases for Cryptopals Set 3 challenges")
 public class Set3Tests {
 
-    @Test @DisplayName("https://cryptopals.com/sets/1/challenges/17")
+    @Test @DisplayName("https://cryptopals.com/sets/3/challenges/17")
     /**
      * Since {@link Set3#challenge17Encrypt()} selects one of 10 strings to encrypt using a discreet uniform distribution,
      * we run the test as many times as is required to ensure that the probability of having tested each of the 10 strings'
@@ -54,7 +52,7 @@ public class Set3Tests {
 
     }
 
-    @Test @DisplayName("https://cryptopals.com/sets/1/challenges/18")
+    @Test @DisplayName("https://cryptopals.com/sets/3/challenges/18")
     void  challenge18() throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException {
         Set3   encryptor = new Set3(Cipher.ENCRYPT_MODE, Set1.YELLOW_SUBMARINE_SK);
         assertEquals("Yo, VIP Let's kick it Ice, Ice, baby Ice, Ice, baby ",
@@ -74,7 +72,7 @@ public class Set3Tests {
         }
     }
 
-    @DisplayName("https://cryptopals.com/sets/1/challenges/20")
+    @DisplayName("https://cryptopals.com/sets/3/challenges/20")
     @ParameterizedTest @ArgumentsSource(Challenge20ArgumentsProvider.class)
     void  challenge20(String fileName, Stream<String> expectedResult) throws IOException {
         ClassLoader classLoader = getClass().getClassLoader();
@@ -97,11 +95,35 @@ public class Set3Tests {
 
         }
     }
-    @DisplayName("https://cryptopals.com/sets/1/challenges/21")
+
+    @DisplayName("https://cryptopals.com/sets/3/challenges/21")
     @ParameterizedTest @ArgumentsSource(Challenge21ArgumentsProvider.class)
     void  challenge21(long seed, int expectedResult[])  {
         Random r = new MT19937(seed);
         assertArrayEquals(expectedResult,
                 IntStream.range(0, 100).map(x -> r.nextInt(64)).toArray());
+    }
+
+    @Test @DisplayName("https://cryptopals.com/sets/3/challenges/23")
+    void  challenge23() {
+        Random   r = new MT19937();
+        Set3.MT19937Tap   tap = new Set3.MT19937Tap();
+        IntStream.range(0, MT19937.N / 2).mapToLong(x -> r.nextLong()).forEach(x -> {
+            int   i = (int) x;
+            tap.tapNext((int) ((x - i) >> 32));   tap.tapNext(i); }  );
+        Random   rCloned = new MT19937(tap.getMti(), tap.getMt());
+        int[]   exoected = IntStream.range(0, 1000).map(x -> r.nextInt(Integer.MAX_VALUE)).toArray(),
+                actual   = IntStream.range(0, 1000).map(x -> rCloned.nextInt(Integer.MAX_VALUE)).toArray();
+        assertArrayEquals(exoected, actual);
+    }
+
+    @Test @DisplayName("https://cryptopals.com/sets/3/challenges/24")
+    void  challenge24() throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException {
+        byte[]   knownPlainText = "AAAAAAAaaaaaaa".getBytes(),  recoveredPlainText;
+        UnaryOperator<byte[]> oracle = new Set3(Cipher.ENCRYPT_MODE, Set1.YELLOW_SUBMARINE_SK).new Challenge24Oracle();
+        short k = Set3.breakChallenge24Oracle(knownPlainText, oracle);
+        recoveredPlainText = cipherMT19937(oracle.apply(knownPlainText), k);
+        assertArrayEquals(knownPlainText,
+                Arrays.copyOfRange(recoveredPlainText, recoveredPlainText.length - knownPlainText.length, recoveredPlainText.length));
     }
 }

@@ -1,18 +1,18 @@
 package com.cryptopals;
 
+import lombok.Data;
+
 import javax.crypto.*;
 import javax.xml.bind.DatatypeConverter;
-import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 import java.util.Random;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
+import java.util.function.UnaryOperator;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -141,6 +141,49 @@ public class Set3 extends Set2 {
         return  i == plainText.length  ?  res : Arrays.copyOf(res, plainText.length);
     }
 
+    private byte[]  cipherMT19937(byte[] plainText) {
+        return  cipherMT19937(plainText, ByteBuffer.wrap(Arrays.copyOf(randomIV, 2)).getShort());
+    }
+
+    static byte[]  cipherMT19937(byte[] plainText, short seed) {
+        Random  r = new MT19937(seed);
+        byte    res[] = new byte[plainText.length];
+        r.nextBytes(res);
+        xorBlock(res, plainText);
+        return  res;
+    }
+
+    class Challenge24Oracle implements UnaryOperator<byte[]> {
+        @Override
+        public byte[] apply(byte[] knownPlainText) {
+            byte[]  plainText = new byte[randPfx.length + knownPlainText.length];
+            System.arraycopy(randPfx, 0, plainText, 0, randPfx.length);
+            System.arraycopy(knownPlainText, 0, plainText, randPfx.length, knownPlainText.length);
+            return  cipherMT19937(plainText);
+        }
+    }
+
+    static short  breakChallenge24Oracle(byte knownPlainText[], UnaryOperator<byte[]> oracle) {
+        byte[]  cipherText = oracle.apply(knownPlainText),  paddedPlainText = new byte[cipherText.length],
+                cipherTextWithoutPfx = Arrays.copyOfRange(cipherText, cipherText.length - knownPlainText.length, cipherText.length);
+        System.arraycopy(knownPlainText, 0, paddedPlainText, cipherText.length - knownPlainText.length, knownPlainText.length);
+//        for (int seed=0; seed < 0xffff; seed++) {
+//            byte[]   newCipherText = cipherMT19937(paddedPlainText, (short) seed),
+//                    newCipherTextWithoutPfx = Arrays.copyOfRange(newCipherText, newCipherText.length - knownPlainText.length, newCipherText.length);
+//            if (Arrays.equals(newCipherTextWithoutPfx, cipherTextWithoutPfx)) {
+//                return  (short) seed;
+//            }
+//        }
+//        throw new IllegalStateException("No seed found");
+        // Below code is a factor of a 4 faster than the above single-threaded solution when tried on Intel Core i7
+        return  (short) IntStream.range(0, 0xffff).parallel().filter(seed -> {
+            byte[]   newCipherText = cipherMT19937(paddedPlainText, (short) seed),
+                    newCipherTextWithoutPfx = Arrays.copyOfRange(newCipherText, newCipherText.length - knownPlainText.length, newCipherText.length);
+            return  Arrays.equals(newCipherTextWithoutPfx, cipherTextWithoutPfx);
+        }).findFirst().orElseThrow(() -> new IllegalStateException("No seed found"));
+
+    }
+
     // If only there was Stream#mapToByte...
     static int[]  getKeyStream(List<byte[]> cipherTexts) {
         int   len = cipherTexts.stream().mapToInt(c -> c.length).min().orElseThrow(
@@ -163,6 +206,65 @@ public class Set3 extends Set2 {
             res[i] = (byte) (text[i] ^ keyStream[i]);
         }
         return  res;
+    }
+
+    @Data
+    static class  MT19937Tap {
+        private final int[]   mt = new int[MT19937.N];
+        private int  mti = 0;
+
+        void  tapNext(int val) {
+            val = untemperRightShiftXor(val, MT19937.L);
+            val = untemperLeftShiftAndXor(val, MT19937.T, MT19937.C);
+            val = untemperLeftShiftAndXor(val, MT19937.S, MT19937.B);
+            mt[mti++] = untemperRightShiftXor(val, MT19937.U);
+        }
+
+        static int  untemperLeftShiftAndXor(int val, int shift, int mask) {
+//            y ^= y << MT19937.T (15) &  MT19937.C (0xEFC60000);
+            if (shift >= MT19937.W / 2) {
+                val ^= val << shift & mask;
+            } else if ((MT19937.W / 2 - shift) << 1 < shift) {
+                int  t = val;
+                t ^= t << shift & mask;
+                val ^= t << shift & mask;
+            } else {
+                int   t,  tNew = val;
+                for (int i=MT19937.W-shift; i >=0; i-=shift) {
+                    t = val;
+                    t ^= tNew << shift & mask;
+                    tNew = t;
+                }
+                val = tNew;
+            }
+            return  val;
+        }
+
+        static int  untemperRightShiftXor(int val, int shift) {
+            if (shift >= MT19937.W / 2) {
+                val ^= val >>> shift;
+            } else if ((MT19937.W / 2 - shift) << 1 < shift) {
+                int  t = val;
+                t ^= t >>> shift;
+                val ^= t >>> shift;
+            } else {
+                int   t,  tNew = val;
+                for (int i=MT19937.W-shift; i >=0; i-=shift) {
+                    t = val;
+                    t ^= tNew >>> shift;
+                    tNew = t;
+                }
+                val = tNew;
+            }
+            return  val;
+            /*
+             10110111010 11111000100 0011001110 ^
+             00000000000 10110111010 1111100010
+             ----------------------------------
+             10110111010 01001111110 1100101100
+                         10110111010 0100111111
+             */
+        }
     }
 
     public static void main(String[] args) {
@@ -188,8 +290,38 @@ public class Set3 extends Set2 {
             int   keyStream[] = getKeyStream(cipherTexts);
             cipherTexts.stream().map(block -> new String(xorBlocks(block, keyStream))).forEach(System.out::println);
 
+            System.out.println("\nChallenge 21\nThe first 100 6bit integers from MT19937 PRNG are:");
             Random r = new MT19937();
-            IntStream.range(0, 100).map(x -> r.nextInt(64)).forEach(System.out::println);
+            IntStream.range(0, 100).map(x -> r.nextInt(64)).forEach(x -> System.out.print(x + ", "));
+
+            System.out.println("\n\nChallenge 23");
+            Random r2 = new MT19937();
+            MT19937Tap   tap = new MT19937Tap();
+            IntStream.range(0, MT19937.N / 2).mapToLong(x -> r2.nextLong()).forEach(x -> {
+                int   i = (int) x;
+                tap.tapNext((int) ((x - i) >> 32));   tap.tapNext(i); }  );
+            Random r2Cloned = new MT19937(tap.getMti(), tap.getMt());
+            System.out.println("The difference between the two generators should be zero if they return the same values");
+            IntStream.range(0, 32).map(x -> r2.nextInt(64) - r2Cloned.nextInt(64)).forEach(x -> System.out.print(x + ", "));
+
+            System.out.println("\n\nChallenge 24");
+            plainText = "AAAAAAAaaaaaaa".getBytes();
+            long  start,  end;
+            int   n = 100;
+            short k = 0;
+            double   accu = 0.;
+            UnaryOperator<byte[]>  oracle = encryptor.new Challenge24Oracle();
+            for (int i=0; i < n; i++) {
+                start = System.nanoTime();
+                k = breakChallenge24Oracle(plainText, oracle);
+                end = System.nanoTime();
+                accu += end - start;
+            }
+            accu /= n;
+            System.out.printf("Recovered key 0x%4x in %.6f seconds on average%n", k, accu / 1e9);
+            cipherText = cipherMT19937(oracle.apply(plainText), k);
+            System.out.printf("Expect to get '%s' when decripting with found key 0x%4x: '%s'%n", new String(plainText), k,
+                    new String(Arrays.copyOfRange(cipherText, cipherText.length - plainText.length, cipherText.length)));
 
         } catch (Exception e) {
             e.printStackTrace();

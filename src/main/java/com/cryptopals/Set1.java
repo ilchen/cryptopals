@@ -212,8 +212,8 @@ public class Set1 {
 
     @Data @Builder
     static class VigenereCipherAttackReporter {
-        private int     keySize;
-        private String  key,  plainText;
+        final private int     keySize;
+        final private String  key,  plainText;
     }
 
     static List<VigenereCipherAttackReporter>  challenge6(String url) throws IOException {
