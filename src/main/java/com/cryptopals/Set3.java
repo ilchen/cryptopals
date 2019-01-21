@@ -125,6 +125,11 @@ public class Set3 extends Set2 {
         return  stripPKCS7Padding(res);
     }
 
+    // Needed for Challenge 25
+    byte[]  cipherCTR(byte[] plainText) {
+        return  cipherCTR(plainText, ByteBuffer.wrap(Arrays.copyOf(randomIV, 8)).getLong());
+    }
+
     byte[]  cipherCTR(byte[] plainText, long nonce) {
         ByteBuffer   nonceBuf = ByteBuffer.allocate(2 * Long.BYTES).putLong(nonce).order(ByteOrder.LITTLE_ENDIAN);
         byte[]   res = new byte[(plainText.length + 15) / 16 * 16],  curPRF,  curBlock,  randomPad;
