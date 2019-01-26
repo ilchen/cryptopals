@@ -19,6 +19,8 @@ import java.util.function.UnaryOperator;
  * to the instance state involved in the crypto part of oracle's implementation.
  */
 public class Set2 {
+    static final String   CHALLANGE_16_QUERY_STRING_PREFIX = "comment1=cooking%20MCs;userdata=",
+                          CHALLANGE_16_QUERY_STRING_SUFFIX = ";comment2=%20like%20a%20pound%20of%20bacon";
     private static final byte[] CHALLENGE_12_UNKNOWN_PLAINTEXT = DatatypeConverter.parseBase64Binary(
             "Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkg"
                     + "aGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBq"
@@ -182,7 +184,7 @@ public class Set2 {
         }
     }
 
-    private static int  detectBlockSize(UnaryOperator<byte[]> oracle) {
+    static int  detectBlockSize(UnaryOperator<byte[]> oracle) {
         StringBuilder   sb = new StringBuilder();
         int    cipherTextSize = oracle.apply(new byte[0]).length;
         int    blockSize;
@@ -214,7 +216,7 @@ public class Set2 {
         return  res;
     }
 
-    private static int detectPrefixLength(int blockSize, Challenge12Oracle oracle) {
+    static int detectPrefixLength(int blockSize, Challenge12Oracle oracle) {
         // We need to ensure that the length of the array we control plus the length of the unknown plain text
         // we want to decipher is a multiple of the blocksize.
         StringBuilder   sb = new StringBuilder();
@@ -272,6 +274,7 @@ public class Set2 {
     }
 
     class  Challenge16Oracle extends Challenge12Oracle {
+        static final String   EXPECTED_PARAM = ";admin=true;";
         byte[]   iv,  unknownPrefix;
         Challenge16Oracle(byte[] unknownPrefix, byte[] unknownPlainText, byte[] iv) {
             super(unknownPlainText);
@@ -283,6 +286,10 @@ public class Set2 {
             return apply(myPlainText.replace("=", "%3d").replace(";", "%3b").getBytes());
         }
 
+        byte[]  doEncryption(byte text[], byte iv[]) {
+            return  cipherCBC(text, iv);
+        }
+
         @Override
         public byte[] apply(byte[] myPlainText) {
             byte[] fullPlainText = new byte[myPlainText.length + unknownPrefix.length + unknownPlainText.length];
@@ -290,11 +297,11 @@ public class Set2 {
             System.arraycopy(myPlainText, 0, fullPlainText, unknownPrefix.length, myPlainText.length);
             System.arraycopy(unknownPlainText, 0, fullPlainText,
                     unknownPrefix.length + myPlainText.length, unknownPlainText.length);
-            return cipherCBC(fullPlainText, iv);
+            return doEncryption(fullPlainText, iv);
         }
 
-        private boolean  isExpectedParamPresent(byte[] cipherText, Set2 decryptor) throws BadPaddingException {
-            return  new String(decryptor.decipherCBC(cipherText, iv)).contains(";admin=true;");
+        boolean  isExpectedParamPresent(byte[] cipherText, Set2 decryptor) throws BadPaddingException {
+            return  new String(decryptor.decipherCBC(cipherText, iv)).contains(EXPECTED_PARAM);
         }
     }
 
@@ -317,7 +324,7 @@ public class Set2 {
         cipherText[pfxLen - blockLen + 6]  ^= (byte) '=';
         cipherText[pfxLen - blockLen + 11] ^= (byte) ';';
         System.out.println("Submitting the modified encryption of the crafted string '" + craftedString
-                + "' to the Oracle directly makes it return: "
+                + "' to the Oracle makes it return: "
                 + challenge16Oracle.isExpectedParamPresent(cipherText, decryptor));
     }
 
@@ -389,8 +396,8 @@ public class Set2 {
                     "Will anyone manage to break it? ;admin=true;"};
             String challenge16IV = "0123456789ABCdef";
             Challenge16Oracle challenge16Oracle = encryptor.new Challenge16Oracle(
-                    "comment1=cooking%20MCs;userdata=".getBytes(),
-                    ";comment2=%20like%20a%20pound%20of%20bacon".getBytes(), challenge16IV.getBytes());
+                    CHALLANGE_16_QUERY_STRING_PREFIX.getBytes(),
+                    CHALLANGE_16_QUERY_STRING_SUFFIX.getBytes(), challenge16IV.getBytes());
             Set2   decryptor = new Set2(Cipher.DECRYPT_MODE, key);
 
             for (String sText : challenge16SecretText) {
