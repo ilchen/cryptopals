@@ -1,13 +1,17 @@
 package com.cryptopals;
 
+import lombok.Data;
+import sun.security.provider.MD41;
+import sun.security.provider.SHA1;
+
 import javax.crypto.*;
 import javax.crypto.spec.SecretKeySpec;
 import javax.xml.bind.DatatypeConverter;
 import java.nio.ByteBuffer;
 import java.security.InvalidKeyException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
-
 
 import static com.cryptopals.Set1.challenge7;
 
@@ -15,11 +19,33 @@ import static com.cryptopals.Set1.challenge7;
  * Created by Andrei Ilchenko on 21-01-19.
  */
 public class Set4 extends Set3 {
+    static final String   CHALLANGE_29_ORIGINAL_MESSAGE = "comment1=cooking%20MCs;userdata=foo;comment2=%20like%20a%20pound%20of%20bacon",
+                          CHALLANGE_29_EXTENSION = ";admin=true";
+    private static final int   SHA_BLOCKSIZE = 64;
     private SecretKey  key;
+    private MessageDigest   sha;
 
     Set4(int mode, SecretKey key) throws InvalidKeyException, NoSuchPaddingException, NoSuchAlgorithmException {
         super(mode, key);
         this.key = key;
+        sha = MessageDigest.getInstance("SHA-1");
+    }
+
+    byte[]  keyedMac(byte message[]) {
+        sha.update(key.getEncoded());
+        return  sha.digest(message);
+    }
+
+    byte[]  keyedMacMD4(byte message[]) {
+        MD41   h = new MD41();
+        h.engineUpdate(key.getEncoded(), 0, key.getEncoded().length);
+        h.engineUpdate(message, 0, message.length);
+        byte[]  d1 = h.engineDigest(),  d2;
+//        md4.update(key.getEncoded());
+//        d2 = md4.digest(message);
+//        System.out.printf("Digest: %s%nAlternative digest: %s%n",
+//                DatatypeConverter.printHexBinary(d2), DatatypeConverter.printHexBinary(d1));
+        return  d1;
     }
 
     interface CipherTextEditOracle {
@@ -136,6 +162,80 @@ public class Set4 extends Set3 {
         return  new byte[0];
     }
 
+    static byte[]  mdPad(byte message[]) {
+        int   lenMod64 = message.length & 0x3f;
+        int   lenPadding = lenMod64 < 56  ?  56 - lenMod64 : 120 - lenMod64,  len = message.length + lenPadding + 8;
+        ByteBuffer   bb = ByteBuffer.allocate(len);
+        bb.put(message);
+        bb.put((byte) 0x80);
+        bb.put(new byte[lenPadding - 1]);
+        bb.putLong(message.length << 3);
+        return  bb.array();
+    }
+
+    /// Squash bytes down to ints.
+    static void squashBytesToInts(byte[] inBytes, int inOff, int[] outInts, int outOff, int intLen) {
+        for (int i = 0; i < intLen; ++i)
+            outInts[outOff + i] =
+                    ((inBytes[inOff + i * 4] & 0xff) << 24) |
+                            ((inBytes[inOff + i * 4 + 1] & 0xff) << 16) |
+                            ((inBytes[inOff + i * 4 + 2] & 0xff) << 8) |
+                            (inBytes[inOff + i * 4 + 3] & 0xff);
+    }
+
+    @Data
+    static class  ExistentialForgeryPair  {
+        private final byte[]   forgedMessage,  forgedMAC;
+    }
+
+    static ExistentialForgeryPair  breakSHA1KeyedMAC(Set4 encryptor, byte message[], byte extension[]) {
+        byte[]   origMac = encryptor.keyedMac(message);
+        int[]   state = new int[5];
+        squashBytesToInts(origMac, 0, state, 0, 5);
+
+        // Since we don't know the length of the key
+        for (int i=1; i <= 32; i++) {
+            byte[]   prefixedMessage = new byte[i + message.length];
+            Arrays.fill(prefixedMessage, 0, i, (byte) 0x20);
+            System.arraycopy(message, 0, prefixedMessage, i, message.length);
+            byte[] paddedMessage = mdPad(prefixedMessage),  forgedMessage,  forgedMAC;
+            SHA1  h = new SHA1();
+            h.engineUpdate(extension, 0, extension.length, state, paddedMessage.length);
+            forgedMessage = Arrays.copyOf(Arrays.copyOfRange(paddedMessage, i, paddedMessage.length),
+                    paddedMessage.length - i + extension.length);
+            System.arraycopy(extension, 0, forgedMessage, paddedMessage.length - i, extension.length);
+            forgedMAC = h.engineDigest();
+            if (Arrays.equals(forgedMAC, encryptor.keyedMac(forgedMessage))) {
+                return  new ExistentialForgeryPair(forgedMessage, forgedMAC);
+            }
+        }
+        return  null;
+    }
+
+    static ExistentialForgeryPair  breakMD4KeyedMAC(Set4 encryptor, byte message[], byte extension[]) {
+        byte[]   origMac = encryptor.keyedMacMD4(message);
+        int[]    state = new int[4];
+        squashBytesToInts(origMac, 0, state, 0, 4);
+
+        // Since we don't know the length of the key
+        for (int i=1; i <= 32; i++) {
+            byte[]   prefixedMessage = new byte[i + message.length];
+            Arrays.fill(prefixedMessage, 0, i, (byte) 0x20);
+            System.arraycopy(message, 0, prefixedMessage, i, message.length);
+            byte[] paddedMessage = mdPad(prefixedMessage),  forgedMessage,  forgedMAC;
+            MD41  h = new MD41();
+            h.engineUpdate(extension, 0, extension.length, state, paddedMessage.length);
+            forgedMessage = Arrays.copyOf(Arrays.copyOfRange(paddedMessage, i, paddedMessage.length),
+                    paddedMessage.length - i + extension.length);
+            System.arraycopy(extension, 0, forgedMessage, paddedMessage.length - i, extension.length);
+            forgedMAC = h.engineDigest();
+            if (Arrays.equals(forgedMAC, encryptor.keyedMacMD4(forgedMessage))) {
+                return  new ExistentialForgeryPair(forgedMessage, forgedMAC);
+            }
+        }
+        return  null;
+    }
+
     public static void main(String[] args) {
 
         try {
@@ -168,6 +268,22 @@ public class Set4 extends Set3 {
             System.out.println("Recovered key: " + DatatypeConverter.printHexBinary(k));
             System.out.println("Original key: " + DatatypeConverter.printHexBinary(key.getEncoded()));
             System.out.println("Are these keys equal? " + new SecretKeySpec(k, 0, k.length, "AES").equals(key));
+
+            System.out.println("\nChallenge 29");
+            ExistentialForgeryPair existForgery = breakSHA1KeyedMAC(encryptor, CHALLANGE_29_ORIGINAL_MESSAGE.getBytes(),
+                                                                               CHALLANGE_29_EXTENSION.getBytes());
+            System.out.printf("Forged message: %s%nForged MAC: %s%nActual MAC: %s%n",
+                    new String(existForgery.getForgedMessage()),
+                    DatatypeConverter.printHexBinary(existForgery.getForgedMAC()),
+                    DatatypeConverter.printHexBinary(encryptor.keyedMac(existForgery.getForgedMessage())) );
+
+            System.out.println("\nChallenge 30");
+            existForgery = breakMD4KeyedMAC(encryptor, CHALLANGE_29_ORIGINAL_MESSAGE.getBytes(),
+                                                       CHALLANGE_29_EXTENSION.getBytes());
+            System.out.printf("Forged message: %s%nForged MAC: %s%nActual MAC: %s%n",
+                    new String(existForgery.getForgedMessage()),
+                    DatatypeConverter.printHexBinary(existForgery.getForgedMAC()),
+                    DatatypeConverter.printHexBinary(encryptor.keyedMac(existForgery.getForgedMessage())) );
 
         } catch (Exception e) {
             e.printStackTrace();

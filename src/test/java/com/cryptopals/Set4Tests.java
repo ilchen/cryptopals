@@ -22,6 +22,8 @@ import java.util.stream.Stream;
 
 import static com.cryptopals.Set1.challenge7;
 import static com.cryptopals.Set3.cipherMT19937;
+import static com.cryptopals.Set4.CHALLANGE_29_EXTENSION;
+import static com.cryptopals.Set4.CHALLANGE_29_ORIGINAL_MESSAGE;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class Set4Tests {
@@ -53,5 +55,16 @@ public class Set4Tests {
                 Set2.CHALLANGE_16_QUERY_STRING_SUFFIX.getBytes());
         byte   k[] = Set4.breakChallenge27Oracle(decryptor, challenge27Oracle);
         assertArrayEquals(key.getEncoded(), k);
+    }
+
+    @DisplayName("https://cryptopals.com/sets/4/challenges/29")
+    @Test
+    void  challenge29() throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, BadPaddingException {
+        KeyGenerator aesKeyGen = KeyGenerator.getInstance("AES");
+        SecretKey key = aesKeyGen.generateKey();
+        Set4   encryptor = new Set4(Cipher.ENCRYPT_MODE, key);
+        Set4.ExistentialForgeryPair   existForgery = Set4.breakSHA1KeyedMAC(encryptor,
+                CHALLANGE_29_ORIGINAL_MESSAGE.getBytes(), CHALLANGE_29_EXTENSION.getBytes());
+        assertArrayEquals(encryptor.keyedMac(existForgery.getForgedMessage()), existForgery.getForgedMAC());
     }
 }
