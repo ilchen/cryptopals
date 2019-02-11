@@ -40,7 +40,7 @@ import java.nio.ByteOrder;
  *
  * @author      Andreas Sterbenz
  */
-public final class MD41 extends DigestBase1 {
+public final class MD4Ext extends DigestBase1 {
 
     // state of this object
     private int[] state;
@@ -63,7 +63,7 @@ public final class MD41 extends DigestBase1 {
 
 
     // Standard constructor, creates a new MD4 instance.
-    public MD41() {
+    public MD4Ext() {
         super("MD4", 16, 64);
         state = new int[4];
         x = new int[16];
@@ -72,7 +72,7 @@ public final class MD41 extends DigestBase1 {
 
     // clone this object
     public Object clone() throws CloneNotSupportedException {
-        MD41 copy = (MD41) super.clone();
+        MD4Ext copy = (MD4Ext) super.clone();
         copy.state = copy.state.clone();
         copy.x = new int[16];
         return copy;
@@ -101,7 +101,7 @@ public final class MD41 extends DigestBase1 {
         this.state[3] = state[3];
     }
 
-    static void squashBytesToIntsLittle(byte[] inBytes, int inOff, int[] outInts, int outOff, int intLen) {
+    static public void squashBytesToIntsLittle(byte[] inBytes, int inOff, int[] outInts, int outOff, int intLen) {
         for (int i = 0; i < intLen; ++i)
             outInts[outOff + i] =
                     (inBytes[inOff + i * 4] & 0xff) |

@@ -2,26 +2,16 @@ package com.cryptopals;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
 import javax.crypto.*;
-import javax.crypto.spec.SecretKeySpec;
-import javax.xml.bind.DatatypeConverter;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
-import java.util.function.UnaryOperator;
-import java.util.stream.Stream;
 
-import static com.cryptopals.Set1.challenge7;
-import static com.cryptopals.Set3.cipherMT19937;
 import static com.cryptopals.Set4.CHALLANGE_29_EXTENSION;
 import static com.cryptopals.Set4.CHALLANGE_29_ORIGINAL_MESSAGE;
 import static org.junit.jupiter.api.Assertions.*;
@@ -66,5 +56,16 @@ public class Set4Tests {
         Set4.ExistentialForgeryPair   existForgery = Set4.breakSHA1KeyedMAC(encryptor,
                 CHALLANGE_29_ORIGINAL_MESSAGE.getBytes(), CHALLANGE_29_EXTENSION.getBytes());
         assertArrayEquals(encryptor.keyedMac(existForgery.getForgedMessage()), existForgery.getForgedMAC());
+    }
+
+    @DisplayName("https://cryptopals.com/sets/4/challenges/30")
+    @Test
+    void  challenge30() throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, BadPaddingException {
+        KeyGenerator aesKeyGen = KeyGenerator.getInstance("AES");
+        SecretKey key = aesKeyGen.generateKey();
+        Set4   encryptor = new Set4(Cipher.ENCRYPT_MODE, key);
+        Set4.ExistentialForgeryPair   existForgery = Set4.breakMD4KeyedMAC(encryptor,
+                CHALLANGE_29_ORIGINAL_MESSAGE.getBytes(), CHALLANGE_29_EXTENSION.getBytes());
+        assertArrayEquals(encryptor.keyedMacMD4(existForgery.getForgedMessage()), existForgery.getForgedMAC());
     }
 }

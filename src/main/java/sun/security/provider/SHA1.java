@@ -122,7 +122,7 @@ public final class SHA1 extends DigestBase1 {
     }
 
 
-    static void squashBytesToInts(byte[] inBytes, int inOff, int[] outInts, int outOff, int intLen) {
+    public static void squashBytesToInts(byte[] inBytes, int inOff, int[] outInts, int outOff, int intLen) {
         for (int i = 0; i < intLen; ++i)
             outInts[outOff + i] =
                     ((inBytes[inOff + i * 4] & 0xff) << 24) |
