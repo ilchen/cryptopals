@@ -8,12 +8,18 @@ import sun.security.provider.SHA1;
 import javax.crypto.*;
 import javax.crypto.spec.SecretKeySpec;
 import javax.xml.bind.DatatypeConverter;
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.function.BiPredicate;
+import java.util.function.LongUnaryOperator;
+import java.util.stream.LongStream;
 
 import static com.cryptopals.Set1.challenge7;
 
@@ -21,13 +27,14 @@ import static com.cryptopals.Set1.challenge7;
  * Created by Andrei Ilchenko on 21-01-19.
  */
 public class Set4 extends Set3 {
+    public static final long   DELAY_MILLIS = 5;
+    public static final int   HMAC_SIGNATURE_LENGTH = 20;
     static final String   CHALLANGE_29_ORIGINAL_MESSAGE = "comment1=cooking%20MCs;userdata=foo;comment2=%20like%20a%20pound%20of%20bacon",
                           CHALLANGE_29_EXTENSION = ";admin=true";
-    private static final int   SHA_BLOCKSIZE = 64;
     private SecretKey  key;
     private MessageDigest   sha,  md4;
 
-    Set4(int mode, SecretKey key) throws InvalidKeyException, NoSuchPaddingException, NoSuchAlgorithmException {
+    public Set4(int mode, SecretKey key) throws InvalidKeyException, NoSuchPaddingException, NoSuchAlgorithmException {
         super(mode, key);
         this.key = key;
         sha = MessageDigest.getInstance("SHA-1");
@@ -42,6 +49,25 @@ public class Set4 extends Set3 {
     byte[]  keyedMacMD4(byte message[]) {
         md4.update(key.getEncoded());
         return  md4.digest(message);
+    }
+
+    public byte[]  hmacSha1(byte message[]) {
+        byte[] k = Arrays.copyOf(key.getEncoded(), 64),
+                outerKeyPad = new byte[64],  innerKeyPad = new byte[64],  innerHash,  outerHash;
+        for (int i=0; i < k.length; i++) {
+            outerKeyPad[i] = (byte) (k[i] ^ 0x5c);
+            innerKeyPad[i] = (byte) (k[i] ^ 0x36);
+        }
+        innerHash = Arrays.copyOf(innerKeyPad, message.length + k.length);
+        System.arraycopy(message, 0, innerHash, k.length, message.length);
+        innerHash = sha.digest(innerHash);
+        outerHash = Arrays.copyOf(outerKeyPad, innerHash.length + k.length);
+        System.arraycopy(innerHash, 0, outerHash, k.length, innerHash.length);
+        return  sha.digest(outerHash);
+    }
+
+    public int  getHmacSha1DigestLength() {
+        return  sha.getDigestLength();
     }
 
     interface CipherTextEditOracle {
@@ -226,6 +252,51 @@ public class Set4 extends Set3 {
         return  null;
     }
 
+    static class  Challenge31Oracle implements BiPredicate<byte[], byte[]> {
+        private static final String   TARGET = "http://localhost:8080/test?";
+
+        @Override
+        public boolean test(byte[] file, byte[] signature) {
+            StringBuilder   qs = new StringBuilder();
+            qs.append("file=").append(new String(file)).append("&signature=")
+                    .append(DatatypeConverter.printHexBinary(signature));
+            try {
+                HttpURLConnection httpCon = (HttpURLConnection) new URL(TARGET + qs).openConnection();
+                return  httpCon.getResponseCode() == HttpURLConnection.HTTP_OK;
+            } catch (IOException e) {
+                return  false;
+            }
+        }
+    }
+
+    static byte[]  breakeChallenge31Oracle(String fileName, Challenge31Oracle oracle) {
+        final int   tries = 10;
+        byte[]   file = fileName.getBytes(), signature = new byte[HMAC_SIGNATURE_LENGTH];
+
+        for (int i=0; i < signature.length; i++) {
+            LongUnaryOperator  op = x -> {
+                long  t0 = System.nanoTime();
+                oracle.test(file, signature);
+                return  System.nanoTime() - t0;
+            };
+            double baseline = LongStream.range(0, tries).map(op).average().orElseThrow(IllegalStateException::new);
+
+            for (int j=0; j < 256; j++) {
+                signature[i] = (byte) j;
+
+                if (i == signature.length - 1) {
+                    if (oracle.test(file, signature))  return  signature;
+                }
+                double avg = LongStream.range(0, tries).map(op).average().orElseThrow(IllegalStateException::new);
+                if (avg - baseline > DELAY_MILLIS * 9e5)  {
+                    System.out.println("Guessed " + (i + 1) + " signature bytes");
+                    break;
+                }
+            }
+        }
+        return  null;
+    }
+
     public static void main(String[] args) {
 
         try {
@@ -274,6 +345,12 @@ public class Set4 extends Set3 {
                     new String(existForgery.getForgedMessage()),
                     DatatypeConverter.printHexBinary(existForgery.getForgedMAC()),
                     DatatypeConverter.printHexBinary(encryptor.keyedMacMD4(existForgery.getForgedMessage())) );
+
+            System.out.println("\nChallenge 31");
+            String   fileName = "foobardoo";
+            k = breakeChallenge31Oracle(fileName, new Challenge31Oracle());
+            System.out.printf("The matching HMAC signature for query parameter 'file=%s' is: %s%n",
+                    fileName, DatatypeConverter.printHexBinary(k));
 
         } catch (Exception e) {
             e.printStackTrace();
