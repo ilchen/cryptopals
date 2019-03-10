@@ -1,17 +1,14 @@
-package com.cryptopals.challenge_30_31;
-
+package com.cryptopals.server;
 
 import com.cryptopals.Set4;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import javax.xml.bind.DatatypeConverter;
 import java.util.Arrays;
-import java.util.List;
 
 import static org.springframework.web.bind.annotation.RequestMethod.GET;
 

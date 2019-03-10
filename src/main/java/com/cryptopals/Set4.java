@@ -28,7 +28,7 @@ import static com.cryptopals.Set1.challenge7;
  */
 public class Set4 extends Set3 {
     public static final long   DELAY_MILLIS = 5;
-    public static final int   HMAC_SIGNATURE_LENGTH = 20;
+    public static final int   HMAC_SIGNATURE_LENGTH = 10;
     static final String   CHALLANGE_29_ORIGINAL_MESSAGE = "comment1=cooking%20MCs;userdata=foo;comment2=%20like%20a%20pound%20of%20bacon",
                           CHALLANGE_29_EXTENSION = ";admin=true";
     private SecretKey  key;
@@ -272,27 +272,36 @@ public class Set4 extends Set3 {
     static byte[]  breakeChallenge31Oracle(String fileName, Challenge31Oracle oracle) {
         final int   tries = 10;
         byte[]   file = fileName.getBytes(), signature = new byte[HMAC_SIGNATURE_LENGTH];
+        LongUnaryOperator  op = x -> {
+            long  t0 = System.nanoTime();
+            oracle.test(file, signature);
+            return  System.nanoTime() - t0;
+        };
 
         for (int i=0; i < signature.length; i++) {
-            LongUnaryOperator  op = x -> {
-                long  t0 = System.nanoTime();
-                oracle.test(file, signature);
-                return  System.nanoTime() - t0;
-            };
-            double baseline = LongStream.range(0, tries).map(op).average().orElseThrow(IllegalStateException::new);
+            int   j;
+//            byte   b = 0;
 
-            for (int j=0; j < 256; j++) {
-                signature[i] = (byte) j;
+            NEXT_BYTE:
+            do {
+                double baseline = LongStream.range(0, tries).map(op).average().orElseThrow(IllegalStateException::new);
 
-                if (i == signature.length - 1) {
-                    if (oracle.test(file, signature))  return  signature;
+                for (j = 0; j < 256; j++) {
+                    signature[i] = (byte) j;
+
+                    if (i == signature.length - 1) {
+                        if (oracle.test(file, signature)) return signature;
+                    }
+                    double avg = LongStream.range(0, tries).map(op).average().orElseThrow(IllegalStateException::new);
+                    if (avg - baseline > DELAY_MILLIS * 88e4) {
+                        System.out.println("Guessed " + (i + 1) + " signature bytes");
+                        break  NEXT_BYTE;
+                    }
                 }
-                double avg = LongStream.range(0, tries).map(op).average().orElseThrow(IllegalStateException::new);
-                if (avg - baseline > DELAY_MILLIS * 9e5)  {
-                    System.out.println("Guessed " + (i + 1) + " signature bytes");
-                    break;
-                }
-            }
+//                b ^= 1;
+//                signature[i] = b;
+            } while (j == 256);    // No luck, we need to try again.
+
         }
         return  null;
     }

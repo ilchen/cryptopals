@@ -4,8 +4,8 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.cryptopals</groupId>
-    <artifactId>challenge_30_31</artifactId>
-    <version>0.1.0</version>
+    <artifactId>cryptopals_server</artifactId>
+    <version>0.2.0</version>
 
     <parent>
         <groupId>org.springframework.boot</groupId>
