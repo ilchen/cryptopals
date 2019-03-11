@@ -1,15 +1,11 @@
 package com.cryptopals;
 
 import com.cryptopals.set_5.DiffieHellman;
-import org.springframework.context.annotation.Bean;
-import org.springframework.remoting.rmi.RmiProxyFactoryBean;
 
 import javax.crypto.Cipher;
-import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-import javax.xml.bind.DatatypeConverter;
 import java.math.BigInteger;
 import java.net.MalformedURLException;
 import java.rmi.Naming;
@@ -76,16 +72,6 @@ public class Set5 {
         secRandGen.nextBytes(iv); /* Generate a secure random IV */
         return  new IvParameterSpec(iv);
     }
-
-
-    @Bean
-    public RmiProxyFactoryBean dhService() {
-        RmiProxyFactoryBean rmiProxy = new RmiProxyFactoryBean();
-        rmiProxy.setServiceUrl("rmi://localhost/DiffieHellmanService");
-        rmiProxy.setServiceInterface(DiffieHellman.class);
-        return rmiProxy;
-    }
-
 
     public static void main(String[] args) {
 
