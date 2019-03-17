@@ -1,6 +1,5 @@
 package com.cryptopals.set_5;
 
-import com.cryptopals.Set5;
 import lombok.SneakyThrows;
 
 import javax.crypto.BadPaddingException;
@@ -14,13 +13,13 @@ import java.security.InvalidKeyException;
 import java.util.Arrays;
 
 public class DiffieHellmanService implements DiffieHellman {
-    private Set5     df;
+    private DiffieHellmanHelper df;
     private final Cipher   cipher;
     private SecretKeySpec   symKey;
 
     @SneakyThrows
     public DiffieHellmanService() {
-        cipher = Cipher.getInstance(Set5.AES_TRANSFORMATION);
+        cipher = Cipher.getInstance(DiffieHellmanHelper.AES_TRANSFORMATION);
     }
 
     @Override
@@ -28,7 +27,7 @@ public class DiffieHellmanService implements DiffieHellman {
     public BigInteger initiate(BigInteger p, BigInteger g, BigInteger A) {
         BigInteger   b;
         synchronized (cipher) {
-            df = new Set5(p, g);
+            df = new DiffieHellmanHelper(p, g);
             b = df.generateExp();
             symKey = df.generateSymmetricKey(A, b);
         }

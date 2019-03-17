@@ -52,18 +52,20 @@ public class Set4 extends Set3 {
     }
 
     public byte[]  hmacSha1(byte message[]) {
+        return  hmac(message, sha);
+    }
+
+    public byte[]  hmac(byte message[], MessageDigest md) {
         byte[] k = Arrays.copyOf(key.getEncoded(), 64),
-                outerKeyPad = new byte[64],  innerKeyPad = new byte[64],  innerHash,  outerHash;
+                outerKeyPad = new byte[64],  innerKeyPad = new byte[64],  innerHash;
         for (int i=0; i < k.length; i++) {
             outerKeyPad[i] = (byte) (k[i] ^ 0x5c);
             innerKeyPad[i] = (byte) (k[i] ^ 0x36);
         }
-        innerHash = Arrays.copyOf(innerKeyPad, message.length + k.length);
-        System.arraycopy(message, 0, innerHash, k.length, message.length);
-        innerHash = sha.digest(innerHash);
-        outerHash = Arrays.copyOf(outerKeyPad, innerHash.length + k.length);
-        System.arraycopy(innerHash, 0, outerHash, k.length, innerHash.length);
-        return  sha.digest(outerHash);
+        md.update(innerKeyPad);
+        innerHash = md.digest(message);
+        md.update(outerKeyPad);
+        return  md.digest(innerHash);
     }
 
     public int  getHmacSha1DigestLength() {
@@ -354,6 +356,10 @@ public class Set4 extends Set3 {
                     new String(existForgery.getForgedMessage()),
                     DatatypeConverter.printHexBinary(existForgery.getForgedMAC()),
                     DatatypeConverter.printHexBinary(encryptor.keyedMacMD4(existForgery.getForgedMessage())) );
+
+            encryptor = new Set4(Cipher.ENCRYPT_MODE, new SecretKeySpec(Arrays.copyOf("key".getBytes(), 32), "AES"));
+            System.out.printf("The HMAC-SHA1 of '' is: %s", DatatypeConverter.printHexBinary(
+                    encryptor.hmac("The quick brown fox jumps over the lazy dog".getBytes(), MessageDigest.getInstance("SHA-256"))));
 
             System.out.println("\nChallenge 31");
             String   fileName = "foobardoo";

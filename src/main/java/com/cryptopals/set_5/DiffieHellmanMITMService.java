@@ -1,6 +1,5 @@
 package com.cryptopals.set_5;
 
-import com.cryptopals.Set5;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.BadPaddingException;
@@ -30,7 +29,7 @@ public class DiffieHellmanMITMService implements DiffieHellman {
 
     public DiffieHellmanMITMService() throws RemoteException, NotBoundException, MalformedURLException,
                                              NoSuchPaddingException, NoSuchAlgorithmException {
-        cipher = Cipher.getInstance(Set5.AES_TRANSFORMATION);
+        cipher = Cipher.getInstance(DiffieHellmanHelper.AES_TRANSFORMATION);
         symKey = new SecretKeySpec(
                 Arrays.copyOf(MessageDigest.getInstance("SHA-1").digest(new byte[1]), 16), "AES");
         String serviceUrl = "rmi://localhost/DiffieHellmanService";

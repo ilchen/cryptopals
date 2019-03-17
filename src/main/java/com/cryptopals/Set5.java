@@ -1,104 +1,67 @@
 package com.cryptopals;
 
-import com.cryptopals.set_5.DiffieHellman;
+import com.cryptopals.set_5.*;
+
+import static com.cryptopals.set_5.DiffieHellmanHelper.*;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.math.BigInteger;
-import java.net.MalformedURLException;
 import java.rmi.Naming;
-import java.rmi.NotBoundException;
-import java.rmi.RemoteException;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.util.Arrays;
-import java.util.Random;
 
-import static com.cryptopals.Set1.challenge7;
-
-/**
- * Created by Andrei Ilchenko on 03-03-19.
- */
 public class Set5 {
-    public static final BigInteger   P = new BigInteger(
-            "ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024" +
-            "e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd" +
-            "3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec" +
-            "6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f" +
-            "24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361" +
-            "c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552" +
-            "bb9ed529077096966d670c354e4abc9804f1746c08ca237327ffffffffffffffff", 16),
-        G =  BigInteger.valueOf(2);
-    public static final String   AES_TRANSFORMATION = "AES/CBC/PKCS5Padding";
-    private static final int   NUM_BITS = 1024;
-    private Random   secRandGen = new SecureRandom();
-    private MessageDigest sha = MessageDigest.getInstance("SHA-1");
-    private BigInteger   p,  g;
-
-    public Set5() throws NoSuchAlgorithmException {
-        p = new BigInteger(NUM_BITS, 64, secRandGen);
-        do {  // We need to exclude the trivial subgroups
-            g = new BigInteger(NUM_BITS, secRandGen).mod(p);
-        } while (g.equals(BigInteger.ONE) || g.equals(p.subtract(BigInteger.ONE)));
-    }
-
-    public Set5(BigInteger p, BigInteger g) throws NoSuchAlgorithmException {
-        this.p = p;
-        this.g = g;
-    }
-
-    public BigInteger  getModulus() {
-        return  p;
-    }
-
-    public BigInteger  generateExp() {
-        BigInteger   exp;
-        do {
-            exp = new BigInteger(p.bitLength(), secRandGen).mod(p);
-        } while (exp.equals(BigInteger.ZERO) || exp.equals(BigInteger.ONE)
-                 ||  exp.equals(p.subtract(BigInteger.ONE)));
-        return  exp;
-    }
-
-    public SecretKeySpec generateSymmetricKey(BigInteger A, BigInteger b) {
-        return  new SecretKeySpec(Arrays.copyOf(sha.digest(A.modPow(b, p).toByteArray()), 16), "AES");
-    }
-
-    public IvParameterSpec  getFreshIV() {
-        byte[] iv = new byte[16];
-        secRandGen.nextBytes(iv); /* Generate a secure random IV */
-        return  new IvParameterSpec(iv);
-    }
-
     public static void main(String[] args) {
 
         try {
-
             System.out.println("Challenge 34");
-            //String serviceUrl = "rmi://localhost/DiffieHellmanService";
-            String serviceUrl = "rmi://localhost/DiffieHellmanMITMService";
-            DiffieHellman server = (DiffieHellman) Naming.lookup(serviceUrl);
-            Set5   dh = new Set5(P, G);
-            BigInteger   a = dh.generateExp(),  A = G.modPow(a, P),  B = server.initiate(P, G, A);
-            Cipher cipher = Cipher.getInstance(Set5.AES_TRANSFORMATION);
-            IvParameterSpec   iv = dh.getFreshIV();
-            SecretKey sk = dh.generateSymmetricKey(B, a);
-            cipher.init(Cipher.ENCRYPT_MODE, sk, iv);
-
+            String   serviceUrls[] = {   "rmi://localhost/DiffieHellmanService",
+                                         "rmi://localhost/DiffieHellmanMITMService"   };
             String   msg = "Hello, Server!";
-            byte[]   cipherText = cipher.doFinal(msg.getBytes()),
-                     prefixedCT = Arrays.copyOf(iv.getIV(), iv.getIV().length + cipherText.length);
-            System.arraycopy(cipherText, 0, prefixedCT, iv.getIV().length, cipherText.length);
-            cipherText = server.echo(prefixedCT);
+            for (String url : serviceUrls) {
+                DiffieHellman server = (DiffieHellman) Naming.lookup(url);
+                DiffieHellmanHelper dh = new DiffieHellmanHelper(P, G);
+                BigInteger a = dh.generateExp(), A = G.modPow(a, P), B = server.initiate(P, G, A);
+                SecretKey  sk = dh.generateSymmetricKey(B, a);
+                byte[] cipherText = server.echo(dh.encryptMessage(msg.getBytes(), sk));
+                System.out.printf("-> '%s'%n<- '%s'%n", msg, new String(decryptMessage(cipherText, sk)));
+            }
 
-            iv = new IvParameterSpec(Arrays.copyOf(cipherText, 16));
-            cipher.init(Cipher.DECRYPT_MODE, sk, iv);
-            System.out.printf("-> '%s'%n<- '%s'%n", msg,
-                    new String(cipher.doFinal(Arrays.copyOfRange(cipherText, 16, cipherText.length))) );
+            System.out.println("\nChallenge 36");
+            byte[]   email = "john.de.groot@gmail.com".getBytes(),  pass = "querty1234567890~G".getBytes();
+            SRP   server = (SRP) Naming.lookup("rmi://localhost/SRPService");
+            SRPHelper   srp = new SRPHelper(P, G, SRPHelper.K);
+            server.register(srp.getModulus(), srp.getGenerator(), srp.getSRPParameter(), email, pass);
+            BigInteger   a = srp.generateExp(),  A = srp.getGenerator().modPow(a, srp.getModulus());
+            SRPServerResponse  resp = server.initiate(email, A);
+            byte[]   key = srp.generateKeyClient(A, resp, a, pass),  cipherText;
+            // Unlimited strength JCE required
+            Set4   encryptor = new Set4(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, "AES"));
+            if (server.handshake(email, encryptor.hmac(SRPHelper.longAsBytes(resp.getSalt()),
+                                                       MessageDigest.getInstance("SHA-256")))) {
+                cipherText = server.echo(email, srp.encryptMessage(msg.getBytes(), key));
+                System.out.printf("-> '%s'%n<- '%s'%n", msg, new String(decryptMessage(cipherText, key)));
+            }
 
+            System.out.println("\nChallenge 37");
+            BigInteger  craftedAs[] = {   BigInteger.ZERO,
+                    srp.getModulus(),  srp.getModulus().multiply(BigInteger.valueOf(2)),
+                    srp.getModulus().pow(2)   };
+            for (BigInteger craftedA : craftedAs) {
+                a = srp.generateExp();
+                resp = server.initiate(email, craftedA);     // We don't know the actual password
+                key = srp.generateKeyClient(craftedA, resp, a, "dummy@gmail.com".getBytes());
+                encryptor = new Set4(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, "AES"));
+                if (server.handshake(email, encryptor.hmac(SRPHelper.longAsBytes(resp.getSalt()),
+                        MessageDigest.getInstance("SHA-256")))) {
+                    cipherText = server.echo(email, srp.encryptMessage(msg.getBytes(), key));
+                    System.out.printf("With A == %d%n-> '%s'%n<- '%s'%n", craftedA,
+                            msg, new String(decryptMessage(cipherText, key)));
+                }
+            }
 
         } catch (Exception e) {
             e.printStackTrace();

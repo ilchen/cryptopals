@@ -1,9 +1,7 @@
 package com.cryptopals.server;
 
 import com.cryptopals.Set4;
-import com.cryptopals.set_5.DiffieHellman;
-import com.cryptopals.set_5.DiffieHellmanMITMService;
-import com.cryptopals.set_5.DiffieHellmanService;
+import com.cryptopals.set_5.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -57,13 +55,21 @@ public class CryptopalsServerApplication {
     }
 
     @Bean
-    @Autowired
     public RmiServiceExporter rmiDHMITMServiceExporter2() throws RemoteException, MalformedURLException,
                                  NoSuchAlgorithmException, NoSuchPaddingException, NotBoundException {
         RmiServiceExporter rmiExporter = new RmiServiceExporter();
         rmiExporter.setService(new DiffieHellmanMITMService());
         rmiExporter.setServiceName("DiffieHellmanMITMService");
         rmiExporter.setServiceInterface(DiffieHellman.class);
+        return rmiExporter;
+    }
+
+    @Bean
+    public RmiServiceExporter rmiSRPServiceExporter() {
+        RmiServiceExporter rmiExporter = new RmiServiceExporter();
+        rmiExporter.setService(new SRPService());
+        rmiExporter.setServiceName("SRPService");
+        rmiExporter.setServiceInterface(SRP.class);
         return rmiExporter;
     }
 
