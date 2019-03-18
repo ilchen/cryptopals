@@ -6,14 +6,44 @@ import static com.cryptopals.set_5.DiffieHellmanHelper.*;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
-import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.math.BigInteger;
 import java.rmi.Naming;
 import java.security.MessageDigest;
-import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class Set5 {
+    static final int   TIMES = RSAHelper.PUBLIC_EXPONENT.intValue();
+
+    static BigInteger  ithroot(BigInteger n, int k) {
+        final int  k1 = k - 1;
+        BigInteger  kBig = BigInteger.valueOf(k),  k1Big = BigInteger.valueOf(k1),  s = n.add(BigInteger.ONE),  u = n;
+
+        while (u.compareTo(s) < 0) {
+            s = u;
+            u = u.multiply(k1Big).add(n.divide(u.pow(k1))).divide(kBig);
+        }
+        return s;
+    }
+
+    static BigInteger  recoverPlainText(List<BigInteger[]>  pairs) {
+        if (pairs.size() != TIMES)
+            throw  new IllegalArgumentException(TIMES + " { modulus, cipherText} pairs required");
+        BigInteger   n012 = BigInteger.ONE,  res = BigInteger.ZERO;
+        for (int i=0; i < TIMES; i++) {
+            n012 = n012.multiply(pairs.get(i)[0]);
+            BigInteger   msi = BigInteger.ONE;
+            for (int j = 0; j < TIMES; j++) {
+                if (j == i)  continue;
+                msi = msi.multiply(pairs.get(j)[0]);
+            }
+            res = res.add(pairs.get(i)[1].multiply(msi).multiply(msi.modInverse(pairs.get(i)[0])));
+        }
+        return  ithroot(res.mod(n012), TIMES);
+    }
+
     public static void main(String[] args) {
 
         try {
@@ -62,6 +92,15 @@ public class Set5 {
                             msg, new String(decryptMessage(cipherText, key)));
                 }
             }
+
+            System.out.printf("%nChallenge 40%nEncrypting message \"%s\" %d times with different RSA key pairs%n", msg, TIMES);
+            List<BigInteger[]> stream = IntStream.range(0, TIMES).mapToObj(x -> new RSAHelper()).map(helper ->
+                new BigInteger[] { helper.getPublicKey().getModulus(), helper.encrypt(new BigInteger(msg.getBytes())) })
+                    .collect(Collectors.toList());
+
+            BigInteger  res = recoverPlainText(stream);
+
+            System.out.printf("Ciphertext '%d' -> \"%s\"", res, new String(res.toByteArray()));
 
         } catch (Exception e) {
             e.printStackTrace();
