@@ -20,13 +20,13 @@ public class RSAHelper {
     private static final int      NUM_BITS = 1024;
     private static final Random   SECURE_RANDOM = new SecureRandom(); // Thread safe
 
-    private BigInteger   p,  q,  n,  e,  d;
+    protected BigInteger   p,  q,  n,  e,  d;
 
     public RSAHelper() {
         this(PUBLIC_EXPONENT);
     }
 
-    RSAHelper(BigInteger e) {
+    public RSAHelper(BigInteger e) {
         if (e.mod(BigInteger.valueOf(2)).equals(ZERO) || e.compareTo(PUBLIC_EXPONENT) < 0) {
             throw  new IllegalArgumentException("Invalid public exponent: " + e);
         }
