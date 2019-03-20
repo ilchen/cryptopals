@@ -33,7 +33,7 @@ public class Set6 {
             RSAHelperExt   rsa = new RSAHelperExt(BigInteger.valueOf(17));
             BigInteger     cipherTxt = rsa.encrypt(new BigInteger(PLAIN_TEXT.getBytes()));
             System.out.println("Decrypted ciphertext:\n" + new String(rsa.decrypt(cipherTxt).toByteArray()));
-            System.out.println("Decrypted ciphertext:\n" + new String(rsa.decrypt(cipherTxt).toByteArray()));
+            assert rsa.decrypt(cipherTxt).equals(BigInteger.ZERO);
             System.out.println("Obtained ciphertext:\n" + new String(
                     breakChallenge41(cipherTxt, rsa.getPublicKey(), rsa::decrypt).toByteArray()));
         } catch (Exception e) {
