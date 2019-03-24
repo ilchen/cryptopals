@@ -154,8 +154,7 @@ public class Set1 {
                     + hammingDistance(sb.substring(kSize << 2, kSize * 5), sb.substring(kSize * 5, kSize * 6))
                     + hammingDistance(sb.substring(kSize * 6, kSize * 7), sb.substring(kSize * 7, kSize << 3)))
                             / (float) (kSize << 2);
-            List<Integer>   collisions = dist2keySize.computeIfAbsent(distance, k -> new ArrayList<>());
-            collisions.add(kSize);
+            dist2keySize.computeIfAbsent(distance, k -> new ArrayList<>()).add(kSize);
         }
         List<Integer>   res = new ArrayList<>(maxTries);
         int   i = 0;
