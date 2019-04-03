@@ -38,7 +38,7 @@ public class Set1 {
         return DatatypeConverter.printBase64Binary(DatatypeConverter.parseHexBinary(hex));
     }
 
-    static byte[] challenge2(byte buf1[], byte buf2[]) {
+    public static byte[] challenge2(byte buf1[], byte buf2[]) {
         assert buf1.length == buf2.length;
         byte   res[] = new byte[buf1.length];
         for (int i=0; i < buf1.length; i++) {
