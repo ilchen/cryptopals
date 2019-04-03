@@ -1,7 +1,6 @@
 package com.cryptopals.set_6;
 
 import com.cryptopals.Set1;
-import lombok.Builder;
 import lombok.Data;
 import lombok.SneakyThrows;
 

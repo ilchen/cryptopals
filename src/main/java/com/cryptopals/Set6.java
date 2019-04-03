@@ -5,17 +5,14 @@ import com.cryptopals.set_6.DSAHelper;
 import lombok.SneakyThrows;
 import com.cryptopals.set_6.RSAHelperExt;
 
-import javax.xml.bind.DatatypeConverter;
 import java.math.BigInteger;
 import java.security.MessageDigest;
-import java.security.Signature;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.function.UnaryOperator;
 import java.util.stream.IntStream;
 
 import static com.cryptopals.set_6.DSAHelper.fromHash;
-import static java.math.BigInteger.ONE;
 
 /**
  * Created by Andrei Ilchenko on 20-03-19.
