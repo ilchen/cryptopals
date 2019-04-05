@@ -59,7 +59,7 @@ public class DSAHelper {
     }
 
     @SneakyThrows
-    static BigInteger[]  findDSAPrimes() {
+    private static BigInteger[]  findDSAPrimes() {
         MessageDigest   sha = MessageDigest.getInstance("SHA-1");
         BigInteger   s,  S,  p,  q,  N,  W,  X;
         byte   u[];

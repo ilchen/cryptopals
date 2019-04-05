@@ -50,7 +50,6 @@ public class Set6 {
     }
 
 
-
     @SneakyThrows
     static BigInteger  breakChallenge43(byte msg[], DSAHelper.Signature signature, DSAHelper.PublicKey pk) {
         MessageDigest   sha = MessageDigest.getInstance("SHA-1");
@@ -81,7 +80,6 @@ public class Set6 {
 
             DSAHelper   dsa = new DSAHelper();
             DSAHelper.PublicKey   pk = dsa.getPublicKey();
-            System.out.printf("%nq = %d%np = %d%ng = %d%n", pk.getQ(), pk.getP(), pk.getG());
             DSAHelper.Signature   dsaSignature = dsa.sign(CHALLENGE_43_TEXT.getBytes());
             System.out.println("Signature verifies? " + pk.verifySignature(CHALLENGE_43_TEXT.getBytes(), dsaSignature));
 
