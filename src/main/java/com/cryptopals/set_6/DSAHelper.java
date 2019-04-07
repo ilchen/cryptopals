@@ -1,8 +1,7 @@
 package com.cryptopals.set_6;
 
 import com.cryptopals.Set1;
-import lombok.Data;
-import lombok.SneakyThrows;
+import lombok.*;
 
 import java.math.BigInteger;
 import java.security.MessageDigest;
@@ -30,9 +29,12 @@ public class DSAHelper {
         }
     }
 
-    @Data
+    @Data @Builder
     public static class Signature {
         private final BigInteger  r,  s;
+        public Signature(BigInteger r, BigInteger s) {
+            this.r = r;     this.s = s;
+        }
     }
 
     public static final BigInteger  P = new BigInteger("800000000000000089e1855218a0e7dac38136ffafa72eda7" +

@@ -4,9 +4,19 @@ import com.cryptopals.set_6.DSAHelper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import com.cryptopals.set_6.RSAHelperExt;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.ArgumentsProvider;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.math.BigInteger;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.List;
+import java.util.stream.Stream;
 
 import static com.cryptopals.Set6.*;
 import static com.cryptopals.set_6.DSAHelper.fromHash;
@@ -61,21 +71,32 @@ public class Set6Tests {
                 },
                 () -> {
                     MessageDigest   sha = MessageDigest.getInstance("SHA-1");
-                    DSAHelper.PublicKey   pk = new DSAHelper.PublicKey(DSAHelper.P, DSAHelper.Q, DSAHelper.G,
-                            new BigInteger("84ad4719d044495496a3201c8ff484feb45b962e7302e56a392aee4" +
-                                    "abab3e4bdebf2955b4736012f21a08084056b19bcd7fee56048e004" +
-                                    "e44984e2f411788efdc837a0d2e5abb7b555039fd243ac01f0fb2ed" +
-                                    "1dec568280ce678e931868d23eb095fde9d3779191b8c0299d6e07b" +
-                                    "bb283e6633451e535c45513b2d33c99ea17", 16));
-
-                    BigInteger   x = breakChallenge43(CHALLENGE_43_TEXT.getBytes(), new DSAHelper.Signature(
-                            new BigInteger("548099063082341131477253921760299949438196259240", 10),
-                            new BigInteger("857042759984254168557880549501802188789837994940", 10)), pk);
+                    DSAHelper.PublicKey pk = new DSAHelper.PublicKey(DSAHelper.P, DSAHelper.Q, DSAHelper.G, CHALLENGE_43_Y);
+                    BigInteger   x = breakChallenge43(CHALLENGE_43_TEXT.getBytes(), CHALLANGE_43_SIGNATURE, pk);
                     assertEquals(new BigInteger("125489817134406768603130881762531825565433175625"), x,
                             "Wrong key found");
                     assertEquals("954edd5e0afe5542a4adf012611a91912a3ec16",
                             fromHash(sha.digest(x.toString(16).getBytes())).toString(16));
                 });
 
+    }
+
+    @DisplayName("https://cryptopals.com/sets/6/challenges/44")
+    @ParameterizedTest
+    @ArgumentsSource(Challeng44ArgumentsProvider.class)
+    void  challenge44(String url) throws IOException, NoSuchAlgorithmException {
+        MessageDigest   sha = MessageDigest.getInstance("SHA-1");
+        List<SignedMessage> signatures = extractSignatures(url);
+        DSAHelper.PublicKey   pk = new DSAHelper.PublicKey(DSAHelper.P, DSAHelper.Q, DSAHelper.G, CHALLENGE_44_Y);
+        BigInteger   x = breakChallenge44(signatures, pk);
+        assertEquals("ca8f6f7c66fa362d40760d135b763eb8527d3d52",
+                fromHash(sha.digest(x.toString(16).getBytes())).toString(16));
+    }
+
+    static class  Challeng44ArgumentsProvider implements ArgumentsProvider {
+        @Override
+        public Stream<? extends Arguments> provideArguments(ExtensionContext context) throws FileNotFoundException {
+            return Stream.of(Arguments.of(getClass().getClassLoader().getResource("challenge44.txt").toString()));
+        }
     }
 }
