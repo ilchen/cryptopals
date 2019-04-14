@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.SneakyThrows;
 import com.cryptopals.set_6.RSAHelperExt;
 
+import javax.xml.bind.DatatypeConverter;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,10 +16,12 @@ import java.math.BigInteger;
 import java.net.URL;
 import java.security.MessageDigest;
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 import java.util.stream.IntStream;
 
 import static com.cryptopals.set_6.DSAHelper.fromHash;
+import static com.cryptopals.set_6.DSAHelper.TWO;
 
 /**
  * Created by Andrei Ilchenko on 20-03-19.
@@ -44,6 +47,8 @@ public class Set6 {
     public static final DSAHelper.Signature   CHALLANGE_43_SIGNATURE = new DSAHelper.Signature(
             new BigInteger("548099063082341131477253921760299949438196259240", 10),
             new BigInteger("857042759984254168557880549501802188789837994940", 10));
+    public static final byte   CHALLANGE_46_PLAINTEXT[] = DatatypeConverter.parseBase64Binary(
+            "VGhhdCdzIHdoeSBJIGZvdW5kIHlvdSBkb24ndCBwbGF5IGFyb3VuZCB3aXRoIHRoZSBGdW5reSBDb2xkIE1lZGluYQ==");
     private static final Random   RANDOM = new Random(); // Thread safe
 
     static BigInteger  breakChallenge41(BigInteger cipherTxt, RSAHelper.PublicKey pk,
@@ -135,6 +140,34 @@ public class Set6 {
         return  BigInteger.ZERO;
     }
 
+    static BigInteger  breakChallenge46(BigInteger cipherTxt, RSAHelper.PublicKey pk,
+                                        Predicate<BigInteger> oracle) {
+        BigInteger   modulus = pk.getModulus(),  lower = BigInteger.ZERO,  upper = BigInteger.ONE,  denom = BigInteger.ONE,
+                     multiplier = TWO.modPow(pk.getE(), modulus),  cur = cipherTxt,  d;
+        int   n = modulus.bitLength();
+        for (int i=0; i < n; i++) {
+            cur = cur.multiply(multiplier);
+//            tmp = upper.add(lower).divide(TWO);   // Here upper starts at the modulus. This approach turns out
+//                                                     to be numerically unstable and fails to decrypt the least
+//                                                     significant byte of the ciphertext. Replaced with an approach
+//                                                     below.
+            d = upper.subtract(lower);
+            upper = upper.multiply(TWO);
+            lower = lower.multiply(TWO);
+            denom = denom.multiply(TWO);
+            if (oracle.test(cur)) { // It didn't wrap the modulus
+                upper = upper.subtract(d);
+//                upper = tmp; // Not stable, abandoned
+            } else {                // It wrapped the modulus
+                lower = lower.add(d);
+//                lower = tmp; // Not stable, abandoned
+            }
+            System.out.printf("%4d Upper bound: %x%n", i, upper.multiply(modulus).divide(denom));
+        }
+
+        return  upper.multiply(modulus).divide(denom);
+    }
+
     public static void main(String[] args) {
 
         try {
@@ -143,7 +176,7 @@ public class Set6 {
             BigInteger     cipherTxt = rsa.encrypt(new BigInteger(PLAIN_TEXT.getBytes()));
             System.out.println("Decrypted ciphertext:\n" + new String(rsa.decrypt(cipherTxt).toByteArray()));
             assert rsa.decrypt(cipherTxt).equals(BigInteger.ZERO);
-            System.out.println("Obtained ciphertext:\n" + new String(
+            System.out.println("Obtained plaintext:\n" + new String(
                     breakChallenge41(cipherTxt, rsa.getPublicKey(), rsa::decrypt).toByteArray()));
 
             System.out.println("\nChallenge 42");
@@ -174,6 +207,25 @@ public class Set6 {
             x = breakChallenge44(signatures, pk);
             System.out.printf("Recovered x = %d%nSHA-1 of the hex representation of the private key is: 0x%s%n",
                     x, fromHash(sha.digest(x.toString(16).getBytes())).toString(16));
+
+            System.out.println("\nChallenge 45");
+            BigInteger   gs[] = new BigInteger[] { BigInteger.ZERO, DSAHelper.P.add(BigInteger.ONE) };
+            for (BigInteger  g : gs) {
+                dsa = new DSAHelper(DSAHelper.P, DSAHelper.Q, g);
+                for (String str : new String[] {"Hello, world", "Goodbye, world"}) {
+                    dsaSignature = DSAHelper.Signature.builder().r(g.mod(DSAHelper.P))
+                            .s(fromHash(sha.digest(str.getBytes()))).build(); // s could be any value
+                    System.out.printf("Forged signature %s for message '%s' with g==%d verifies? %b%n",
+                            dsaSignature.toString(), str, g, dsa.getPublicKey().verifySignature(msg, dsaSignature));
+                }
+            }
+
+            System.out.println("\nChallenge 46");
+            cipherTxt = rsa.encrypt(fromHash(CHALLANGE_46_PLAINTEXT));
+            BigInteger  plainText = breakChallenge46(cipherTxt, rsa.getPublicKey(), rsa::decryptionOracle);
+            msg = plainText.toByteArray();
+            System.out.println("Obtained plaintext:\n" + new String(msg));
+            assert  Arrays.equals(msg, CHALLANGE_46_PLAINTEXT);
 
         } catch (Exception e) {
             e.printStackTrace();

@@ -48,6 +48,11 @@ public class RSAHelperExt extends RSAHelper {
                                                                                      :  BigInteger.ZERO;
     }
 
+    public boolean  decryptionOracle(BigInteger cipherTxt) {
+        byte   repr[] = cipherTxt.modPow(d, n).toByteArray();
+        return  (repr[repr.length - 1] & 0x01) == 0;
+    }
+
     @SneakyThrows
     public BigInteger  sign(byte msg[], HashMethod hMethod) {
         final int   MIN_PAD = 3;   // \x00\x01\xff...xff\x00"

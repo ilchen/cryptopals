@@ -99,4 +99,14 @@ public class Set6Tests {
             return Stream.of(Arguments.of(getClass().getClassLoader().getResource("challenge44.txt").toString()));
         }
     }
+
+    @DisplayName("https://cryptopals.com/sets/6/challenges/46")
+    @Test
+    void  challenge46()  {
+        RSAHelperExt   rsa = new RSAHelperExt(BigInteger.valueOf(17));
+        BigInteger     cipherTxt = rsa.encrypt(fromHash(CHALLANGE_46_PLAINTEXT));
+        BigInteger  plainText = breakChallenge46(cipherTxt, rsa.getPublicKey(), rsa::decryptionOracle);
+        assertArrayEquals(CHALLANGE_46_PLAINTEXT, plainText.toByteArray(),
+                "Didn't succeed in obtaining correct plaintext");
+    }
 }

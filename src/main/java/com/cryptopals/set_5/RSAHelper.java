@@ -31,8 +31,8 @@ public class RSAHelper {
             throw  new IllegalArgumentException("Invalid public exponent: " + e);
         }
         while (true) {
-            p = new BigInteger(NUM_BITS, 64, SECURE_RANDOM);
-            q = new BigInteger(NUM_BITS, 64, SECURE_RANDOM);
+            p = BigInteger.probablePrime(NUM_BITS, SECURE_RANDOM);
+            q = BigInteger.probablePrime(NUM_BITS, SECURE_RANDOM);
             n = p.multiply(q);
             BigInteger pOrd = p.subtract(ONE), qOrd = q.subtract(ONE);
             BigInteger et = pOrd.multiply(qOrd).divide(pOrd.gcd(qOrd));

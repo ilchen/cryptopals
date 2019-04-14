@@ -16,7 +16,7 @@ import static java.math.BigInteger.*;
  * Created by Andrei Ilchenko on 30-03-19.
  */
 public class DSAHelper {
-    @Data
+        @Data
     public static class PublicKey {
         private final BigInteger  p,  q,  g,  y;
 
