@@ -178,7 +178,7 @@ public class Set6 {
     public static void main(String[] args) {
 
         try {
-/*            System.out.println("Challenge 41");
+            System.out.println("Challenge 41");
             RSAHelperExt   rsa = new RSAHelperExt(BigInteger.valueOf(17));
             BigInteger     cipherTxt = rsa.encrypt(new BigInteger(PLAIN_TEXT.getBytes()));
             System.out.println("Decrypted ciphertext:\n" + new String(rsa.decrypt(cipherTxt).toByteArray()));
@@ -232,17 +232,16 @@ public class Set6 {
             BigInteger  plainText = breakChallenge46(cipherTxt, rsa.getPublicKey(), rsa::decryptionOracle);
             msg = plainText.toByteArray();
             System.out.println("Obtained plaintext:\n" + new String(msg));
-            assert  Arrays.equals(msg, CHALLANGE_46_PLAINTEXT);*/
+            assert  Arrays.equals(msg, CHALLANGE_46_PLAINTEXT);
 
             System.out.println("\nChallenge 47");
-            RSAHelperExt rsa = new RSAHelperExt(BigInteger.valueOf(17), 384);
-            BigInteger plainText = rsa.pkcs15Pad(CHALLANGE_47_PLAINTEXT/*"test"*/.getBytes(),
-                    rsa.getPublicKey().getModulus().bitLength());
-            BigInteger cipherTxt = rsa.encrypt(plainText);
+            rsa = new RSAHelperExt(BigInteger.valueOf(17), 384);
+            plainText = rsa.pkcs15Pad(CHALLANGE_47_PLAINTEXT.getBytes(), rsa.getPublicKey().getModulus().bitLength());
+            cipherTxt = rsa.encrypt(plainText);
             BigInteger   crackedPlainText = PaddingOracleHelper.solve(cipherTxt, rsa.getPublicKey(), rsa::paddingOracle);
             System.out.printf("%nPlaintext: %x%nCiphertext: %x%nRecovered plaintext: %x%n", plainText, cipherTxt, crackedPlainText);
             System.out.printf("Recovered plainext: %s%n", new String(rsa.pkcs15Unpad(crackedPlainText)));
-
+            assert  Arrays.equals(rsa.pkcs15Unpad(crackedPlainText), CHALLANGE_47_PLAINTEXT.getBytes());
 
         } catch (Exception e) {
             e.printStackTrace();
