@@ -33,12 +33,16 @@ public class RSAHelperExt extends RSAHelper {
         }
     }
 
-    private Set<ByteBuffer>   processed = ConcurrentHashMap.newKeySet();
+    private final Set<ByteBuffer>   processed = ConcurrentHashMap.newKeySet();
+    private final int    numBytes = (n.bitLength() + 7 & ~7) / 8;
     public RSAHelperExt() {
         super();
     }
     public RSAHelperExt(BigInteger e) {
         super(e);
+    }
+    public RSAHelperExt(BigInteger e, int numBits) {
+        super(e, numBits);
     }
 
     @SneakyThrows
@@ -51,6 +55,36 @@ public class RSAHelperExt extends RSAHelper {
     public boolean  decryptionOracle(BigInteger cipherTxt) {
         byte   repr[] = cipherTxt.modPow(d, n).toByteArray();
         return  (repr[repr.length - 1] & 0x01) == 0;
+    }
+
+    public boolean  paddingOracle(BigInteger cipherTxt) {
+        byte   repr[] = cipherTxt.modPow(d, n).toByteArray();
+        return  repr.length == numBytes - 1   &&  repr[0] == 2;
+    }
+
+    public BigInteger  pkcs15Pad(byte plainText[], int bitNum) {
+        byte   pad[] = new byte[(bitNum + 7 & ~7) / 8];
+        if (pad.length - plainText.length <= 11) // 00 02 at-least-8-bytes-of-randomness 00 message-bytes
+            throw new  IllegalArgumentException("Plaintext too long to fit in the RSA modulus with PKCS padding");
+        System.arraycopy(plainText, 0, pad, pad.length - plainText.length, plainText.length);
+//        pad[pad.length - plainText.length - 1] = 0; // In Java arrays are zero-initialized
+        pad[0] = 0;     pad[1] = 2;
+        for (int i=2; i < pad.length - plainText.length - 1; i++) {
+            while (0 == (pad[i] = (byte) SECURE_RANDOM.nextInt(256)) );
+        }
+        return  new BigInteger(pad);
+    }
+
+    public byte[]  pkcs15Unpad(BigInteger paddedPlainText) {
+        byte   repr[] = paddedPlainText.toByteArray();
+        if (repr.length == numBytes - 1  && repr[0] == 2) {
+            for (int i=1; i < repr.length; i++) {
+                if (repr[i] == 0  &&  i >= 10)  {
+                    return  Arrays.copyOfRange(repr, i + 1, repr.length);
+                }
+            }
+        }
+        throw  new IllegalArgumentException(paddedPlainText + " is not PKCS padded");
     }
 
     @SneakyThrows

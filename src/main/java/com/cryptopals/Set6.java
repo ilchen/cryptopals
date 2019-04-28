@@ -2,6 +2,7 @@ package com.cryptopals;
 
 import com.cryptopals.set_5.RSAHelper;
 import com.cryptopals.set_6.DSAHelper;
+import com.cryptopals.set_6.PaddingOracleHelper;
 import lombok.Builder;
 import lombok.Data;
 import lombok.SneakyThrows;
@@ -16,6 +17,7 @@ import java.math.BigInteger;
 import java.net.URL;
 import java.security.MessageDigest;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 import java.util.stream.IntStream;
@@ -32,7 +34,8 @@ public class Set6 {
             "  social: '555-55-5555',\n" +
             "}",
             CHALLENGE_43_TEXT = "For those that envy a MC it can be hazardous to your health\n"
-                    + "So be friendly, a matter of life and death, just like a etch-a-sketch\n";
+                    + "So be friendly, a matter of life and death, just like a etch-a-sketch\n",
+            CHALLANGE_47_PLAINTEXT = "kick it, CC";
     public static final BigInteger   CHALLENGE_43_Y = new BigInteger("84ad4719d044495496a3201c8ff484feb45b962e7302e56a392aee4" +
             "abab3e4bdebf2955b4736012f21a08084056b19bcd7fee56048e004" +
             "e44984e2f411788efdc837a0d2e5abb7b555039fd243ac01f0fb2ed" +
@@ -142,6 +145,7 @@ public class Set6 {
 
     static BigInteger  breakChallenge46(BigInteger cipherTxt, RSAHelper.PublicKey pk,
                                         Predicate<BigInteger> oracle) {
+        System.out.printf("Ciphertext: %x%n", cipherTxt);
         BigInteger   modulus = pk.getModulus(),  lower = BigInteger.ZERO,  upper = BigInteger.ONE,  denom = BigInteger.ONE,
                      multiplier = TWO.modPow(pk.getE(), modulus),  cur = cipherTxt,  d;
         int   n = modulus.bitLength();
@@ -162,16 +166,19 @@ public class Set6 {
                 lower = lower.add(d);
 //                lower = tmp; // Not stable, abandoned
             }
-            System.out.printf("%4d Upper bound: %x%n", i, upper.multiply(modulus).divide(denom));
+
+            System.out.printf("%4d %s%n", i,        // Hollywood style :-)
+                    new String(upper.multiply(modulus).divide(denom).toByteArray()).split("[\\n\\r]")[0]);
         }
 
         return  upper.multiply(modulus).divide(denom);
     }
 
+
     public static void main(String[] args) {
 
         try {
-            System.out.println("Challenge 41");
+/*            System.out.println("Challenge 41");
             RSAHelperExt   rsa = new RSAHelperExt(BigInteger.valueOf(17));
             BigInteger     cipherTxt = rsa.encrypt(new BigInteger(PLAIN_TEXT.getBytes()));
             System.out.println("Decrypted ciphertext:\n" + new String(rsa.decrypt(cipherTxt).toByteArray()));
@@ -225,7 +232,17 @@ public class Set6 {
             BigInteger  plainText = breakChallenge46(cipherTxt, rsa.getPublicKey(), rsa::decryptionOracle);
             msg = plainText.toByteArray();
             System.out.println("Obtained plaintext:\n" + new String(msg));
-            assert  Arrays.equals(msg, CHALLANGE_46_PLAINTEXT);
+            assert  Arrays.equals(msg, CHALLANGE_46_PLAINTEXT);*/
+
+            System.out.println("\nChallenge 47");
+            RSAHelperExt rsa = new RSAHelperExt(BigInteger.valueOf(17), 384);
+            BigInteger plainText = rsa.pkcs15Pad(CHALLANGE_47_PLAINTEXT/*"test"*/.getBytes(),
+                    rsa.getPublicKey().getModulus().bitLength());
+            BigInteger cipherTxt = rsa.encrypt(plainText);
+            BigInteger   crackedPlainText = PaddingOracleHelper.solve(cipherTxt, rsa.getPublicKey(), rsa::paddingOracle);
+            System.out.printf("%nPlaintext: %x%nCiphertext: %x%nRecovered plaintext: %x%n", plainText, cipherTxt, crackedPlainText);
+            System.out.printf("Recovered plainext: %s%n", new String(rsa.pkcs15Unpad(crackedPlainText)));
+
 
         } catch (Exception e) {
             e.printStackTrace();

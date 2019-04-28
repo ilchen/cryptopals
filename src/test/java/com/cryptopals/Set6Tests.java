@@ -1,6 +1,7 @@
 package com.cryptopals;
 
 import com.cryptopals.set_6.DSAHelper;
+import com.cryptopals.set_6.PaddingOracleHelper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import com.cryptopals.set_6.RSAHelperExt;
@@ -108,5 +109,16 @@ public class Set6Tests {
         BigInteger  plainText = breakChallenge46(cipherTxt, rsa.getPublicKey(), rsa::decryptionOracle);
         assertArrayEquals(CHALLANGE_46_PLAINTEXT, plainText.toByteArray(),
                 "Didn't succeed in obtaining correct plaintext");
+    }
+
+    @DisplayName("https://cryptopals.com/sets/6/challenges/47")
+    @Test
+    void  challenge47()  {
+        RSAHelperExt rsa = new RSAHelperExt(BigInteger.valueOf(17), 128);
+        BigInteger   plainText = rsa.pkcs15Pad(CHALLANGE_47_PLAINTEXT.getBytes(),
+                                               rsa.getPublicKey().getModulus().bitLength());
+        BigInteger   cipherTxt = rsa.encrypt(plainText);
+        BigInteger   crackedPlainText = PaddingOracleHelper.solve(cipherTxt, rsa.getPublicKey(), rsa::paddingOracle);
+        assertArrayEquals(CHALLANGE_47_PLAINTEXT.getBytes(), rsa.pkcs15Unpad(crackedPlainText));
     }
 }

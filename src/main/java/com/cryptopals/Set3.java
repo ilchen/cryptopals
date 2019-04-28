@@ -185,7 +185,7 @@ public class Set3 extends Set2 {
             byte[]   newCipherText = cipherMT19937(paddedPlainText, (short) seed),
                     newCipherTextWithoutPfx = Arrays.copyOfRange(newCipherText, newCipherText.length - knownPlainText.length, newCipherText.length);
             return  Arrays.equals(newCipherTextWithoutPfx, cipherTextWithoutPfx);
-        }).findFirst().orElseThrow(() -> new IllegalStateException("No seed found"));
+        }).findFirst().orElseThrow(IllegalStateException::new);
 
     }
 
