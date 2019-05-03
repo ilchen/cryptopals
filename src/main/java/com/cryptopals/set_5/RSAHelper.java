@@ -2,6 +2,8 @@ package com.cryptopals.set_5;
 
 import lombok.Data;
 
+import com.squareup.jnagmp.Gmp;
+
 import java.math.BigInteger;
 import java.security.SecureRandom;
 import java.util.Random;
@@ -17,14 +19,14 @@ public class RSAHelper {
         final BigInteger  e,  modulus;
         public BigInteger  encrypt(BigInteger plainText) {
             if (plainText.compareTo(modulus) >= 0)  throw  new IllegalArgumentException("Plain text too large");
-            return  plainText.modPow(e, modulus);
+            return  Gmp.modPowInsecure(plainText, e, modulus);
         }
     }
     public static final BigInteger   PUBLIC_EXPONENT = BigInteger.valueOf(3L);
     private static final int      NUM_BITS = 1024;
     protected static final Random   SECURE_RANDOM = new SecureRandom(); // Thread safe
 
-    protected final BigInteger   p,  q,  n,  e,  d;
+    protected final BigInteger    d,  n;
     private final PublicKey    pk;
 
     public RSAHelper() {
@@ -57,8 +59,7 @@ public class RSAHelper {
                 // another try
             }
         }
-        p = _p;     q = _q;     n = _n;     d = _d;
-        this.e = e;
+        n = _n;     d = _d;
         pk = new PublicKey(e, n);
     }
 

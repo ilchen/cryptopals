@@ -132,24 +132,6 @@ public class PaddingOracleHelper {
         return  newIntervals.size();
     }
 
-//    private BigInteger  step3() {
-//        TreeMap<Interval, Interval> newIntervals = new TreeMap<>();
-//        if (intervals.size() != 1)  throw  new IllegalStateException("Mi-1 contains more than one interval");
-//        Interval   interval = intervals.iterator().next();
-//        BigInteger   rLower[] = interval.lower.multiply(s).subtract(_3B_MIN_1).divideAndRemainder(pubKey.getModulus()),
-//                     rUpper = interval.upper.multiply(s).subtract(_2B).divide(pubKey.getModulus()),  r;
-//        if (!rLower[1].equals(ZERO))  rLower[0] = rLower[0].add(ONE);
-//
-//        for (r = rLower[0]; r.compareTo(rUpper) <= 0; r = r.add(ONE)) {
-//            BigInteger   lower[] = _2B.add(r.multiply(pubKey.getModulus())).divideAndRemainder(s),
-//                         upper = _3B_MIN_1.add(r.multiply(pubKey.getModulus()).divide(s));
-//            if (!lower[1].equals(ZERO))  lower[0] = lower[0].add(ONE);
-//            newIntervals.put(new Interval(interval.lower.max(lower[0]), interval.upper.min(upper)));
-//        }
-//
-//    }
-
-
     public static BigInteger  solve(BigInteger cipherTxt, RSAHelper.PublicKey pk, Predicate<BigInteger> oracle) {
         PaddingOracleHelper   solver = new PaddingOracleHelper(cipherTxt, pk, oracle);
         solver.findNextS();

@@ -3,6 +3,8 @@ package com.cryptopals.set_6;
 import com.cryptopals.set_5.RSAHelper;
 import lombok.SneakyThrows;
 
+import com.squareup.jnagmp.Gmp;
+
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
@@ -53,13 +55,13 @@ public class RSAHelperExt extends RSAHelper {
     }
 
     public boolean  decryptionOracle(BigInteger cipherTxt) {
-        byte   repr[] = cipherTxt.modPow(d, n).toByteArray();
+        byte   repr[] = Gmp.modPowInsecure(cipherTxt, d, n).toByteArray();
         return  (repr[repr.length - 1] & 0x01) == 0;
     }
 
     public boolean  paddingOracle(BigInteger cipherTxt) {
-        byte   repr[] = cipherTxt.modPow(d, n).toByteArray();
-        return  repr.length == numBytes - 1   &&  repr[0] == 2;
+        byte   repr[] = Gmp.modPowInsecure(cipherTxt, d, n).toByteArray();
+        return  repr.length == numBytes - 1  &&  repr[0] == 2;
     }
 
     public BigInteger  pkcs15Pad(byte plainText[], int bitNum) {
@@ -103,7 +105,7 @@ public class RSAHelperExt extends RSAHelper {
 
     @SneakyThrows
     public boolean  verify(byte msg[], BigInteger signature) {
-        byte[]  paddedMsg = signature.modPow(e, n).toByteArray(),  hash;
+        byte[]  paddedMsg = getPublicKey().encrypt(signature).toByteArray(),  hash;
         // BigInteger removed the most significant 0 from the padding
         if (paddedMsg[0] != 1)  return  false;
         int   i = 1;
