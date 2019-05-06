@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 
 public class Set1 {
     static final int   AES_BLOCK_SIZE = 16;
-    static final SecretKeySpec   YELLOW_SUBMARINE_SK = new SecretKeySpec("YELLOW SUBMARINE".getBytes(), "AES");
+    public static final SecretKeySpec YELLOW_SUBMARINE_SK = new SecretKeySpec("YELLOW SUBMARINE".getBytes(), "AES");
     enum Encoding {
         BASE64,  HEX
     }

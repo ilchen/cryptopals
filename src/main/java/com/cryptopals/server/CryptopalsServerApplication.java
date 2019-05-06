@@ -1,8 +1,9 @@
 package com.cryptopals.server;
 
+import com.cryptopals.Set1;
 import com.cryptopals.Set4;
+import com.cryptopals.Set7;
 import com.cryptopals.set_5.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
@@ -18,6 +19,9 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 @SpringBootApplication
 public class CryptopalsServerApplication {
@@ -71,6 +75,14 @@ public class CryptopalsServerApplication {
         rmiExporter.setServiceName("SRPService");
         rmiExporter.setServiceInterface(SRP.class);
         return rmiExporter;
+    }
+
+    @Bean
+    public Map<String, SecretKey>  getHeaderToKeyMap() {
+        Map<String, SecretKey>   res = new HashMap<>();
+        res.put("id100000012", Set1.YELLOW_SUBMARINE_SK);
+        res.put("id100000013", Set7.BLACK_SUBMARINE_SK);
+        return  Collections.unmodifiableMap(res);
     }
 
 }

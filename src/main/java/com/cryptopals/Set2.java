@@ -48,9 +48,13 @@ public class Set2 {
     }
 
     private byte[]  pkcs7Pad(byte[] plainText) {
-        final int   blockSize = cipher.getBlockSize(),
-                    blockLenRem = plainText.length % blockSize,
-                    padLen = blockLenRem == 0  ?  blockSize : blockSize - blockLenRem;
+        return  pkcs7Pad(plainText, cipher.getBlockSize());
+    }
+
+    static byte[]  pkcs7Pad(byte[] plainText, int blockSize) {
+        final int
+                blockLenRem = plainText.length % blockSize,
+                padLen = blockLenRem == 0  ?  blockSize : blockSize - blockLenRem;
         byte[] res = new byte[plainText.length + padLen];
         System.arraycopy(plainText, 0, res, 0, plainText.length);
         Arrays.fill(res, plainText.length, res.length, (byte) padLen);

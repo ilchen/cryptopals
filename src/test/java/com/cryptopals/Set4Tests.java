@@ -16,7 +16,7 @@ import static com.cryptopals.Set4.CHALLANGE_29_EXTENSION;
 import static com.cryptopals.Set4.CHALLANGE_29_ORIGINAL_MESSAGE;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class Set4Tests {
+class Set4Tests {
     @DisplayName("https://cryptopals.com/sets/4/challenges/25")
     @ParameterizedTest @ArgumentsSource(Set1Tests.Challenge7ArgumentsProvider.class)
     void  challenge25(String fileName, String expectedResult) throws IOException, IllegalBlockSizeException,

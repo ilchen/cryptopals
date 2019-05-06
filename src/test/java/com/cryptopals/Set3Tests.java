@@ -25,7 +25,7 @@ import static com.cryptopals.Set3.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("Test cases for Cryptopals Set 3 challenges")
-public class Set3Tests {
+class Set3Tests {
 
     @Test @DisplayName("https://cryptopals.com/sets/3/challenges/17")
     /**

@@ -2,9 +2,9 @@ package com.cryptopals;
 
 import com.cryptopals.set_6.DSAHelper;
 import com.cryptopals.set_6.PaddingOracleHelper;
+import com.cryptopals.set_6.RSAHelperExt;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import com.cryptopals.set_6.RSAHelperExt;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -23,7 +23,7 @@ import static com.cryptopals.Set6.*;
 import static com.cryptopals.set_6.DSAHelper.fromHash;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class Set6Tests {
+class Set6Tests {
     @DisplayName("https://cryptopals.com/sets/6/challenges/41")
     @Test
     void  challenge41()  {
