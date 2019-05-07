@@ -4,6 +4,8 @@ import javax.crypto.Cipher;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
 import javax.xml.bind.DatatypeConverter;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -22,7 +24,9 @@ import java.util.*;
 public class Set7 extends Set2 {
     public static final SecretKeySpec  BLACK_SUBMARINE_SK = new SecretKeySpec("BLACK_ SUBMARINE".getBytes(), "AES");
     static final String   CHALLENGE49_SCT_TARGET = "http://localhost:8080/challenge49/sct?",
-                          CHALLENGE49_MCT_TARGET = "http://localhost:8080/challenge49/mct?";
+                          CHALLENGE49_MCT_TARGET = "http://localhost:8080/challenge49/mct?",
+                          CHALLENGE50_TEXT = "alert('MZA who was that?');\n",
+                          CHALLENGE50_TARGET_TEXT = "print('Ayo, the Wu is back!');//";
     static final Map<SecretKey, String>   KEYS_TO_ACCOUNTS;
     static {
         Map<SecretKey, String>   tmp = new HashMap<>();
@@ -33,7 +37,7 @@ public class Set7 extends Set2 {
 
     private final SecretKey   sk;
     private final int      base64BlockLen;
-    private final byte[]   zeroedIV;
+    final byte[]   zeroedIV;
 
     public Set7(int mode, SecretKey key) throws InvalidKeyException, NoSuchPaddingException, NoSuchAlgorithmException {
         super(mode, key);
@@ -47,7 +51,7 @@ public class Set7 extends Set2 {
         return base64BlockLen;
     }
 
-    private byte[] generateCbcMac(byte msg[], byte iv[]) {
+    byte[] generateCbcMac(byte msg[], byte iv[]) {
         byte[]  cbcMAC = cipherCBC(msg, iv);
         return  Arrays.copyOfRange(cbcMAC, cbcMAC.length - cipher.getBlockSize(), cbcMAC.length);
     }
@@ -156,6 +160,17 @@ public class Set7 extends Set2 {
         }
     }
 
+    static String  breakChallenge50(byte msg[], byte cbcMac[], byte trgtMsg[], int blockSize) {
+        byte[]   trgtMsgPadded = Set2.pkcs7Pad(trgtMsg, blockSize),
+                 msgFirstBlock = Arrays.copyOf(msg, blockSize),
+                 msgRemainingBlocks = Arrays.copyOfRange(msg, blockSize, msg.length);
+        Set2.xorBlock(cbcMac, msgFirstBlock);
+        assert Arrays.equals(trgtMsgPadded, new String(trgtMsgPadded).getBytes());
+        assert Arrays.equals(cbcMac, new String(cbcMac, StandardCharsets.ISO_8859_1).getBytes(StandardCharsets.ISO_8859_1));
+        return  new String(trgtMsgPadded)
+                + new String(cbcMac, StandardCharsets.ISO_8859_1) + new String(msgRemainingBlocks);
+    }
+
     public static void main(String[] args) {
 
         try {
@@ -184,6 +199,22 @@ public class Set7 extends Set2 {
                             encryptor.cipher.getBlockSize(), encryptor.base64BlockLen);
             assert  !encryptor.validateMultipleCreditTransferMsg(forgedMacedMsg).equals("");
             assert  encryptor.submitMACedMessageURLEncoded(CHALLENGE49_MCT_TARGET, forgedMacedMsg) == 202;
+
+            System.out.println("Challenge 50");
+            byte[]  trgtMac = encryptor.generateCbcMac(CHALLENGE50_TEXT.getBytes(), encryptor.zeroedIV),
+                    mac = encryptor.generateCbcMac(CHALLENGE50_TARGET_TEXT.getBytes(), encryptor.zeroedIV);
+            System.out.printf("The CBC-MAC of %s%nis: %s%n",
+                    CHALLENGE50_TEXT, DatatypeConverter.printHexBinary(trgtMac).toLowerCase());
+            attackersMacedMsg = breakChallenge50(CHALLENGE50_TEXT.getBytes(), mac,
+                    CHALLENGE50_TARGET_TEXT.getBytes(), encryptor.cipher.getBlockSize());
+            mac = encryptor.generateCbcMac(attackersMacedMsg.getBytes(StandardCharsets.ISO_8859_1), encryptor.zeroedIV);
+            System.out.printf("The CBC-MAC of %s%nis: %s%n",
+                    attackersMacedMsg, DatatypeConverter.printHexBinary(mac).toLowerCase());
+            assert  Arrays.equals(trgtMac, mac);
+
+            ScriptEngineManager   manager = new ScriptEngineManager();
+            ScriptEngine   engine = manager.getEngineByName("JavaScript");
+            engine.eval(attackersMacedMsg);
 
         } catch (Exception e) {
             e.printStackTrace();
