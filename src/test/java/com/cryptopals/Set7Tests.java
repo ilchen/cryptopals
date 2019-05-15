@@ -1,12 +1,15 @@
 package com.cryptopals;
 
+import com.cryptopals.set_7.MDHelper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static com.cryptopals.Set7.*;
 import static org.junit.jupiter.api.Assertions.*;
 
+import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
@@ -17,6 +20,7 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 
 class Set7Tests {
 
@@ -72,5 +76,19 @@ class Set7Tests {
             ScriptEngine  engine = manager.getEngineByName("JavaScript");
             engine.eval(attackersMacedMsg);
         });
+    }
+
+    @DisplayName("https://cryptopals.com/sets/7/challenges/52")
+    @Test
+    void  challenge52() throws NoSuchAlgorithmException, NoSuchPaddingException,
+            BadPaddingException, InvalidKeyException, IllegalBlockSizeException {
+        MDHelper mdHelper = new MDHelper(new byte[] { 0, 1 }, new byte[] { 0, 1, 2 }, "Blowfish", 8);
+        byte   collision[][] = mdHelper.findCollision();
+        if (collision != null) {
+            assertFalse(Arrays.equals(collision[0], collision[1]));
+            assertArrayEquals(mdHelper.mdHard(collision[0]), mdHelper.mdHard(collision[1]));
+        } else {
+            fail("No collisions found");
+        }
     }
 }

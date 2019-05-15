@@ -190,7 +190,7 @@ public class Set4 extends Set3 {
      * @param message message to pad according to the MD padding scheme
      * @param order  byte order should be {@link ByteOrder#BIG_ENDIAN} for SHA and {@link ByteOrder#LITTLE_ENDIAN} for MD4
      */
-    static byte[]  mdPad(byte message[], ByteOrder order) {
+    public static byte[]  mdPad(byte message[], ByteOrder order) {
         int   lenMod64 = message.length & 0x3f;
         int   lenPadding = lenMod64 < 56  ?  56 - lenMod64 : 120 - lenMod64,  len = message.length + lenPadding + 8;
         ByteBuffer   bb = ByteBuffer.allocate(len);

@@ -1,8 +1,8 @@
 package com.cryptopals;
 
-import javax.crypto.Cipher;
-import javax.crypto.NoSuchPaddingException;
-import javax.crypto.SecretKey;
+import com.cryptopals.set_7.MDHelper;
+
+import javax.crypto.*;
 import javax.crypto.spec.SecretKeySpec;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
@@ -13,10 +13,12 @@ import java.math.BigDecimal;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.function.UnaryOperator;
 
 /**
  * Created by Andrei Ilchenko on 04-05-19.
@@ -216,6 +218,20 @@ public class Set7 extends Set2 {
             ScriptEngine   engine = manager.getEngineByName("JavaScript");
             engine.eval(attackersMacedMsg);
 
+            System.out.println("\nChallenge 52");
+            String   msg = "test message";
+
+            MDHelper  mdHelper = new MDHelper(new byte[] { 0, 1 }, new byte[] { 0, 1, 2 }, "Blowfish", 8);
+            byte   hash[] = mdHelper.mdEasy(msg.getBytes());
+            System.out.printf("The hash of '%s' is %s%n", msg, DatatypeConverter.printHexBinary(hash));
+            byte   collision[][] = mdHelper.findCollision();
+            if (collision != null) {
+                System.out.printf("Collision found between:%n\t%s%n\t%s%n%s%n",
+                        DatatypeConverter.printHexBinary(collision[0]),
+                        DatatypeConverter.printHexBinary(collision[1]),
+                        DatatypeConverter.printHexBinary(mdHelper.mdHard(collision[0])));
+                assert  Arrays.equals(mdHelper.mdHard(collision[0]), mdHelper.mdHard(collision[1]));
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }

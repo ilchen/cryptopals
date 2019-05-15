@@ -41,7 +41,7 @@ public class Set2 {
         secRandGen.nextBytes(randPfx);
     }
 
-    static void   xorBlock(byte[] trg, byte[] src) {
+    public static void  xorBlock(byte[] trg, byte[] src) {
         for (int i=0; i < trg.length; i++) {
             trg[i] ^= src[i];
         }
@@ -188,7 +188,7 @@ public class Set2 {
         }
     }
 
-    static int  detectBlockSize(UnaryOperator<byte[]> oracle) {
+    private static int  detectBlockSize(UnaryOperator<byte[]> oracle) {
         StringBuilder   sb = new StringBuilder();
         int    cipherTextSize = oracle.apply(new byte[0]).length;
         int    blockSize;
@@ -220,7 +220,7 @@ public class Set2 {
         return  res;
     }
 
-    static int detectPrefixLength(int blockSize, Challenge12Oracle oracle) {
+    private static int detectPrefixLength(int blockSize, Challenge12Oracle oracle) {
         // We need to ensure that the length of the array we control plus the length of the unknown plain text
         // we want to decipher is a multiple of the blocksize.
         StringBuilder   sb = new StringBuilder();
