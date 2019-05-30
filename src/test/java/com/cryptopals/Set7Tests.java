@@ -20,6 +20,7 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.Arrays;
 
 class Set7Tests {
@@ -82,7 +83,7 @@ class Set7Tests {
     @Test
     void  challenge52() throws NoSuchAlgorithmException, NoSuchPaddingException,
             BadPaddingException, InvalidKeyException, IllegalBlockSizeException {
-        MDHelper mdHelper = new MDHelper(new byte[] { 0, 1 }, new byte[] { 0, 1, 2 }, "Blowfish", 8);
+        MDHelper   mdHelper = new MDHelper(new byte[] { 0, 1 }, new byte[] { 0, 1, 2 }, "Blowfish", 8);
         byte   collision[][] = mdHelper.findCollision();
         if (collision != null) {
             assertFalse(Arrays.equals(collision[0], collision[1]));
@@ -90,5 +91,25 @@ class Set7Tests {
         } else {
             fail("No collisions found");
         }
+    }
+
+    @DisplayName("https://cryptopals.com/sets/7/challenges/53")
+    @Test
+    void  challenge53() throws NoSuchAlgorithmException, NoSuchPaddingException,
+            BadPaddingException, InvalidKeyException, IllegalBlockSizeException {
+        byte[]   H = { 0, 1 },  H2 = { 0, 1, 2 };
+        MDHelper   mdHelper = new MDHelper(H, H2, "Blowfish", 8);
+        byte   collision[][] = mdHelper.findCollision(4);
+
+        assertNotNull(collision, "No collision found");
+        assertArrayEquals(
+                mdHelper.mdInnerLast(collision[0], H, 0, 1),
+                mdHelper.mdInnerLast(collision[1], H, 0, 9));
+
+        byte   longMsg[] = new byte[Long.BYTES * 0x10000];
+        new SecureRandom().nextBytes(longMsg);
+        byte   secondPreimage[] = mdHelper.find2ndPreimage(longMsg);
+        assertFalse(Arrays.equals(longMsg, secondPreimage));
+        assertArrayEquals(mdHelper.mdEasy(longMsg), mdHelper.mdEasy(secondPreimage));
     }
 }

@@ -13,12 +13,11 @@ import java.math.BigDecimal;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
-import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.*;
-import java.util.function.UnaryOperator;
 
 /**
  * Created by Andrei Ilchenko on 04-05-19.
@@ -220,8 +219,9 @@ public class Set7 extends Set2 {
 
             System.out.println("\nChallenge 52");
             String   msg = "test message";
+            byte[]   H = { 0, 1 },  H2 = { 0, 1, 2 };
 
-            MDHelper  mdHelper = new MDHelper(new byte[] { 0, 1 }, new byte[] { 0, 1, 2 }, "Blowfish", 8);
+            MDHelper  mdHelper = new MDHelper(H, H2, "Blowfish", 8);
             byte   hash[] = mdHelper.mdEasy(msg.getBytes());
             System.out.printf("The hash of '%s' is %s%n", msg, DatatypeConverter.printHexBinary(hash));
             byte   collision[][] = mdHelper.findCollision();
@@ -232,6 +232,28 @@ public class Set7 extends Set2 {
                         DatatypeConverter.printHexBinary(mdHelper.mdHard(collision[0])));
                 assert  Arrays.equals(mdHelper.mdHard(collision[0]), mdHelper.mdHard(collision[1]));
             }
+
+            System.out.println("\nChallenge 53");
+            collision = mdHelper.findCollision(4);
+            if (collision != null) {
+                System.out.printf("Collision found between:%n\t%s%n\t%s%n%s%n",
+                        DatatypeConverter.printHexBinary(collision[0]),
+                        DatatypeConverter.printHexBinary(collision[1]),
+                        DatatypeConverter.printHexBinary(collision[2]));
+                assert  Arrays.equals(mdHelper.mdInnerLast(collision[0], H, 0, 1),
+                                      mdHelper.mdInnerLast(collision[1], H, 0, 9));
+            }
+
+            // Needs to be not much less than 2^16 blocks long
+            byte[]   longMsg = new byte[Long.BYTES * 0x10000],  secondPreimage;
+            new SecureRandom().nextBytes(longMsg);
+            secondPreimage = mdHelper.find2ndPreimage(longMsg);
+            assert  Arrays.equals(mdHelper.mdEasy(longMsg), mdHelper.mdEasy(secondPreimage));
+            System.out.printf("Second preimage of %s found:%n%s%nThe original was:%n%s%n",
+                    DatatypeConverter.printHexBinary(Arrays.copyOf(mdHelper.mdEasy(longMsg), 256)),
+                    DatatypeConverter.printHexBinary(Arrays.copyOf(secondPreimage, 256)),
+                    DatatypeConverter.printHexBinary(Arrays.copyOf(longMsg, 256)));
+
         } catch (Exception e) {
             e.printStackTrace();
         }
