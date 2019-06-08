@@ -1,10 +1,12 @@
 package com.cryptopals;
 
+import com.cryptopals.set_7.DiamondStructure;
 import com.cryptopals.set_7.MDHelper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static com.cryptopals.Set7.*;
+import static javax.xml.bind.DatatypeConverter.printHexBinary;
 import static org.junit.jupiter.api.Assertions.*;
 
 import javax.crypto.BadPaddingException;
@@ -22,6 +24,7 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Arrays;
+import java.util.concurrent.ExecutionException;
 
 class Set7Tests {
 
@@ -111,5 +114,33 @@ class Set7Tests {
         byte   secondPreimage[] = mdHelper.find2ndPreimage(longMsg);
         assertFalse(Arrays.equals(longMsg, secondPreimage));
         assertArrayEquals(mdHelper.mdEasy(longMsg), mdHelper.mdEasy(secondPreimage));
+    }
+
+    @DisplayName("https://cryptopals.com/sets/7/challenges/54")
+    @Test
+    void  challenge54() throws NoSuchAlgorithmException, NoSuchPaddingException, BadPaddingException, InvalidKeyException, IllegalBlockSizeException, ExecutionException, InterruptedException {
+        byte[]   H = { 0, 1 },  H2 = { 0, 1, 2 };
+        MDHelper   mdHelper = new MDHelper(H, H2, "Blowfish", 8);
+        String   originalCommittedToMsg = /* 14 blocks, 2^10 */
+                "3-5, 0-0, 1-6, 4-2, 2-2, 4-3, 1-1 dummy prediction that will be replaced"
+                        + "1234567887654321012345677654321012345678",
+                nostradamusMsg = "3-1, 0-1, 2-6, 2-2, 3-1, 1-1,0-3"; /* 4 blocks */
+
+        byte[]   hash = mdHelper.mdEasy(originalCommittedToMsg.getBytes()),
+                 trgtHash = mdHelper.mdInnerLast(originalCommittedToMsg.getBytes(), H,
+                0, originalCommittedToMsg.length() / 8),  sfx;
+        DiamondStructure ds = new DiamondStructure(
+                originalCommittedToMsg.length() - nostradamusMsg.length() >> 3,
+                trgtHash, "Blowfish", 8);
+
+        sfx = ds.constructSuffix(mdHelper.mdInnerLast(nostradamusMsg.getBytes(), H, 0, 4));
+        if (sfx != null) {
+            assertEquals(originalCommittedToMsg.length(), nostradamusMsg.length() + sfx.length);
+            byte   longMsg[] = Arrays.copyOf(nostradamusMsg.getBytes(), nostradamusMsg.length() + sfx.length);
+            System.arraycopy(sfx, 0, longMsg, nostradamusMsg.length(), sfx.length);
+            assertArrayEquals(hash, mdHelper.mdEasy(longMsg));
+        } else {
+            fail("Too few leaves in the diamond structure :-(");
+        }
     }
 }

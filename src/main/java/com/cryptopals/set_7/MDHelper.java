@@ -15,6 +15,7 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.*;
+import java.util.stream.IntStream;
 
 /**
  * Created by Andrei Ilchenko on 12-05-19.
@@ -32,7 +33,7 @@ public class MDHelper {
      * @param cipher  should be a cipher whose key size in bits is a divisor of 512
      * @param keyLen  should be a divisor of 64 (512 bits)
      */
-    public MDHelper(byte H[], byte H2[],String cipher, int keyLen) throws NoSuchPaddingException, NoSuchAlgorithmException {
+    public MDHelper(byte H[], byte H2[], String cipher, int keyLen) throws NoSuchPaddingException, NoSuchAlgorithmException {
         assert  H2.length > H.length; // otherwise H2 will not result in a more computationally intensive hash
         String   transformation = cipher + "/ECB/NoPadding";
         encryptor = Cipher.getInstance(transformation);
@@ -79,19 +80,18 @@ public class MDHelper {
         }
 
         return  mdInner(msg, H, from, msg.length / keyLen);
-/*        for (int i=from*keyLen; i < msg.length; i+=keyLen) {
-            encryptor.init(Cipher.ENCRYPT_MODE,
-                    new SecretKeySpec(Arrays.copyOfRange(msg, i, i+keyLen), cipher));
-            h = Arrays.copyOf(encryptor.doFinal(Arrays.copyOf(_H, blockSize)), outputSize);
-            Set2.xorBlock(_H, h);
-        }
-
-        return  _H;*/
     }
 
     public byte[]  mdInnerLast(byte msg[], byte H[], int from, int to) throws BadPaddingException, InvalidKeyException, IllegalBlockSizeException {
         byte   res[][] = mdInner(msg, H, from, to);
         return  res[res.length - 1];
+    }
+
+    public byte[]  mdOneBlock(byte msg[], byte H[]) throws BadPaddingException, InvalidKeyException, IllegalBlockSizeException {
+        encryptor.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(msg, cipher));
+        byte   h[] = Arrays.copyOf(encryptor.doFinal(Arrays.copyOf(H, blockSize)), H.length);
+        Set2.xorBlock(h, H);
+        return  h;
     }
 
     private byte[][]  mdInner(byte msg[], byte H[], int from, int to) throws InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
@@ -109,7 +109,29 @@ public class MDHelper {
         }
 
         return  res;
-//        return  _H;
+    }
+
+    byte[]  findCollisionWith(byte startingHash[], byte targetHash[])
+            throws BadPaddingException, InvalidKeyException, IllegalBlockSizeException {
+        byte[]   res = new byte[BLOCK_SIZE],  hash;
+        for (int i=0; i < 1 << 16; i++) {
+            res[0] = (byte) (i >> 8);
+            res[1] = (byte) i;
+            hash = mdOneBlock(res, startingHash);
+            if (hash[0] == targetHash[0]  &&  hash[1] == targetHash[1]/*Arrays.equals(hash, targetHash)*/) {
+                return  res;
+            }
+        }
+        for (int i=1 << 16; i < 1 << 24; i++) {
+            res[0] = (byte) (i >> 16);
+            res[1] = (byte) (i >> 8);
+            res[2] = (byte) i;
+            hash = mdOneBlock(res, startingHash);
+            if (hash[0] == targetHash[0]  &&  hash[1] == targetHash[1]/*Arrays.equals(hash, targetHash)*/) {
+                return  res;
+            }
+        }
+        return  null;
     }
 
     private byte[]  extractMsg(List<long[]> collisions, int i) {
@@ -255,4 +277,5 @@ public class MDHelper {
         }
         return  res;
     }
+
 }
