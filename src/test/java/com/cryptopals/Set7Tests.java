@@ -6,7 +6,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static com.cryptopals.Set7.*;
-import static javax.xml.bind.DatatypeConverter.printHexBinary;
 import static org.junit.jupiter.api.Assertions.*;
 
 import javax.crypto.BadPaddingException;
@@ -80,6 +79,20 @@ class Set7Tests {
             ScriptEngine  engine = manager.getEngineByName("JavaScript");
             engine.eval(attackersMacedMsg);
         });
+    }
+
+    @DisplayName("https://cryptopals.com/sets/7/challenges/51")
+    @Test
+    void  challenge51() throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException {
+        Set7   encryptor = new Set7(Cipher.ENCRYPT_MODE, Set1.YELLOW_SUBMARINE_SK);
+        String   expectedCookie = "TmV2ZXIgcmV2ZWFsIHRoZSBXdS1UYW5nIFNlY3JldCE=";
+
+        assertAll("CRIME attack",
+                () -> assertEquals(expectedCookie, breakChallenge51(encryptor::challenge51OracleCTR),
+                        "CTR mode cookie detection failed"),
+                () -> assertEquals(expectedCookie, breakChallenge51(encryptor::challenge51OracleCBC),
+                        "CBC mode cookie detection failed")
+        );
     }
 
     @DisplayName("https://cryptopals.com/sets/7/challenges/52")

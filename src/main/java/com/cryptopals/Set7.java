@@ -21,17 +21,37 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.*;
+import java.util.function.ToIntFunction;
+import java.util.zip.Deflater;
 
 /**
  * Created by Andrei Ilchenko on 04-05-19.
  */
-public class Set7 extends Set2 {
+public class Set7 extends Set3 {
     public static final SecretKeySpec  BLACK_SUBMARINE_SK = new SecretKeySpec("BLACK_ SUBMARINE".getBytes(), "AES");
     static final String   CHALLENGE49_SCT_TARGET = "http://localhost:8080/challenge49/sct?",
                           CHALLENGE49_MCT_TARGET = "http://localhost:8080/challenge49/mct?",
                           CHALLENGE50_TEXT = "alert('MZA who was that?');\n",
                           CHALLENGE50_TARGET_TEXT = "print('Ayo, the Wu is back!');//";
-    static final Map<SecretKey, String>   KEYS_TO_ACCOUNTS;
+    private static final String  CHALLENGE51_COOKIE_NAME = "sessionid=",
+                                 CHALLENGE51_REQUEST_TEMPLATE =
+                                  "POST / HTTP/1.1%n Host: hapless.com%n"
+                                    + "Cookie: " + CHALLENGE51_COOKIE_NAME + "TmV2ZXIgcmV2ZWFsIHRoZSBXdS1UYW5nIFNlY3JldCE=%n"
+                                    + "Content-Length: %d%n%s%n";
+
+    private static final int    CHALLENGE51_COOKIE_LENGTH = 44;
+    private static final char   BASE64_CHARS[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=".toCharArray();
+    private static final String   BASE64_BIGRAMS[] = new String[BASE64_CHARS.length * BASE64_CHARS.length];
+    static {
+        int   i = 0;            /* To speed up calculations in Challenge 51 */
+        for (char base64Char1 : BASE64_CHARS) {
+            for (char base64Char2 : BASE64_CHARS) {
+                BASE64_BIGRAMS[i++] = new String(new char[]{base64Char1, base64Char2});
+            }
+        }
+    }
+
+    private static final Map<SecretKey, String>   KEYS_TO_ACCOUNTS;
     static {
         Map<SecretKey, String>   tmp = new HashMap<>();
         tmp.put(Set1.YELLOW_SUBMARINE_SK, "id100000012");
@@ -174,6 +194,128 @@ public class Set7 extends Set2 {
                 + new String(cbcMac, StandardCharsets.ISO_8859_1) + new String(msgRemainingBlocks);
     }
 
+    private static byte[]  challege51OracleHelper(String msg) {
+        String   request = String.format(CHALLENGE51_REQUEST_TEMPLATE, msg.length(), msg);
+        Deflater compresser = new Deflater();
+        byte[]   requestBytes = new byte[request.length()];
+        compresser.setInput(request.getBytes());
+        compresser.finish();
+        int   len = compresser.deflate(requestBytes);
+        return  Arrays.copyOf(requestBytes, len);
+    }
+
+    int  challenge51OracleCTR(String msg) {
+        return  cipherCTR(challege51OracleHelper(msg), secRandGen.nextLong()).length;
+    }
+
+    int  challenge51OracleCBC(String msg) {
+        byte[]   iv = new byte[cipher.getBlockSize()];
+        secRandGen.nextBytes(iv);
+        return  cipherCBC(challege51OracleHelper(msg), iv).length;
+    }
+
+    private static StringBuilder  detectPadding(StringBuilder prefix, ToIntFunction<String> oracle) {
+        char   nonBase64[] = "!@#$%^&*()-`~[]}{\"'_|".toCharArray();
+        StringBuilder   sb = new StringBuilder();
+        int   start = oracle.applyAsInt(sb.toString());
+        int   i = 0;
+        do {
+            sb.append(nonBase64[i++]);
+        } while (oracle.applyAsInt(prefix + sb.toString()) == start);
+        sb.deleteCharAt(i - 1);
+        return  sb;
+    }
+
+    private static int  detectBlocksize(ToIntFunction<String> oracle) {
+        StringBuilder   sb = new StringBuilder();
+        int   start = oracle.applyAsInt(sb.toString()),  len;
+        for (char ch: "!@#$%^&*()-`~[]}{\"'_|".toCharArray()) {
+            sb.append(ch);
+            len = oracle.applyAsInt(sb.toString());
+            if (len > start)  return  len - start;
+        }
+        return  0;
+    }
+
+    /**
+     * Carries our the CRIME attack against both stream and block ciphers.
+     * @see <a href="https://docs.google.com/presentation/d/11eBmGiHbYcHR9gL5nDyZChu_-lCa2GizeuOfaLU2HOU/edit#slide=id.g1d134dff_1_10"/>
+     */
+    static String  breakChallenge51(ToIntFunction<String> oracle) {
+        List<StringBuilder>   candidates = new ArrayList<>();
+        StringBuilder   sb_ = new StringBuilder(CHALLENGE51_COOKIE_NAME);
+        candidates.add(sb_);
+        int   bestLen = oracle.applyAsInt(sb_.toString()),  i = 0;
+        StringBuilder   padding = detectPadding(sb_, oracle);
+        boolean   isCBC = padding.length() > 0;
+        int   blockSize = isCBC  ?  detectBlocksize(oracle) : 0;
+
+        while (i < CHALLENGE51_COOKIE_LENGTH) {
+            List<StringBuilder>  potentialCandidates = new ArrayList<>();
+
+            for (int cand=0; cand < candidates.size(); cand++) {
+                StringBuilder   sb = candidates.get(cand);
+                if (isCBC)  {
+                    padding = detectPadding(sb, oracle);
+                }
+                int   j = 0,  k,  idxPossibleMatch = -1;
+                sb.append("01");
+
+                do {
+                    sb.replace(sb.length() - 2, sb.length(), BASE64_BIGRAMS[j]);
+                    k = oracle.applyAsInt(sb.toString() + padding);
+                    if (isCBC && k > bestLen  ||  !isCBC && k == bestLen + 1) {
+                        if (isCBC  &&  oracle.applyAsInt(
+                                sb.toString() + padding.substring(0, padding.length() - 1)) > bestLen)  continue;
+                        if (idxPossibleMatch != -1) {
+                            StringBuilder sb2 = new StringBuilder(sb);
+                            sb2.replace(sb2.length() - 2, sb2.length(), BASE64_BIGRAMS[idxPossibleMatch]);
+                            potentialCandidates.add(sb2);
+                        }
+                        idxPossibleMatch = j;
+                    }
+                } while (k > bestLen  &&  ++j < BASE64_BIGRAMS.length);
+
+                if (j == BASE64_BIGRAMS.length) {
+                    if (idxPossibleMatch == -1) {  /* dead end */
+                        candidates.remove(cand--); /* ensure we iterate through this index again */
+                        potentialCandidates.clear();
+                        System.out.println("Discarding: " + sb);
+//                        if (candidates.size() == 0) { /* we moved beyond the end of the cookie */
+//                            sb.delete(sb.length() - 2, sb.length());
+//                            System.out.println("Backtracking to: " + sb);
+//                            return  sb.toString();
+//                        }
+                    } else {
+//                                                    /* we moved beyond the end of the cookie */
+//                        if (sb.charAt(sb.length() - 3) == '='  &&  !BASE64_BIGRAMS[idxPossibleMatch].equals("==")) {
+//                            sb.delete(sb.length() - 2, sb.length());
+//                            return  sb.toString();
+//                        }
+                        sb.replace(sb.length() - 2, sb.length(), BASE64_BIGRAMS[idxPossibleMatch]);
+                        if (!isCBC) {
+                            bestLen++;
+                        } else if (padding.length() < 2) {
+                            bestLen += blockSize;  // This is the new best possible length.
+                        }
+                    }
+                } else {
+                    potentialCandidates.clear();
+                }
+
+            }  /*  for (int cand=0; cand < candidates.size()...  */
+            i += 2;
+            candidates.addAll(potentialCandidates);
+            System.out.printf("Processed %d characters. Candidate cookies:%n", i);
+            for (StringBuilder sb: candidates) {
+                System.out.println(sb);
+            }
+        }  /*  while (i < CHALLENGE51_COOKIE_LENGTH...  */
+
+        assert  candidates.size() == 1 : "Too many possible cookies";
+        return  candidates.get(0).substring(CHALLENGE51_COOKIE_NAME.length(), candidates.get(0).length());
+    }
+
     public static void main(String[] args) {
 
         try {
@@ -218,6 +360,10 @@ public class Set7 extends Set2 {
             ScriptEngineManager   manager = new ScriptEngineManager();
             ScriptEngine   engine = manager.getEngineByName("JavaScript");
             engine.eval(attackersMacedMsg);
+
+            System.out.println("\nChallenge 51");
+            System.out.printf("Recovered sessionid for CTR Oracle is: %s%n", breakChallenge51(encryptor::challenge51OracleCTR));
+            System.out.printf("Recovered sessionid for CBC Oracle is: %s%n", breakChallenge51(encryptor::challenge51OracleCBC));
 
             System.out.println("\nChallenge 52");
             String   msg = "test message";
@@ -264,7 +410,7 @@ public class Set7 extends Set2 {
             hash = mdHelper.mdEasy(originalCommittedToMsg.getBytes());
             byte[]   trgtHash = mdHelper.mdInnerLast(originalCommittedToMsg.getBytes(), H,
                     0, originalCommittedToMsg.length() / 8),  sfx;
-            DiamondStructure   ds = new DiamondStructure(
+            DiamondStructure ds = new DiamondStructure(
                     originalCommittedToMsg.length() - nostradamusMsg.length() >> 3,
                     trgtHash, "Blowfish", 8);
 
