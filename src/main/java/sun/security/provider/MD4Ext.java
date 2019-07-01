@@ -101,7 +101,7 @@ public final class MD4Ext extends DigestBase1 {
         this.state[3] = state[3];
     }
 
-    static public void squashBytesToIntsLittle(byte[] inBytes, int inOff, int[] outInts, int outOff, int intLen) {
+    public static void squashBytesToIntsLittle(byte[] inBytes, int inOff, int[] outInts, int outOff, int intLen) {
         for (int i = 0; i < intLen; ++i)
             outInts[outOff + i] =
                     (inBytes[inOff + i * 4] & 0xff) |
@@ -111,7 +111,7 @@ public final class MD4Ext extends DigestBase1 {
     }
 
     /// Spread ints into bytes.
-    static void spreadIntsToBytesLittle(int[] inInts, int inOff, byte[] outBytes, int outOff, int intLen) {
+    public static void spreadIntsToBytesLittle(int[] inInts, int inOff, byte[] outBytes, int outOff, int intLen) {
         for (int i = 0; i < intLen; ++i) {
             outBytes[outOff + i * 4] = (byte) inInts[inOff + i];
             outBytes[outOff + i * 4 + 1] = (byte) (inInts[inOff + i] >>> 8);

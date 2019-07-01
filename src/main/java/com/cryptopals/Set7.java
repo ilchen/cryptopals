@@ -1,12 +1,14 @@
 package com.cryptopals;
 
 import com.cryptopals.set_7.DiamondStructure;
+import com.cryptopals.set_7.MD4CollisionsFinder;
 import com.cryptopals.set_7.MDHelper;
 
 import javax.crypto.*;
 import javax.crypto.spec.SecretKeySpec;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
+
 import static javax.xml.bind.DatatypeConverter.parseBase64Binary;
 import static javax.xml.bind.DatatypeConverter.printBase64Binary;
 import static javax.xml.bind.DatatypeConverter.printHexBinary;
@@ -427,6 +429,12 @@ public class Set7 extends Set3 {
             } else {
                 System.out.println("Too few leaves in the diamond structure :-(");
             }
+
+            System.out.println("\nChallenge 55\n");
+            collision = MD4CollisionsFinder.findCollision();
+            System.out.printf("Collision found between%n\t%s%n\t%s%nMD4: %s%n",
+                    printHexBinary(collision[0]), printHexBinary(collision[1]), printHexBinary(collision[2]));
+
 
         } catch (Exception e) {
             e.printStackTrace();
