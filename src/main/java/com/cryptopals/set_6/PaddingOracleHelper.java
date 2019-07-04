@@ -22,7 +22,8 @@ public class PaddingOracleHelper {
             return  lower.compareTo(that.lower) <= 0  &&  upper.compareTo(that.upper) >= 0;
         }
         boolean  intersects(Interval that) {
-            return  lower.compareTo(that.lower) <= 0  ||  upper.compareTo(that.upper) >= 0;
+            return  lower.compareTo(that.lower) <= 0  &&  upper.compareTo(that.lower) >= 0
+                    ||  that.lower.compareTo(lower) <= 0  &&  that.upper.compareTo(lower) >= 0;
         }
 
         Interval  intersection(Interval that) {

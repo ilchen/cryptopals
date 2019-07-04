@@ -51,7 +51,8 @@ public class RSAHelper {
             _n = _p.multiply(_q);
             if (_n.bitLength() != 2 * numBits)  continue;
             BigInteger pOrd = _p.subtract(ONE), qOrd = _q.subtract(ONE);
-            BigInteger et = pOrd.multiply(qOrd).divide(pOrd.gcd(qOrd));
+            // Dividing by the GCD below results in a smaller private key.
+            BigInteger et = pOrd.multiply(qOrd)/*.divide(pOrd.gcd(qOrd))*/;
             try {
                 _d = e.modInverse(et);
                 break;
