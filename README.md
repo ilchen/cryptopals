@@ -42,7 +42,7 @@ which are elucidated in Section 3.1 of the paper.
 
 The essence of this attack is fairly simple -- the biases in the distributions of Z<sub>16</sub> and Z<sub>32</sub> make
 the frequency of a few values much higher than 1/256 (`0x00`, `0xF0`, `0x10` for Z<sub>16</sub>;
-and `0x00`, `0xE0`, `0x20` for Z<sub>32</sub>). If we ensure that we encrypt the same plain text bytes in these positions
+and `0x00`, `0xE0`, `0x20` for Z<sub>32</sub>). If we ensure that we encrypt the same plaintext bytes in these positions
 repeatedly, certain ciphertext values for C<sub>16</sub> and C<sub>32</sub> will also occur more frequently than others.
 By encrypting on the order of 2<sup>24</sup> values, we construct the distribution of C<sub>16</sub> and C<sub>32</sub>,
 which (like the distribution of Z<sub>16</sub> and Z<sub>32</sub>) will not be uniform. This is enough to recover the
@@ -54,5 +54,5 @@ RC4 keystreams (with independent 128-bit keys) to construct their frequency dist
 used 2<sup>44</sup> RC4 keystreams to determine the disributions of Z<sub>16</sub> and Z<sub>32</sub>. For this challenge
 this would be an overkill.
 
-For the maximum-likelihood estimation of the plaintext bytes used 2<sup>24</sup> ciphertexts. This is enough to recover
+For the maximum-likelihood estimation of the plaintext bytes I used 2<sup>24</sup> ciphertexts. This is enough to recover
 P<sub>16</sub> and P<sub>32</sub> and fully corraborates the results in Figure 4 in the paper.
