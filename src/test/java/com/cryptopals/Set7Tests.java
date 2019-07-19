@@ -3,6 +3,7 @@ package com.cryptopals;
 import com.cryptopals.set_7.DiamondStructure;
 import com.cryptopals.set_7.MD4CollisionsFinder;
 import com.cryptopals.set_7.MDHelper;
+import com.cryptopals.set_7.RC4SingleByteBiasAttackHelper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import sun.security.provider.MD4;
@@ -178,4 +179,11 @@ class Set7Tests {
         assertArrayEquals(digest, collision[2]);
     }
 
+    @DisplayName("https://cryptopals.com/sets/7/challenges/56")
+    @Test
+    void challenge56() {
+        byte[]  recoveredCookie = new RC4SingleByteBiasAttackHelper().recoverCookie(Set7::challenge56Oracle,
+                                                                                    CHALLENGE56_COOKIE.length());
+        assertArrayEquals(CHALLENGE56_COOKIE.getBytes(), recoveredCookie);
+    }
 }

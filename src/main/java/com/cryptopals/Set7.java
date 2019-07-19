@@ -3,11 +3,14 @@ package com.cryptopals;
 import com.cryptopals.set_7.DiamondStructure;
 import com.cryptopals.set_7.MD4CollisionsFinder;
 import com.cryptopals.set_7.MDHelper;
+import com.cryptopals.set_7.RC4SingleByteBiasAttackHelper;
+import lombok.SneakyThrows;
 
 import javax.crypto.*;
 import javax.crypto.spec.SecretKeySpec;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
+import javax.xml.bind.DatatypeConverter;
 
 import static javax.xml.bind.DatatypeConverter.parseBase64Binary;
 import static javax.xml.bind.DatatypeConverter.printBase64Binary;
@@ -34,7 +37,8 @@ public class Set7 extends Set3 {
     static final String   CHALLENGE49_SCT_TARGET = "http://localhost:8080/challenge49/sct?",
                           CHALLENGE49_MCT_TARGET = "http://localhost:8080/challenge49/mct?",
                           CHALLENGE50_TEXT = "alert('MZA who was that?');\n",
-                          CHALLENGE50_TARGET_TEXT = "print('Ayo, the Wu is back!');//";
+                          CHALLENGE50_TARGET_TEXT = "print('Ayo, the Wu is back!');//",
+                          CHALLENGE56_COOKIE = new String(DatatypeConverter.parseBase64Binary("QkUgU1VSRSBUTyBEUklOSyBZT1VSIE9WQUxUSU5F"));
     private static final String  CHALLENGE51_COOKIE_NAME = "sessionid=",
                                  CHALLENGE51_REQUEST_TEMPLATE =
                                   "POST / HTTP/1.1%n Host: hapless.com%n"
@@ -318,6 +322,18 @@ public class Set7 extends Set3 {
         return  candidates.get(0).substring(CHALLENGE51_COOKIE_NAME.length(), candidates.get(0).length());
     }
 
+    @SneakyThrows
+    public static byte[]  challenge56Oracle(String request) {
+        KeyGenerator   rc4KeyGen = KeyGenerator.getInstance("RC4");
+        rc4KeyGen.init(128);
+        SecretKey  sk = rc4KeyGen.generateKey();
+        Cipher  encryptor = Cipher.getInstance("RC4");
+
+        encryptor.init(Cipher.ENCRYPT_MODE, sk);
+        return  encryptor.doFinal(
+                (request + CHALLENGE56_COOKIE + ", " + DatatypeConverter.printHexBinary(sk.getEncoded())).getBytes());
+    }
+
     public static void main(String[] args) {
 
         try {
@@ -435,6 +451,9 @@ public class Set7 extends Set3 {
             System.out.printf("Collision found between%n\t%s%n\t%s%nMD4: %s%n",
                     printHexBinary(collision[0]), printHexBinary(collision[1]), printHexBinary(collision[2]));
 
+            System.out.println("\nChallenge 56\n");
+            byte[]  recoveredCookie = new RC4SingleByteBiasAttackHelper().recoverCookie(Set7::challenge56Oracle, CHALLENGE56_COOKIE.length());
+            assert  Arrays.equals(recoveredCookie, CHALLENGE56_COOKIE.getBytes());
 
         } catch (Exception e) {
             e.printStackTrace();
