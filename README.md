@@ -11,7 +11,7 @@ JRE's BigInteger Challenge 48 will take around 5 hours to finish. Using gmp it f
 ## Challenge 52
 [Challenge 52](https://cryptopals.com/sets/7/challenges/52) is one of the best demonstrations of the birthday paradox
 I've seen. **NB:** the way this challenge defines the compression function containts
-[a mistake](<a href="https://twitter.com/spdevlin/status/1134220310109024257">a mistake). The correct definition should
+[a mistake](https://twitter.com/spdevlin/status/1134220310109024257). The correct definition should
 be
 ```aidl
 function MD(M, H, C):
