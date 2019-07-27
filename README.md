@@ -8,6 +8,24 @@ For [Challenge 48](https://cryptopals.com/sets/6/challenges/48) there's a depend
 around gmp 6.1.x. If you are on macOS, you probably already installed gmp when you installed python using brew. With
 JRE's BigInteger Challenge 48 will take around 5 hours to finish. Using gmp it finishes under 1 hour.
 
+## Challenge 52
+[Challenge 52](https://cryptopals.com/sets/7/challenges/52) is one of the best demonstrations of the birthday paradox
+I've seen. **NB:** the way this challenge defines the compression function containts
+[a mistake](<a href="https://twitter.com/spdevlin/status/1134220310109024257">a mistake). The correct definition should
+be
+```aidl
+function MD(M, H, C):
+  for M[i] in pad(M):
+    H := C(M[i], H) ^ H
+  return H
+```
+
+For the purposes of this task it makes sense to choose a cipher whose key size is 8 bytes. It will also be easier
+if the cipher's key and block sizes are the same. I opted for Blowfish, which is present in all JREs through
+`com.sun.crypto.provider.SunJCE provider`. I used a 16 bit hash for the easier hash function f, and a 32 bit hash for g.
+This way I needed to find 2<sup>16</sup> messages colliding in f to ensure there's a pair among them colliding in g. 
+
+
 ## Challenge 55
 [Challenge 55](https://cryptopals.com/sets/7/challenges/55) is probably one of the most interesting to work on.
 I succeeded in implementing it in a uniform Object-Oriented way, which aids readability and maintainability.

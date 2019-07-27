@@ -10,13 +10,14 @@ import java.util.*;
 import java.util.concurrent.*;
 
 /**
- * This class ues a four dimensional array to represent the diamond structure from: https://eprint.iacr.org/2005/281.pdf
+ * This class ues a four dimensional array to represent the diamond structure from:
+ * <a href="https://eprint.iacr.org/2005/281.pdf">this paper</a>
  *
- * The first dimension (i) is the tree level, the second (j) contains 2^(k-i) [][] arrays in which the first dimension
+ * <p>The first dimension (i) is the tree level, the second (j) contains 2^(k-i) [][] arrays in which the first dimension
  * is the starting hash h[i, j] and the second is a message block that collides with that of the message starting
- * at either h[i, j+1] or h[i, j-1].
+ * at either h[i, j+1] or h[i, j-1].</p>
  *
- * Created by Andrei Ilchenko on 02-06-19.
+ * <p>Created by Andrei Ilchenko on 02-06-19.</p>
  */
 public class DiamondStructure {
     private class LevelRangeBuilder implements Callable<Void> {

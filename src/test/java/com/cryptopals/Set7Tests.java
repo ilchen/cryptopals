@@ -104,7 +104,7 @@ class Set7Tests {
     @Test
     void challenge52() throws NoSuchAlgorithmException, NoSuchPaddingException,
             BadPaddingException, InvalidKeyException, IllegalBlockSizeException {
-        MDHelper mdHelper = new MDHelper(new byte[]{0, 1}, new byte[]{0, 1, 2}, "Blowfish", 8);
+        MDHelper mdHelper = new MDHelper(new byte[]{0, 1}, new byte[]{0, 1, 2, 3}, "Blowfish", 8);
         byte collision[][] = mdHelper.findCollision();
         if (collision != null) {
             assertFalse(Arrays.equals(collision[0], collision[1]));

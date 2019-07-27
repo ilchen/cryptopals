@@ -385,7 +385,7 @@ public class Set7 extends Set3 {
 
             System.out.println("\nChallenge 52");
             String   msg = "test message";
-            byte[]   H = { 0, 1 },  H2 = { 0, 1, 2 };
+            byte[]   H = { 0, 1 },  H2 = { 0, 1, 2, 3 };
 
             MDHelper  mdHelper = new MDHelper(H, H2, "Blowfish", 8);
             byte   hash[] = mdHelper.mdEasy(msg.getBytes());

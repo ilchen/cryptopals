@@ -17,6 +17,7 @@ import java.security.SecureRandom;
 import java.util.*;
 
 /**
+ * Supports solutions to Challenges 52, 53, and 54.
  * Created by Andrei Ilchenko on 12-05-19.
  */
 public class MDHelper {
@@ -28,7 +29,9 @@ public class MDHelper {
     private final byte[]   H,  H2;
 
     /**
-     * @param H
+     * @param H  is the starting chaining variable for the easier hash function f
+     * @param H2 is the starting chaining variable for the harder hash function g, obviously {@code H2.length} must be
+     *           greater than {@code H.length}
      * @param cipher  should be a cipher whose key size in bits is a divisor of 512
      * @param keyLen  should be a divisor of 64 (512 bits)
      */
@@ -50,14 +53,24 @@ public class MDHelper {
         return  i >> position & 1;
     }
 
+    /**
+     * Calculates the cheaper makeshift hash function referred to as f in Challenge 52
+     */
     public byte[]  mdEasy(byte msg[]) throws InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
         return  md(msg, H);
     }
 
+    /**
+     * Calculates the cheaper makeshift hash function referred to as f in Challenge 52
+     */
     public byte[]  mdHard(byte msg[]) throws InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
         return  md(msg, H2);
     }
 
+    /**
+     * Calculates the harder makeshift hash function referred to as g in Challenge 52. g's hash size must be bigger
+     * than that of f's.
+     */
     private byte[]  md(byte msg[], byte H[]) throws InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
         return  md(msg, H, 0);
     }
@@ -86,13 +99,17 @@ public class MDHelper {
         return  res[res.length - 1];
     }
 
-    public byte[]  mdOneBlock(byte msg[], byte H[]) throws BadPaddingException, InvalidKeyException, IllegalBlockSizeException {
+    byte[]  mdOneBlock(byte msg[], byte H[]) throws BadPaddingException, InvalidKeyException, IllegalBlockSizeException {
         encryptor.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(msg, cipher));
         byte   h[] = Arrays.copyOf(encryptor.doFinal(Arrays.copyOf(H, blockSize)), H.length);
         Set2.xorBlock(h, H);
         return  h;
     }
 
+    /**
+     * Implements a makeshift hash function using a proper Davies-Meyer construction. Challenge 52 contains
+     * <a href="https://twitter.com/spdevlin/status/1134220310109024257">a mistake</a>.
+     */
     private byte[][]  mdInner(byte msg[], byte H[], int from, int to) throws InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
         assert  from < to;
         assert  to * keyLen <= msg.length;
@@ -142,8 +159,13 @@ public class MDHelper {
     }
 
     public byte[][]  findCollision() throws BadPaddingException, InvalidKeyException, IllegalBlockSizeException {
+        // H2.length << 2 gives us half the number of bits in the stronger hash function g (calculated by mdHard).
+        // By the birthday paradox 2 raised to this number is the approximate number of different messages required
+        // so that there's a pair of them colliding in g
         List<long[]>   collisions = findCollisions(H2.length << 2);
         Map<ByteBuffer, Integer>   hashes2Ints = new HashMap<>();
+
+        // H2.length << 2 + 3 is the amount of bytes taken up by H2.length << 2 {@code long} elements
         ByteBuffer   bb = ByteBuffer.allocate(H2.length << 2 + 3);
         for (int i=0; i < 2 << (H2.length << 2); i++) {
             bb.position(0);
@@ -160,10 +182,10 @@ public class MDHelper {
 
     /**
      * This method assumes {@link #keyLen} is always 8 bytes. It is not trivial to make this method generic in
-     * keyLen without losing efficiency.
+     * keyLen without losing efficiency. This method represents each block of a message with a {@code long} value.
+     * @return A list whose elements contain a pair of blocks (represented as two element {@code long[]} array) colliding in f.
      */
     private List<long[]>  findCollisions(int n) throws BadPaddingException, InvalidKeyException, IllegalBlockSizeException {
-        // int   n = Integer.numberOfTrailingZeros(Integer.highestOneBit(n));
         List<long[]>   res = new ArrayList<>(n);
         byte[]   i1 = new byte[0],  i2 = new byte[0],  hash = H;
         for (int i=0; i < n; i++) {
