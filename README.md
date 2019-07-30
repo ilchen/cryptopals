@@ -1,14 +1,22 @@
 # cryptopals
 Solutions to https://cryptopals.com problems
 
-The only dependency on top of standard JRE 8 runtime is that on Lombok https://projectlombok.org
+The only dependency on top of standard JRE 8 runtime is that on [Lombok](https://projectlombok.org).
 
-## Challenge 48
+## [Set 6](https://cryptopals.com/sets/6)
+### Challenge 48
 For [Challenge 48](https://cryptopals.com/sets/6/challenges/48) there's a dependency on https://github.com/square/jna-gmp/tree/master/jnagmp, which is a wrapper
 around gmp 6.1.x. If you are on macOS, you probably already installed gmp when you installed python using brew. With
 JRE's BigInteger Challenge 48 will take around 5 hours to finish. Using gmp it finishes under 1 hour.
 
-## Challenge 52
+## [Set 7](https://cryptopals.com/sets/7)
+### Challenge 49
+The second part of [this challenge](https://cryptopals.com/sets/7/challenges/49), which deals with a message length extension attack for a multiple transactions request:
+> Your mission: capture a valid message from your target user. Use length extension to add a transaction paying the attacker's account 1M spacebucks.
+
+assumes that the attacker and the victim share the same authentication key, which is quite a stretch.
+
+### Challenge 52
 [Challenge 52](https://cryptopals.com/sets/7/challenges/52) is one of the best demonstrations of the birthday paradox
 I've seen. **NB:** the way this challenge defines the compression function containts
 [a mistake](https://twitter.com/spdevlin/status/1134220310109024257). The correct definition should
@@ -26,7 +34,7 @@ if the cipher's key and block sizes are the same. I opted for Blowfish, which is
 This way I needed to find 2<sup>16</sup> messages colliding in f to ensure there's a pair among them colliding in g. 
 
 
-## Challenge 55
+### Challenge 55
 [Challenge 55](https://cryptopals.com/sets/7/challenges/55) is probably one of the most interesting to work on.
 I succeeded in implementing it in a uniform Object-Oriented way, which aids readability and maintainability.
 The implementation is also blazingly fast -- it finds a collison within a few seconds. Here is one found with it:
@@ -49,7 +57,7 @@ discovered differential cryptanalysis as early as in the 1970s, which is one of 
 (see [this paper](https://ieeexplore.ieee.org/abstract/document/5389567) or Section 12.4 in Bruce Schneier's Applied Cryptography
 2<sup>nd</sup> edition for details).
 
-## Challenge 56
+### Challenge 56
 [Challenge 56](https://cryptopals.com/sets/7/challenges/56) is an excellent demonstration of how even a tiny bias that
 makes the distribution of a secure PRF slightly different from uniform might be enough to break it. In the case of RC4
 bytes 2 to 255 of RC4 keystream have biases on the order of 1/2<sup>16</sup> or higher.
@@ -74,3 +82,17 @@ this would be an overkill.
 
 For the maximum-likelihood estimation of the plaintext bytes I used 2<sup>24</sup> ciphertexts. This is enough to recover
 P<sub>16</sub> and P<sub>32</sub> and fully corraborates the results in Figure 4 in the paper.
+
+## [Set 8](https://toadstyle.org/cryptopals/)
+[Challenge 57](https://toadstyle.org/cryptopals/57.txt) presented me with a need to implement Garner's algorithm to
+reconstruct Bob's private key from its residues per subset of moduli of p-1.
+
+All in all the challenge presents a fairly realistic attack that can even bypass DH implementations where Bob checks
+the offered subgroup description (p, q, g) for correctness:
+* Are both p and q prime?
+* Does q divide p-1?
+* Is g different from 1?
+* Is g<sup>q</sup> equal 1?
+
+The challenge does make one big assumption though, namely that Bob will naively hang on to the same private key
+across all new sessions with Alice. 

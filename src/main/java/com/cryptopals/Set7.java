@@ -323,7 +323,7 @@ public class Set7 extends Set3 {
     }
 
     @SneakyThrows
-    public static byte[]  challenge56Oracle(String request) {
+    static byte[]  challenge56Oracle(String request) {
         KeyGenerator   rc4KeyGen = KeyGenerator.getInstance("RC4");
         rc4KeyGen.init(128);
         SecretKey  sk = rc4KeyGen.generateKey();

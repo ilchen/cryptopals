@@ -9,8 +9,15 @@ import javax.crypto.spec.SecretKeySpec;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+import static java.math.BigInteger.ZERO;
+import static java.math.BigInteger.ONE;
 
 
 /**
@@ -26,7 +33,7 @@ public class DiffieHellmanHelper {
             "c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552" +
             "bb9ed529077096966d670c354e4abc9804f1746c08ca237327ffffffffffffffff", 16),
         G =  BigInteger.valueOf(2);
-    public static final String   AES_TRANSFORMATION = "AES/CBC/PKCS5Padding";
+    static final String   AES_TRANSFORMATION = "AES/CBC/PKCS5Padding";
     private static final int   NUM_BITS = 1024;
     final Random   secRandGen = new SecureRandom(); // SecureRandom is thread-safe
     final BigInteger   p,  g;
@@ -36,7 +43,7 @@ public class DiffieHellmanHelper {
         BigInteger  gCand;
         do {  // We need to exclude the trivial subgroups
             gCand = new BigInteger(NUM_BITS, secRandGen).mod(p);
-        } while (gCand.equals(BigInteger.ONE) || gCand.equals(p.subtract(BigInteger.ONE)));
+        } while (gCand.equals(ONE) || gCand.equals(p.subtract(ONE)));
         g = gCand;
     }
 
@@ -83,21 +90,67 @@ public class DiffieHellmanHelper {
         BigInteger   exp;
         do {
             exp = new BigInteger(p.bitLength(), secRandGen).mod(p);
-        } while (exp.equals(BigInteger.ZERO) || exp.equals(BigInteger.ONE)
-                 ||  exp.equals(p.subtract(BigInteger.ONE)));
+        } while (exp.equals(ZERO) || exp.equals(ONE)
+                 ||  exp.equals(p.subtract(ONE)));
         return  exp;
     }
 
-    @SneakyThrows // SHA-1 is guaranteed to be available by the Java platform.
+
     public SecretKeySpec generateSymmetricKey(BigInteger A, BigInteger b) {
-        MessageDigest sha = MessageDigest.getInstance("SHA-1");
-        return  new SecretKeySpec(Arrays.copyOf(sha.digest(A.modPow(b, p).toByteArray()), 16), "AES");
+        return  generateSymmetricKey(A, b, 20, "AES");
+    }
+
+    @SneakyThrows // SHA-1 is guaranteed to be available by the Java platform.
+    public SecretKeySpec generateSymmetricKey(BigInteger A, BigInteger b, int len, String keyAlgorithm) {
+        MessageDigest sha = MessageDigest.getInstance(len > 20  ?  "SHA-256" : "SHA-1");
+        return  new SecretKeySpec(Arrays.copyOf(sha.digest(A.modPow(b, p).toByteArray()), len), keyAlgorithm);
     }
 
     IvParameterSpec  getFreshIV() {
         byte[] iv = new byte[16];
         secRandGen.nextBytes(iv); /* Generate a secure random IV */
         return  new IvParameterSpec(iv);
+    }
+
+    /**
+     * Finds all factors of the quotient of p-1 and {@code factor} that are smaller than 2^16 (if any) and greater than 4.
+     * @param factor  one known divisor of {@code p-1} to speed the process up
+     */
+    public List<BigInteger>  findSmallFactors(BigInteger factor) {
+        BigInteger   pMin1 = p.subtract(ONE),  limit = BigInteger.valueOf(1 << 16),
+                     r[] = pMin1.divideAndRemainder(factor);
+        if (!r[1].equals((ZERO))) {
+            throw  new IllegalArgumentException(factor + " is not a factor of " + pMin1);
+        }
+
+        List<BigInteger>   factors = IntStream.range(2, 1 << 16) /* Finding all divisors of r */
+                .filter(i -> r[0].remainder(BigInteger.valueOf(i)).equals(ZERO))
+                .boxed().map(BigInteger::valueOf).collect(Collectors.toCollection(ArrayList::new));
+
+        for (int i=0; i < factors.size() - 1; i++) {          /* Getting rid of non-prime divisors */
+            BigInteger   f = factors.get(i);
+            for (int j=i+1; j < factors.size();) {
+                if (factors.get(j).remainder(f).equals(ZERO)) {
+                    factors.remove(j);
+                } else  j++;
+            }
+        }
+
+        return  factors;
+    }
+
+    /**
+     * Finds a generator of group Zp* of required order
+     * @param order  the order the generator must have
+     * @return a generator satisfying the order given
+     */
+    public BigInteger  findGenerator(BigInteger order) {
+        Random   rnd = new Random();
+        BigInteger   otherOrder = p.subtract(ONE).divide(order),  h;
+        do {
+            h = new BigInteger(p.bitLength(), rnd).modPow(otherOrder, p);
+        }  while (h.equals(ONE));
+        return  h;
     }
 
 }

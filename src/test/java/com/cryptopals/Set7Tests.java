@@ -9,7 +9,6 @@ import org.junit.jupiter.api.Test;
 import sun.security.provider.MD4;
 
 import static com.cryptopals.Set7.*;
-import static javax.xml.bind.DatatypeConverter.printHexBinary;
 import static org.junit.jupiter.api.Assertions.*;
 
 import javax.crypto.BadPaddingException;

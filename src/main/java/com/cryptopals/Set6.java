@@ -28,14 +28,14 @@ import static com.cryptopals.set_6.DSAHelper.TWO;
  * Created by Andrei Ilchenko on 20-03-19.
  */
 public class Set6 {
-    public static final String   PLAIN_TEXT = "{\n" +
+    static final String   PLAIN_TEXT = "{\n" +
             "  time: 1356304276,\n" +
             "  social: '555-55-5555',\n" +
             "}",
             CHALLENGE_43_TEXT = "For those that envy a MC it can be hazardous to your health\n"
                     + "So be friendly, a matter of life and death, just like a etch-a-sketch\n",
             CHALLANGE_47_PLAINTEXT = "kick it, CC";
-    public static final BigInteger   CHALLENGE_43_Y = new BigInteger("84ad4719d044495496a3201c8ff484feb45b962e7302e56a392aee4" +
+    static final BigInteger   CHALLENGE_43_Y = new BigInteger("84ad4719d044495496a3201c8ff484feb45b962e7302e56a392aee4" +
             "abab3e4bdebf2955b4736012f21a08084056b19bcd7fee56048e004" +
             "e44984e2f411788efdc837a0d2e5abb7b555039fd243ac01f0fb2ed" +
             "1dec568280ce678e931868d23eb095fde9d3779191b8c0299d6e07b" +
@@ -46,10 +46,10 @@ public class Set6 {
             "f674a61f1d89a1fff27171ebc1b93d4dc57bceb7ae2430" +
             "f98a6a4d83d8279ee65d71c1203d2c96d65ebbf7cce9d3" +
             "2971c3de5084cce04a2e147821", 16);
-    public static final DSAHelper.Signature   CHALLANGE_43_SIGNATURE = new DSAHelper.Signature(
+    static final DSAHelper.Signature   CHALLANGE_43_SIGNATURE = new DSAHelper.Signature(
             new BigInteger("548099063082341131477253921760299949438196259240", 10),
             new BigInteger("857042759984254168557880549501802188789837994940", 10));
-    public static final byte   CHALLANGE_46_PLAINTEXT[] = DatatypeConverter.parseBase64Binary(
+    static final byte   CHALLANGE_46_PLAINTEXT[] = DatatypeConverter.parseBase64Binary(
             "VGhhdCdzIHdoeSBJIGZvdW5kIHlvdSBkb24ndCBwbGF5IGFyb3VuZCB3aXRoIHRoZSBGdW5reSBDb2xkIE1lZGluYQ==");
     private static final Random   RANDOM = new Random(); // Thread safe
 
