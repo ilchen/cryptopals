@@ -84,8 +84,10 @@ For the maximum-likelihood estimation of the plaintext bytes I used 2<sup>24</su
 P<sub>16</sub> and P<sub>32</sub> and fully corraborates the results in Figure 4 in the paper.
 
 ## [Set 8](https://toadstyle.org/cryptopals/)
-[Challenge 57](https://toadstyle.org/cryptopals/57.txt) presented me with a need to implement Garner's algorithm to
-reconstruct Bob's private key from its residues per subset of moduli of p-1.
+### Challenge 57
+[Challenge 57](https://toadstyle.org/cryptopals/57.txt) presented me with a need to
+[implement Garner's algorithm](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L44-L72) to
+reconstruct Bob's private key from its residues per subset of the moduli of p-1.
 
 All in all the challenge presents a fairly realistic attack that can even bypass DH implementations where Bob checks
 the offered subgroup description (p, q, g) for correctness:
