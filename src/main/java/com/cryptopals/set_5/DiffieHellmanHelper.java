@@ -168,7 +168,7 @@ public class DiffieHellmanHelper {
      * Calculates the discrete log of {@code y} using J.M. Pollard's Lambda Method for Catching Kangaroos, as
      * outlined in Section 3 of <a href="https://arxiv.org/pdf/0812.0789.pdf">this paper</a>. I chose the algorithm's
      * parameter N in such a way as ot ensure the probability of the method succeeding is 98%.
-     * 
+     *
      * @param y  the parameter whose dlog needs to be found
      * @param b  upper bound (inclusive) that the logarithm lies in
      * @param f  a pseudo-random function mapping from set {1, 2, ..., p-1} to set {0, 1, ..., p-1}

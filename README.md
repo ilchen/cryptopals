@@ -120,5 +120,5 @@ I used ceil(log<sub>2</sub>&radic;b + log<sub>2</sub>log<sub>2</sub>&radic;b - 2
 the suggestion in Section 3.1 of [this paper by Ravi Montenegro and Prasad Tetali](https://arxiv.org/pdf/0812.0789.pdf). 
 
 When deciding on the amount of jumps N that the tame kangaroo is to make, I used the suggestion from the challenge
-description and set N to the mean of range of f multiplied by 4. With the choice of the constant the probability of
+description and set N to the mean of range of f multiplied by 4. With this choice of the constant the probability of
 Pollard's method finding the dlog is 98%.
