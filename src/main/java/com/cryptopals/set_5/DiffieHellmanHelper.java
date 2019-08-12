@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -100,7 +101,7 @@ public class DiffieHellmanHelper {
         return  generateSymmetricKey(A, b, 20, "AES");
     }
 
-    @SneakyThrows // SHA-1 is guaranteed to be available by the Java platform.
+    @SneakyThrows // SHA-1 and SHA-256 are guaranteed to be available by the Java platform.
     public SecretKeySpec generateSymmetricKey(BigInteger A, BigInteger b, int len, String keyAlgorithm) {
         MessageDigest sha = MessageDigest.getInstance(len > 20  ?  "SHA-256" : "SHA-1");
         return  new SecretKeySpec(Arrays.copyOf(sha.digest(A.modPow(b, p).toByteArray()), len), keyAlgorithm);
@@ -113,21 +114,21 @@ public class DiffieHellmanHelper {
     }
 
     /**
-     * Finds all factors of the quotient of p-1 and {@code factor} that are smaller than 2^16 (if any) and greater than 4.
-     * @param factor  one known divisor of {@code p-1} to speed the process up
+     * Finds all factors of the quotient of p-1 and {@code q} that are smaller than 2^16 and greater than 4 (if any)
+     * @param q  one known divisor of {@code p-1} to speed the process up
      */
-    public List<BigInteger>  findSmallFactors(BigInteger factor) {
+    public List<BigInteger>  findSmallFactors(BigInteger q) {
         BigInteger   pMin1 = p.subtract(ONE),  limit = BigInteger.valueOf(1 << 16),
-                     r[] = pMin1.divideAndRemainder(factor);
+                     r[] = pMin1.divideAndRemainder(q);
         if (!r[1].equals((ZERO))) {
-            throw  new IllegalArgumentException(factor + " is not a factor of " + pMin1);
+            throw  new IllegalArgumentException(q + " is not a factor of " + pMin1);
         }
 
         List<BigInteger>   factors = IntStream.range(2, 1 << 16) /* Finding all divisors of r */
                 .filter(i -> r[0].remainder(BigInteger.valueOf(i)).equals(ZERO))
                 .boxed().map(BigInteger::valueOf).collect(Collectors.toCollection(ArrayList::new));
 
-        for (int i=0; i < factors.size() - 1; i++) {          /* Getting rid of non-prime divisors */
+        for (int i=0; i < factors.size() - 1; i++) {       /* Getting rid of non-prime divisors */
             BigInteger   f = factors.get(i);
             for (int j=i+1; j < factors.size();) {
                 if (factors.get(j).remainder(f).equals(ZERO)) {
@@ -151,6 +152,58 @@ public class DiffieHellmanHelper {
             h = new BigInteger(p.bitLength(), rnd).modPow(otherOrder, p);
         }  while (h.equals(ONE));
         return  h;
+    }
+
+
+    /**
+     * A most simplistic pseudo random function from set {1, 2, ..., p-1} to set {0, 1, ..., k-1},
+     * which is used by J.M. Pollard as an example in his paper
+     */
+    public static BigInteger  f(BigInteger y, int k) {
+        assert k < Long.SIZE;
+        return  BigInteger.valueOf(1L << y.remainder(BigInteger.valueOf(k)).intValue());
+    }
+
+    /**
+     * Calculates the discrete log of {@code y} using J.M. Pollard's Lambda Method for Catching Kangaroos, as
+     * outlined in Section 3 of <a href="https://arxiv.org/pdf/0812.0789.pdf">this paper</a>. I chose the algorithm's
+     * parameter N in such a way as ot ensure the probability of the method succeeding is 98%.
+     * 
+     * @param y  the parameter whose dlog needs to be found
+     * @param b  upper bound (inclusive) that the logarithm lies in
+     * @param f  a pseudo-random function mapping from set {1, 2, ..., p-1} to set {0, 1, ..., p-1}
+     * @return  the dlog of {@code y} if the algorithm succeeds, {@link BigInteger#ZERO} otherwise
+     */
+    public BigInteger  dlog(BigInteger y, BigInteger b, BiFunction<BigInteger, Integer, BigInteger> f) {
+
+        // k is calculated based on a formula in this paper: https://arxiv.org/pdf/0812.0789.pdf
+        double   d = Math.log(Math.sqrt(b.doubleValue())) / Math.log(2);
+        d += Math.log(d) / Math.log(2) + 2;
+        int   k = (int) Math.ceil(d);
+
+        BigInteger   n = ZERO;
+        for (int i=0; i < k; i++) {
+            n = n.add(f.apply(BigInteger.valueOf(i), k));
+        }
+        n = n.divide(BigInteger.valueOf(k >> 2)); // 4 times the mean => probability 0.98 of succeeding
+        System.out.printf("k=%d, N=%d%n", k, n);
+
+        BigInteger   xt = ZERO,  yt = g.modPow(b, p);
+        for (BigInteger i=ZERO; i.compareTo(n) < 0; i=i.add(ONE)) {
+            xt = xt.add(f.apply(yt, k));
+            yt = yt.multiply(g.modPow(f(yt, k), p)).remainder(p);
+        }
+        System.out.printf("xt=%d, upperBound=%d%nyt=%d%n", xt, b.add(xt), yt);
+
+        BigInteger   xw = ZERO,  yw = y;
+        while (xw.compareTo(b.add(xt)) < 0) {
+            xw = xw.add(f(yw, k));
+            yw = yw.multiply(g.modPow(f(yw, k), p)).remainder(p);
+            if (yw.equals(yt))  {
+                return  b.add(xt).subtract(xw);
+            }
+        }
+        return  ZERO;
     }
 
 }

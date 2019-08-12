@@ -89,12 +89,36 @@ P<sub>16</sub> and P<sub>32</sub> and fully corraborates the results in Figure 4
 [implement Garner's algorithm](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L44-L72) to
 reconstruct Bob's private key from its residues per subset of the moduli of p-1.
 
-All in all the challenge presents a fairly realistic attack that can even bypass DH implementations where Bob checks
+All in all the challenge presents an attack that can bypass DH implementations where Bob makes some rudimentary checks
 the offered subgroup description (p, q, g) for correctness:
 * Are both p and q prime?
 * Does q divide p-1?
 * Is g different from 1?
 * Is g<sup>q</sup> equal 1?
 
-The challenge does make one big assumption though, namely that Bob will naively hang on to the same private key
-across all new sessions with Alice. 
+The challenge does make two big assumption though, namely that
+* Bob will naively hang on to the same private key across all new sessions with Alice.
+* That group Z<sub>p</sub><sup>*</sup> contains a large number of subgroups with small order. The attack will for example
+not work if p is [a safe prime](https://en.wikipedia.org/wiki/Safe_prime).
+
+### Challenge 58
+[Challenge 58](https://toadstyle.org/cryptopals/58.txt) makes the attack from the previous challenge yet more realistic.
+It can be mounted against a group where p-1 has one large factor,in which case it no longer requires that Bob use
+the same private key across all new sessions with Alice. **NB:** The attack will still be infeasible if p is chosen
+to be a safe prime.
+
+The attack makes use of J.M. Pollard's Lambda Method for Catching Kangaroos, as outlined in
+[Section 3 of Pollard's paper](https://www.ams.org/journals/mcom/1978-32-143/S0025-5718-1978-0491431-9/S0025-5718-1978-0491431-9.pdf).
+
+
+Pollard's method makes use of a pseudo-random mapping function f that maps from set {1, 2, ..., p-1} to set {0, 1, ... k-1}.
+The challenge suggested the following simplistic defintion for f (which is similar to what Pollard gives in one of his examples):
+```aidl
+f(y) = 2^(y mod k)
+```
+I used ceil(log<sub>2</sub>&radic;b + log<sub>2</sub>log<sub>2</sub>&radic;b - 2) for calculating k, which is based on
+the suggestion in Section 3.1 of [this paper by Ravi Montenegro and Prasad Tetali](https://arxiv.org/pdf/0812.0789.pdf). 
+
+When deciding on the amount of jumps N that the tame kangaroo is to make, I used the suggestion from the challenge
+description and set N to the mean of range of f multiplied by 4. With the choice of the constant the probability of
+Pollard's method finding the dlog is 98%.
