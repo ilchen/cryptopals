@@ -2,6 +2,7 @@ package com.cryptopals;
 
 import com.cryptopals.set_5.DiffieHellmanHelper;
 import com.cryptopals.set_8.DiffieHellman;
+import com.cryptopals.set_8.DiffieHellmanHelperExt;
 import lombok.Data;
 
 import javax.crypto.Mac;
@@ -17,8 +18,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static java.math.BigInteger.ZERO;
-import static java.math.BigInteger.ONE;
+import static java.math.BigInteger.*;
 
 /**
  * Created by Andrei Ilchenko on 28-07-19.
@@ -74,8 +74,8 @@ public class Set8 {
     static BigInteger  breakChallenge57(String url) throws RemoteException, NotBoundException, MalformedURLException,
             NoSuchAlgorithmException, InvalidKeyException {
         DiffieHellman   bob = (DiffieHellman) Naming.lookup(url);
-        DiffieHellmanHelper  dh = new DiffieHellmanHelper(P, G);
-        List<BigInteger>   factors = dh.findSmallFactors(Q);
+        DiffieHellmanHelperExt  dh = new DiffieHellmanHelperExt(P, G, Q);
+        List<BigInteger>   factors = dh.findSmallFactors();
         int   n = factors.size();
         System.out.println(factors);
 
@@ -103,6 +103,41 @@ public class Set8 {
         }
 
         return  garnersAlgorithm(residues);
+    }
+
+    static BigInteger  breakChallenge58(String url) throws RemoteException, NotBoundException, MalformedURLException,
+            NoSuchAlgorithmException, InvalidKeyException {
+        DiffieHellman   bob = (DiffieHellman) Naming.lookup(url);
+        DiffieHellmanHelperExt   dh;
+        BigInteger   p,  g,  q;
+        List<BigInteger>   factors;
+        int   n;
+
+        do {                           /* We need at lease one factor greater than 10 */
+            dh = DiffieHellmanHelperExt.newInstance();
+            p = dh.getModulus();     g = dh.getGenerator();     q = dh.getGenOrder();
+            factors = dh.findSmallFactors();
+            n = factors.size();
+        } while (factors.get(n-1).compareTo(TEN) < 0);
+
+        System.out.println(factors);
+
+        Mac   mac = Mac.getInstance(Set8.MAC_ALGORITHM_NAME);
+
+        // Using only the largest found factor rather than trying them all. This leads to a more realistic attack
+        // vector for Bob is unlikely to hang on to the same private key across diferent sessions with Alice
+        BigInteger   r = factors.get(n-1),  h = dh.findGenerator(r);
+        Challenge57DHBobResponse   res = bob.initiate(p, g, q, h);
+        for (BigInteger b=ZERO; b.compareTo(r) < 0; b=b.add(ONE)) {  /* searching for Bob's secret key b modulo r */
+            mac.init(dh.generateSymmetricKey(h, b, 32, MAC_ALGORITHM_NAME));
+            if (Arrays.equals(res.mac, mac.doFinal(res.msg.getBytes())))  {
+                System.out.printf("Found b mod %d: %d%n", r, b);
+                BigInteger  gPrime = g.pow(r.intValue()), yPrime = res.B.multiply(g.modPow(b.negate(), p)),
+                        m = new DiffieHellmanHelper(p, gPrime).dlog(yPrime, q.subtract(ONE).divide(r), DiffieHellmanHelper::f);
+                return  b.add(m.multiply(r));
+            }
+        }
+        return  ZERO;
     }
 
     public static void main(String[] args) {
@@ -136,10 +171,14 @@ public class Set8 {
             System.out.printf("Recovered dlog of %d:%n %d%n", y, b);
             assert  dh.getGenerator().modPow(b, dh.getModulus()).equals(y);
 
-            y = new BigInteger("9388897478013399550694114614498790691034187453089355259602614074132918843899833277397448144245883225611726912025846772975325932794909655215329941809013733");
-            b = dh.dlog(y, BigInteger.valueOf(2).pow(40), DiffieHellmanHelper::f);
-            System.out.printf("Recovered dlog of %d:%n %d%n", y, b);
-            assert  dh.getGenerator().modPow(b, dh.getModulus()).equals(y);
+//            y = new BigInteger("9388897478013399550694114614498790691034187453089355259602614074132918843899833277397448144245883225611726912025846772975325932794909655215329941809013733");
+//            b = dh.dlog(y, BigInteger.valueOf(2).pow(40), DiffieHellmanHelper::f);
+//            System.out.printf("Recovered dlog of %d:%n %d%n", y, b);
+//            assert  dh.getGenerator().modPow(b, dh.getModulus()).equals(y);
+
+            b = breakChallenge58("rmi://localhost/DiffieHellmanBobService");
+            assert  bob.isValidPrivateKey(b) : "Bob's key not correct";
+            System.out.printf("Recovered Bob's secret key: %x%n", b);
 
         } catch (Exception e) {
             e.printStackTrace();

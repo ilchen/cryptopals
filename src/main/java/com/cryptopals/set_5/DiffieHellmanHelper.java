@@ -1,5 +1,6 @@
 package com.cryptopals.set_5;
 
+import com.squareup.jnagmp.Gmp;
 import lombok.SneakyThrows;
 
 import javax.crypto.Cipher;
@@ -9,13 +10,9 @@ import javax.crypto.spec.SecretKeySpec;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Random;
 import java.util.function.BiFunction;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import static java.math.BigInteger.ZERO;
 import static java.math.BigInteger.ONE;
@@ -33,11 +30,11 @@ public class DiffieHellmanHelper {
             "24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361" +
             "c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552" +
             "bb9ed529077096966d670c354e4abc9804f1746c08ca237327ffffffffffffffff", 16),
-        G =  BigInteger.valueOf(2);
+        G =  BigInteger.valueOf(2),  TWO = BigInteger.valueOf(2);
     static final String   AES_TRANSFORMATION = "AES/CBC/PKCS5Padding";
-    private static final int   NUM_BITS = 1024;
+    protected static final int   NUM_BITS = 1024;
+    protected final BigInteger   p,  g;
     final Random   secRandGen = new SecureRandom(); // SecureRandom is thread-safe
-    final BigInteger   p,  g;
 
     public DiffieHellmanHelper() {
         p = new BigInteger(NUM_BITS, 64, secRandGen);
@@ -113,32 +110,7 @@ public class DiffieHellmanHelper {
         return  new IvParameterSpec(iv);
     }
 
-    /**
-     * Finds all factors of the quotient of p-1 and {@code q} that are smaller than 2^16 and greater than 4 (if any)
-     * @param q  one known divisor of {@code p-1} to speed the process up
-     */
-    public List<BigInteger>  findSmallFactors(BigInteger q) {
-        BigInteger   pMin1 = p.subtract(ONE),  limit = BigInteger.valueOf(1 << 16),
-                     r[] = pMin1.divideAndRemainder(q);
-        if (!r[1].equals((ZERO))) {
-            throw  new IllegalArgumentException(q + " is not a factor of " + pMin1);
-        }
 
-        List<BigInteger>   factors = IntStream.range(2, 1 << 16) /* Finding all divisors of r */
-                .filter(i -> r[0].remainder(BigInteger.valueOf(i)).equals(ZERO))
-                .boxed().map(BigInteger::valueOf).collect(Collectors.toCollection(ArrayList::new));
-
-        for (int i=0; i < factors.size() - 1; i++) {       /* Getting rid of non-prime divisors */
-            BigInteger   f = factors.get(i);
-            for (int j=i+1; j < factors.size();) {
-                if (factors.get(j).remainder(f).equals(ZERO)) {
-                    factors.remove(j);
-                } else  j++;
-            }
-        }
-
-        return  factors;
-    }
 
     /**
      * Finds a generator of group Zp* of required order
@@ -154,20 +126,24 @@ public class DiffieHellmanHelper {
         return  h;
     }
 
-
     /**
      * A most simplistic pseudo random function from set {1, 2, ..., p-1} to set {0, 1, ..., k-1},
      * which is used by J.M. Pollard as an example in his paper
      */
     public static BigInteger  f(BigInteger y, int k) {
-        assert k < Long.SIZE;
-        return  BigInteger.valueOf(1L << y.remainder(BigInteger.valueOf(k)).intValue());
+//        assert  k < Long.SIZE : "k is too long: " + k;
+//        if (k < Long.SIZE) {
+            return BigInteger.valueOf(1L << y.remainder(BigInteger.valueOf(k)).intValue());
+//        } else {
+//            return TWO.pow(y.remainder(BigInteger.valueOf(k)).intValue());
+//        }
     }
 
+
     /**
-     * Calculates the discrete log of {@code y} using J.M. Pollard's Lambda Method for Catching Kangaroos, as
-     * outlined in Section 3 of <a href="https://arxiv.org/pdf/0812.0789.pdf">this paper</a>. I chose the algorithm's
-     * parameter N in such a way as ot ensure the probability of the method succeeding is 98%.
+     * Calculates the discrete log of {@code y} base {@link DiffieHellmanHelper::g} using J.M. Pollard's Lambda Method
+     * for Catching Kangaroos, as outlined in Section 3 of <a href="https://arxiv.org/pdf/0812.0789.pdf">this paper</a>.
+     * I chose the algorithm's parameter N in such a way as ot ensure the probability of the method succeeding is 98%.
      *
      * @param y  the parameter whose dlog needs to be found
      * @param b  upper bound (inclusive) that the logarithm lies in
@@ -191,14 +167,16 @@ public class DiffieHellmanHelper {
         BigInteger   xt = ZERO,  yt = g.modPow(b, p);
         for (BigInteger i=ZERO; i.compareTo(n) < 0; i=i.add(ONE)) {
             xt = xt.add(f.apply(yt, k));
-            yt = yt.multiply(g.modPow(f(yt, k), p)).remainder(p);
+            //yt = yt.multiply(g.modPow(f(yt, k), p)).remainder(p);
+            yt = yt.multiply(Gmp.modPowInsecure(g, f(yt, k), p)).remainder(p);
         }
         System.out.printf("xt=%d, upperBound=%d%nyt=%d%n", xt, b.add(xt), yt);
 
         BigInteger   xw = ZERO,  yw = y;
         while (xw.compareTo(b.add(xt)) < 0) {
             xw = xw.add(f(yw, k));
-            yw = yw.multiply(g.modPow(f(yw, k), p)).remainder(p);
+            //yw = yw.multiply(g.modPow(f(yw, k), p)).remainder(p);
+            yw = yw.multiply(Gmp.modPowInsecure(g, f(yw, k), p)).remainder(p);
             if (yw.equals(yt))  {
                 return  b.add(xt).subtract(xw);
             }

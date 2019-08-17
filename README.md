@@ -103,22 +103,36 @@ not work if p is [a safe prime](https://en.wikipedia.org/wiki/Safe_prime).
 
 ### Challenge 58
 [Challenge 58](https://toadstyle.org/cryptopals/58.txt) makes the attack from the previous challenge yet more realistic.
-It can be mounted against a group where p-1 has one large factor,in which case it no longer requires that Bob use
-the same private key across all new sessions with Alice. **NB:** The attack will still be infeasible if p is chosen
-to be a safe prime.
+It can be mounted against a group where `p-1` has at least one large factor in addition to `q`.
 
 The attack makes use of J.M. Pollard's Lambda Method for Catching Kangaroos, as outlined in
 [Section 3 of Pollard's paper](https://www.ams.org/journals/mcom/1978-32-143/S0025-5718-1978-0491431-9/S0025-5718-1978-0491431-9.pdf).
-
 
 Pollard's method makes use of a pseudo-random mapping function f that maps from set {1, 2, ..., p-1} to set {0, 1, ... k-1}.
 The challenge suggested the following simplistic defintion for f (which is similar to what Pollard gives in one of his examples):
 ```aidl
 f(y) = 2^(y mod k)
 ```
-I used ceil(log<sub>2</sub>&radic;b + log<sub>2</sub>log<sub>2</sub>&radic;b - 2) for calculating k, which is based on
+I used ceil(log<sub>2</sub>&radic;b + log<sub>2</sub>log<sub>2</sub>&radic;b - 2) for calculating `k`, which is based on
 the suggestion in Section 3.1 of [this paper by Ravi Montenegro and Prasad Tetali](https://arxiv.org/pdf/0812.0789.pdf). 
 
 When deciding on the amount of jumps N that the tame kangaroo is to make, I used the suggestion from the challenge
 description and set N to the mean of range of f multiplied by 4. With this choice of the constant the probability of
 Pollard's method finding the dlog is 98%.
+
+I generate group Z<sub>p</sub><sup>*</sup> as follows:
+* `p` is a 1024 bit prime meeting the following  requirement: `p = Nq + 1`, where `q` is a 42 bits prime. This
+is based on the advice from Section 11.6 of "Cryptography Engineering, 2<sup>nd</sup> edition" by Niels Ferguson,
+Bruce Schneier, and Tadayoshi Kohno.
+* The generator `g` is random member of Z<sub>p</sub><sup>*</sup> that has an order of `q`.
+
+The only deviation from the book is that I use fewer than 256 bits for `q`, which obviously weakens the group. Unfortunately
+Pollard's kangaroo algorithm doesn't lend itself to parallelisation so choosing `q` much larger than 42 bits makes the
+attack impracticle. With a 42-bit q the attack takes on the order of 20 minutes on my MacBook Pro.
+
+To make the attack more realistic I establish only one session to Bob to find `b mod r`, where `r` is one factor of `N`.
+This no longer assumes that Bob uses the same private key across all new sessions with Alice. The attack thus works
+in a realistic setting where Bob generates a new private key for each new session.
+
+**NB:** The attack will still be infeasible if `p` is chosen to be a safe prime. However such choices of Z<sub>p</sub><sup>*</sup>
+are rare as they lead to more computationally intensive exponentiation in the group.

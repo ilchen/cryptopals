@@ -1,7 +1,6 @@
 package com.cryptopals.set_8;
 
 import com.cryptopals.Set8;
-import com.cryptopals.set_5.DiffieHellmanHelper;
 import lombok.SneakyThrows;
 
 import javax.crypto.Mac;
@@ -13,7 +12,7 @@ import static java.math.BigInteger.ZERO;
 import static java.math.BigInteger.ONE;
 
 public class  DiffieHellmanBobService implements DiffieHellman {
-    private DiffieHellmanHelper   df;
+    private DiffieHellmanHelperExt   df;
     private SecretKeySpec   macKey;
     private BigInteger  privateKey;
     private final Mac   mac;
@@ -37,9 +36,8 @@ public class  DiffieHellmanBobService implements DiffieHellman {
         // A bit contrived for Bob to hang on to the same private key across new sessions, however this is what
         // Challenge 57 calls for.
         if (df == null  ||  !p.equals(df.getModulus())  ||  !g.equals(df.getGenerator())) {
-            df = new DiffieHellmanHelper(p, g);
+            df = new DiffieHellmanHelperExt(p, g, q);
             privateKey = df.generateExp();
-            privateKey = privateKey.mod(q);
         }
         macKey = df.generateSymmetricKey(A, privateKey, 32, Set8.MAC_ALGORITHM_NAME);
         mac.init(macKey);
