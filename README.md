@@ -124,11 +124,11 @@ I generate group Z<sub>p</sub><sup>*</sup> as follows:
 * `p` is a 1024 bit prime meeting the following  requirement: `p = Nq + 1`, where `q` is a 42 bits prime. This
 is based on the advice from Section 11.6 of "Cryptography Engineering, 2<sup>nd</sup> edition" by Niels Ferguson,
 Bruce Schneier, and Tadayoshi Kohno.
-* The generator `g` is random member of Z<sub>p</sub><sup>*</sup> that has an order of `q`.
+* The generator `g` is a random member of Z<sub>p</sub><sup>*</sup> that has an order of `q`.
 
 The only deviation from the book is that I use fewer than 256 bits for `q`, which obviously weakens the group. Unfortunately
-Pollard's kangaroo algorithm doesn't lend itself to parallelisation so choosing `q` much larger than 42 bits makes the
-attack impracticle. With a 42-bit q the attack takes on the order of 20 minutes on my MacBook Pro.
+Pollard's kangaroo algorithm doesn't lend itself to parallelisation so choosing `q` to be much larger than 42 bits makes the
+attack impracticle. E.g. with a 42-bit q the attack takes on the order of 20 minutes on my MacBook Pro.
 
 To make the attack more realistic I establish only one session to Bob to find `b mod r`, where `r` is one factor of `N`.
 This no longer assumes that Bob uses the same private key across all new sessions with Alice. The attack thus works
