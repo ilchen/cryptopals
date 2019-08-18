@@ -3,6 +3,22 @@ Solutions to https://cryptopals.com problems
 
 The only dependency on top of standard JRE 8 runtime is that on [Lombok](https://projectlombok.org).
 
+## How to run
+The majority of the challenges of a set can be run by executing the `com.cryptopals.Setx.main` method of the set.
+Required dependencies are defined in the project's `pom.xml`.
+
+Some challenges ([31](https://cryptopals.com/sets/4/challenges/31), 
+[32](https://cryptopals.com/sets/4/challenges/32), [34](https://cryptopals.com/sets/5/challenges/34),
+[35](https://cryptopals.com/sets/5/challenges/35), [36](https://cryptopals.com/sets/5/challenges/36),
+[37](https://cryptopals.com/sets/5/challenges/37), [49](https://cryptopals.com/sets/7/challenges/49),
+[57](https://toadstyle.org/cryptopals/57.txt), [58](https://toadstyle.org/cryptopals/58.txt)) require a server-side application.
+This can be produced with `mvn install` and executed with
+```
+java -jar cryptopals_server-0.2.0.jar
+```
+as a typical SpringBoot application. This application provides either a RESTful API or an RMI component depending on
+a challenge.
+
 ## [Set 6](https://cryptopals.com/sets/6)
 ### Challenge 48
 For [Challenge 48](https://cryptopals.com/sets/6/challenges/48) there's a dependency on https://github.com/square/jna-gmp/tree/master/jnagmp, which is a wrapper
@@ -21,7 +37,7 @@ assumes that the attacker and the victim share the same authentication key, whic
 I've seen. **NB:** the way this challenge defines the compression function containts
 [a mistake](https://twitter.com/spdevlin/status/1134220310109024257). The correct definition should
 be
-```aidl
+```
 function MD(M, H, C):
   for M[i] in pad(M):
     H := C(M[i], H) ^ H
@@ -110,7 +126,7 @@ The attack makes use of J.M. Pollard's Lambda Method for Catching Kangaroos, as 
 
 Pollard's method makes use of a pseudo-random mapping function f that maps from set {1, 2, ..., p-1} to set {0, 1, ... k-1}.
 The challenge suggested the following simplistic defintion for f (which is similar to what Pollard gives in one of his examples):
-```aidl
+```
 f(y) = 2^(y mod k)
 ```
 I used ceil(log<sub>2</sub>&radic;b + log<sub>2</sub>log<sub>2</sub>&radic;b - 2) for calculating `k`, which is based on
@@ -121,7 +137,7 @@ description and set N to the mean of range of f multiplied by 4. With this choic
 Pollard's method finding the dlog is 98%.
 
 I generate group Z<sub>p</sub><sup>*</sup> as follows:
-* `p` is a 1024 bit prime meeting the following  requirement: `p = Nq + 1`, where `q` is a 42 bits prime. This
+* `p` is a 1024-bit prime meeting the following  requirement: `p = Nq + 1`, where `q` is a 42-bit prime. This
 is based on the advice from Section 11.6 of "Cryptography Engineering, 2<sup>nd</sup> edition" by Niels Ferguson,
 Bruce Schneier, and Tadayoshi Kohno.
 * The generator `g` is a random member of Z<sub>p</sub><sup>*</sup> that has an order of `q`.

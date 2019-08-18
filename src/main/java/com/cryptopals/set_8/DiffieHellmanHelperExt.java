@@ -20,7 +20,7 @@ import static java.math.BigInteger.ZERO;
  * and Tadayoshi Kohno.
  */
 final public class DiffieHellmanHelperExt extends DiffieHellmanHelper {
-    private static final int   NUM_BITS_Q = 48,  CERTAINTY = 100;
+    private static final int   NUM_BITS_Q = 42,  CERTAINTY = 100;
     private final BigInteger   q;
 
     public static DiffieHellmanHelperExt  newInstance() {
