@@ -5,6 +5,7 @@ import com.cryptopals.Set4;
 import com.cryptopals.Set7;
 import com.cryptopals.set_5.*;
 import com.cryptopals.set_8.DiffieHellmanBobService;
+import com.cryptopals.set_8.ECDiffieHellmanBobService;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
@@ -76,6 +77,16 @@ public class CryptopalsServerApplication {
         rmiExporter.setServiceInterface(com.cryptopals.set_8.DiffieHellman.class);
         return rmiExporter;
     }
+
+    @Bean
+    public RmiServiceExporter rmiECDHBobServiceExporter() {
+        RmiServiceExporter rmiExporter = new RmiServiceExporter();
+        rmiExporter.setService(new ECDiffieHellmanBobService());
+        rmiExporter.setServiceName("ECDiffieHellmanBobService");
+        rmiExporter.setServiceInterface(com.cryptopals.set_8.ECDiffieHellman.class);
+        return rmiExporter;
+    }
+
     @Bean
     public RmiServiceExporter rmiSRPServiceExporter() {
         RmiServiceExporter rmiExporter = new RmiServiceExporter();

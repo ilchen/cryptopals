@@ -3,9 +3,14 @@ package com.cryptopals;
 import com.cryptopals.set_5.DiffieHellmanHelper;
 import com.cryptopals.set_8.DiffieHellman;
 import com.cryptopals.set_8.DiffieHellmanHelperExt;
+import com.cryptopals.set_8.ECDiffieHellman;
+import com.cryptopals.set_8.ECGroup;
 import lombok.Data;
+import lombok.SneakyThrows;
 
 import javax.crypto.Mac;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 import java.io.Serializable;
 import java.math.BigInteger;
 import java.net.MalformedURLException;
@@ -13,6 +18,7 @@ import java.rmi.Naming;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.security.InvalidKeyException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -37,6 +43,13 @@ public class Set8 {
     @Data
     public static class Challenge57DHBobResponse implements Serializable {
         final BigInteger B;
+        final String   msg;
+        final byte[]   mac;
+    }
+
+    @Data
+    public static class Challenge59ECDHBobResponse implements Serializable {
+        final ECGroup.ECGroupElement B;
         final String   msg;
         final byte[]   mac;
     }
@@ -140,6 +153,12 @@ public class Set8 {
         return  ZERO;
     }
 
+    @SneakyThrows
+    public static SecretKeySpec generateSymmetricKey(ECGroup.ECGroupElement A, BigInteger b, int len, String keyAlgorithm) {
+        MessageDigest sha = MessageDigest.getInstance(len > 20  ?  "SHA-256" : "SHA-1");
+        return  new SecretKeySpec(Arrays.copyOf(sha.digest(A.scale(b).toByteArray()), len), keyAlgorithm);
+    }
+
     public static void main(String[] args) {
 
         try {
@@ -167,18 +186,37 @@ public class Set8 {
                     new BigInteger("622952335333961296978159266084741085889881358738459939978290179936063635566740258555167783009058567397963466103140082647486611657350811560630587013183357"));
 
             BigInteger   y = new BigInteger("7760073848032689505395005705677365876654629189298052775754597607446617558600394076764814236081991643094239886772481052254010323780165093955236429914607119");
-            b = dh.dlog(y, BigInteger.valueOf(2).pow(20), DiffieHellmanHelper::f);
+            b = dh.dlog(y, valueOf(2).pow(20), DiffieHellmanHelper::f);
             System.out.printf("Recovered dlog of %d:%n %d%n", y, b);
             assert  dh.getGenerator().modPow(b, dh.getModulus()).equals(y);
 
 //            y = new BigInteger("9388897478013399550694114614498790691034187453089355259602614074132918843899833277397448144245883225611726912025846772975325932794909655215329941809013733");
-//            b = dh.dlog(y, BigInteger.valueOf(2).pow(40), DiffieHellmanHelper::f);
+//            b = dh.dlog(y, valueOf(2).pow(40), DiffieHellmanHelper::f);
 //            System.out.printf("Recovered dlog of %d:%n %d%n", y, b);
 //            assert  dh.getGenerator().modPow(b, dh.getModulus()).equals(y);
 
-            b = breakChallenge58("rmi://localhost/DiffieHellmanBobService");
-            assert  bob.isValidPrivateKey(b) : "Bob's key not correct";
-            System.out.printf("Recovered Bob's secret key: %x%n", b);
+//            b = breakChallenge58("rmi://localhost/DiffieHellmanBobService");
+//            assert  bob.isValidPrivateKey(b) : "Bob's key not correct";
+//            System.out.printf("Recovered Bob's secret key: %x%n", b);
+
+            System.out.println("\nChallenge 59");
+            ECGroup   group = new ECGroup(new BigInteger("233970423115425145524320034830162017933"),
+                    valueOf(-95051), valueOf(11279326));
+            ECGroup.ECGroupElement   base = group.createPoint(
+                    valueOf(182), new BigInteger("85518893674295321206118380980485522083"));
+            BigInteger   q = new BigInteger("29246302889428143187362802287225875743");
+            assert  group.containsPoint(base);
+            assert  base.scale(q) == group.O;
+
+            BigInteger   privateKeyAlice = new DiffieHellmanHelper(group.getModulus(), q).generateExp().mod(q);
+            ECDiffieHellman   ecBob = (ECDiffieHellman) Naming.lookup("rmi://localhost/ECDiffieHellmanBobService");
+            Challenge59ECDHBobResponse  res = ecBob.initiate(base, q, base.scale(privateKeyAlice));
+            Mac   mac = Mac.getInstance(MAC_ALGORITHM_NAME);
+            SecretKey   macKey = generateSymmetricKey(res.B, privateKeyAlice, 32, Set8.MAC_ALGORITHM_NAME);
+            mac.init(macKey);
+            assert  Arrays.equals(mac.doFinal(res.msg.getBytes()), res.mac);
+            System.out.println(res);
+
 
         } catch (Exception e) {
             e.printStackTrace();

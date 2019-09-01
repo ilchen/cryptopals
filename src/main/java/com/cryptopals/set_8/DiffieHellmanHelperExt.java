@@ -44,7 +44,7 @@ final public class DiffieHellmanHelperExt extends DiffieHellmanHelper {
         if (nBitsQ < 20) {
             throw  new IllegalArgumentException("q must be at least 20 bits");
         }
-        if (nBitsQ < 128) {
+        if (nBitsP < 128) {
             throw  new IllegalArgumentException("p must be at least 128 bits");
         }
         final Random secRandGen = new SecureRandom();

@@ -7,7 +7,8 @@ import com.squareup.jnagmp.Gmp;
 import java.math.BigInteger;
 import java.security.SecureRandom;
 import java.util.Random;
-import static java.math.BigInteger.ZERO;
+
+import static com.cryptopals.Set5.isOdd;
 import static java.math.BigInteger.ONE;
 
 /**
@@ -38,7 +39,7 @@ public class RSAHelper {
     }
 
     public RSAHelper(BigInteger e, int numBits) {
-        if (e.mod(BigInteger.valueOf(2)).equals(ZERO) || e.compareTo(PUBLIC_EXPONENT) < 0) {
+        if (!isOdd(e) || e.compareTo(PUBLIC_EXPONENT) < 0) {
             throw  new IllegalArgumentException("Invalid public exponent: " + e);
         }
         if (numBits < 64/*  ||  ((numBits & numBits - 1) != 0)*/) {

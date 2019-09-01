@@ -2,6 +2,7 @@ package com.cryptopals;
 
 import com.cryptopals.set_5.DiffieHellmanHelper;
 import com.cryptopals.set_8.DiffieHellman;
+import com.cryptopals.set_8.ECGroup;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -16,6 +17,7 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
+import static java.math.BigInteger.valueOf;
 import static org.junit.jupiter.api.Assertions.*;
 
 class Set8Tests {
@@ -66,5 +68,17 @@ class Set8Tests {
         BigInteger   b = Set8.breakChallenge58(url);
         DiffieHellman bob = (DiffieHellman) Naming.lookup(url);
         assertTrue(bob.isValidPrivateKey(b));
+    }
+
+    @DisplayName("WeierstrassFormECCurve")
+    @Test
+    void challenge59WeierstrassFormECCurve() {
+        ECGroup group = new ECGroup(new BigInteger("233970423115425145524320034830162017933"),
+                valueOf(-95051), valueOf(11279326));
+        ECGroup.ECGroupElement   base = group.createPoint(
+                valueOf(182), new BigInteger("85518893674295321206118380980485522083"));
+        BigInteger   q = new BigInteger("29246302889428143187362802287225875743");
+        assertTrue(group.containsPoint(base));
+        assertEquals(group.O, base.scale(q));
     }
 }

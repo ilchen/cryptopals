@@ -11,7 +11,8 @@ Some challenges ([31](https://cryptopals.com/sets/4/challenges/31),
 [32](https://cryptopals.com/sets/4/challenges/32), [34](https://cryptopals.com/sets/5/challenges/34),
 [35](https://cryptopals.com/sets/5/challenges/35), [36](https://cryptopals.com/sets/5/challenges/36),
 [37](https://cryptopals.com/sets/5/challenges/37), [49](https://cryptopals.com/sets/7/challenges/49),
-[57](https://toadstyle.org/cryptopals/57.txt), [58](https://toadstyle.org/cryptopals/58.txt)) require a server-side application.
+[57](https://toadstyle.org/cryptopals/57.txt), [58](https://toadstyle.org/cryptopals/58.txt),
+[59](https://toadstyle.org/cryptopals/59.txt)) require a server-side application.
 This can be produced with `mvn install` and executed with
 ```
 java -jar cryptopals_server-0.2.0.jar
@@ -152,3 +153,38 @@ in a realistic setting where Bob generates a new private key for each new sessio
 
 **NB:** The attack will still be infeasible if `p` is chosen to be a safe prime. However such choices of Z<sub>p</sub><sup>*</sup>
 are rare as they lead to more computationally intensive exponentiation in the group.
+
+
+### Challenge 59
+[Challenge 59](https://toadstyle.org/cryptopals/59.txt) is is based on the Weierstrass form of representing
+elliptic curves: y<sup>2</sup> = x<sup>3</sup> + ax + b
+
+When implementing the group operation in E(F<sub>p</sub>), division should be carried out as multiplication by
+the multiplicative inverse mod p, e.g.:
+```
+function combine(P1, P2):
+    if P1 = O:
+        return P2
+
+    if P2 = O:
+        return P1
+
+    if P1 = invert(P2):
+        return O
+
+    x1, y1 := P1
+    x2, y2 := P2
+
+    if P1 = P2:
+        m := ( (3*x1^2 + a) * modInv(2*y1, p) ) mod p
+    else:
+        m := ( (y2 - y1) * modInv(x2 - x1, p) ) mod p
+
+    x3 := ( m^2 - x1 - x2 ) mod p
+    y3 := ( m*(x1 - x3) - y1 ) mod p
+
+    return (x3, y3)
+```
+
+For convenience's sake I implemented the class that represents elements of the curve so that each coordinate 
+of a point (x, y) is positive, i.e. `x` and `y` are stored `mod p`. This makes the implementation simpler.

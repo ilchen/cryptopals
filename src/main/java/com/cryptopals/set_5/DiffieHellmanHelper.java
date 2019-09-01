@@ -110,8 +110,6 @@ public class DiffieHellmanHelper {
         return  new IvParameterSpec(iv);
     }
 
-
-
     /**
      * Finds a generator of group Zp* of required order
      * @param order  the order the generator must have

@@ -28,7 +28,12 @@ public class Set5 {
         return s;
     }
 
-    static BigInteger  recoverPlainText(List<BigInteger[]>  pairs) {
+    public static boolean  isOdd(BigInteger i) {
+        byte[]  repr = i.toByteArray();
+        return  (repr[repr.length - 1] & 0x01) != 0;
+    }
+
+    private static BigInteger  recoverPlainText(List<BigInteger[]> pairs) {
         if (pairs.size() != TIMES)
             throw  new IllegalArgumentException(TIMES + " { modulus, cipherText} pairs required");
         BigInteger   n012 = BigInteger.ONE,  res = BigInteger.ZERO;
@@ -106,4 +111,5 @@ public class Set5 {
             e.printStackTrace();
         }
     }
+
 }
