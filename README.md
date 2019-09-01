@@ -156,7 +156,7 @@ are rare as they lead to more computationally intensive exponentiation in the gr
 
 
 ### Challenge 59
-[Challenge 59](https://toadstyle.org/cryptopals/59.txt) is is based on the Weierstrass form of representing
+[Challenge 59](https://toadstyle.org/cryptopals/59.txt) is based on the Weierstrass form of representing
 elliptic curves: y<sup>2</sup> = x<sup>3</sup> + ax + b
 
 When implementing the group operation in E(F<sub>p</sub>), division should be carried out as multiplication by
