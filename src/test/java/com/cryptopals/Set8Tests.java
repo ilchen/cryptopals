@@ -2,6 +2,7 @@ package com.cryptopals;
 
 import com.cryptopals.set_5.DiffieHellmanHelper;
 import com.cryptopals.set_8.DiffieHellman;
+import com.cryptopals.set_8.ECDiffieHellman;
 import com.cryptopals.set_8.ECGroup;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -74,11 +75,26 @@ class Set8Tests {
     @Test
     void challenge59WeierstrassFormECCurve() {
         ECGroup group = new ECGroup(new BigInteger("233970423115425145524320034830162017933"),
-                valueOf(-95051), valueOf(11279326));
+                valueOf(-95051), valueOf(11279326), new BigInteger("233970423115425145498902418297807005944"));
         ECGroup.ECGroupElement   base = group.createPoint(
                 valueOf(182), new BigInteger("85518893674295321206118380980485522083"));
         BigInteger   q = new BigInteger("29246302889428143187362802287225875743");
         assertTrue(group.containsPoint(base));
         assertEquals(group.O, base.scale(q));
+    }
+
+    @DisplayName("https://toadstyle.org/cryptopals/59.txt")
+    @ParameterizedTest @ValueSource(strings = { "rmi://localhost/ECDiffieHellmanBobService" })
+        // The corresponding SpringBoot server application must be running.
+    void challenge59(String url) throws RemoteException, NotBoundException, MalformedURLException,
+            NoSuchAlgorithmException, InvalidKeyException{
+        ECGroup   group = new ECGroup(new BigInteger("233970423115425145524320034830162017933"),
+                valueOf(-95051), valueOf(11279326), new BigInteger("233970423115425145498902418297807005944"));
+        ECGroup.ECGroupElement   base = group.createPoint(
+                valueOf(182), new BigInteger("85518893674295321206118380980485522083"));
+        BigInteger   q = new BigInteger("29246302889428143187362802287225875743");
+        BigInteger   b = Set8.breakChallenge59(base, q, url);
+        ECDiffieHellman bob = (ECDiffieHellman) Naming.lookup(url);
+        assertTrue(bob.isValidPrivateKey(b));
     }
 }

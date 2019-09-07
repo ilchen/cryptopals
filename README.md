@@ -188,3 +188,46 @@ function combine(P1, P2):
 
 For convenience's sake I implemented the class that represents elements of the curve so that each coordinate 
 of a point (x, y) is positive, i.e. `x` and `y` are stored `mod p`. This makes the implementation simpler.
+
+For the rest the attack is pretty similar to [Challenge 57](https://toadstyle.org/cryptopals/57.txt) except
+that the group given in the challenge
+```
+ECGroup(modulus=233970423115425145524320034830162017933, a=-95051, b=11279326, order=233970423115425145498902418297807005944)
+```
+doesn't have an order with many small factors. Therefore instead of finding generators of the small subgroups of this 
+elliptic curve group, the attack hinges on Alice foisting on Bob bogus public keys that are not on the original
+elliptic curve but are rather on specially crafted curves
+```
+ECGroup(modulus=233970423115425145524320034830162017933, a=-95051, b=210, order=233970423115425145550826547352470124412)
+ECGroup(modulus=233970423115425145524320034830162017933, a=-95051, b=504, order=233970423115425145544350131142039591210)
+ECGroup(modulus=233970423115425145524320034830162017933, a=-95051, b=727, order=233970423115425145545378039958152057148)
+```
+
+The orders of these elliptic curves do have many small factors. Interestingly all the three crafted curves are required
+to recover Bob's private key. This is because the product of  the small factors of each of these curves is less than
+the order of the generator given for the challenge `(182, 85518893674295321206118380980485522083)`. You need the distinct
+small factors collected from all the crafted curves.
+
+The attack in this challenge does make two assumption though, namely that
+* Bob will  hang on to the same private key across all new sessions with Alice. This is the same as in Challenge 57.
+* Bob will not check whether Alice's public key lies on the expected elliptic curve. How big of an assumption
+ is that? Unfortunately not too big because in many implementations of ECDH Bob is only sent the x coordinate of
+ Alice's public key for the sake of efficiency, and the implementation doesn't check if x<sup>3</sup> + ax + b is
+ a quadratic residue. In fact such an attack can be pulled off on the ubiquitous NIST P256 curve. It takes
+ a twist-secure elliptic curve such as 25519 to foil this attack. Or one can just check if Alice's public key
+ is on the expected curve, e.g. the following check by Bob will render this attack harmless:
+```java
+public Set8.Challenge59ECDHBobResponse initiate(ECGroup.ECGroupElement g, BigInteger q, ECGroup.ECGroupElement A) throws RemoteException {
+
+    // A bit contrived for Bob to hang on to the same private key across new sessions, however this is what
+    // Challenge 59 calls for.
+    if (ecg == null  ||  !ecg.equals(g.group())  ||  !this.g.equals(g)) {
+        ecg = g.group();
+        this.g = g;
+        privateKey = new DiffieHellmanHelper(ecg.getModulus(), q).generateExp().mod(q);
+    }
+    // Is Alice's public key on the curve?
+    if (!ecg.containsPoint(A)) {
+        throw  new RemoteException("Public key presented not on the expected curve");
+    }
+```

@@ -4,11 +4,8 @@ import com.cryptopals.set_5.DiffieHellmanHelper;
 
 import java.math.BigInteger;
 import java.security.SecureRandom;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import static java.math.BigInteger.ONE;
 import static java.math.BigInteger.ZERO;
@@ -75,25 +72,11 @@ final public class DiffieHellmanHelperExt extends DiffieHellmanHelper {
 
     /**
      * Finds all factors of the quotient of p-1 and {@link DiffieHellmanHelperExt::q} that are smaller than 2^16
-     * and greater than 4 (if any)
+     * and greater than 1 (if any)
      */
     public List<BigInteger>  findSmallFactors() {
-        BigInteger   pMin1 = p.subtract(ONE),  r[] = pMin1.divideAndRemainder(q);
-
-        List<BigInteger>   factors = IntStream.range(2, 1 << 16) /* Finding all divisors of r */
-                .filter(i -> r[0].remainder(BigInteger.valueOf(i)).equals(ZERO))
-                .boxed().map(BigInteger::valueOf).collect(Collectors.toCollection(ArrayList::new));
-
-        for (int i=0; i < factors.size() - 1; i++) {       /* Getting rid of non-prime divisors */
-            BigInteger   f = factors.get(i);
-            for (int j=i+1; j < factors.size();) {
-                if (factors.get(j).remainder(f).equals(ZERO)) {
-                    factors.remove(j);
-                } else  j++;
-            }
-        }
-
-        return  factors;
+        BigInteger   pMin1 = p.subtract(ONE);
+        return  DiffieHellmanUtils.findSmallFactors(pMin1.divide(q));
     }
 
     @Override

@@ -17,7 +17,7 @@ import java.util.stream.IntStream;
 public class Set5 {
     static final int   TIMES = RSAHelper.PUBLIC_EXPONENT.intValue();
 
-    static BigInteger  ithroot(BigInteger n, int k) {
+    public static BigInteger  ithroot(BigInteger n, int k) {
         final int  k1 = k - 1;
         BigInteger  kBig = BigInteger.valueOf(k),  k1Big = BigInteger.valueOf(k1),  s = n.add(BigInteger.ONE),  u = n;
 

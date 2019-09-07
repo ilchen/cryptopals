@@ -1,6 +1,7 @@
 package com.cryptopals.set_8;
 
 import com.cryptopals.Set5;
+import com.cryptopals.Set8;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
@@ -18,13 +19,23 @@ import java.util.Arrays;
 final public class ECGroup implements Serializable {
     static private final BigInteger   TWO = BigInteger.valueOf(2),  THREE = BigInteger.valueOf(3);
     @Getter
-    private final BigInteger   modulus,  a,  b;
+    private final BigInteger   modulus,  a,  b,  order;
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
     public final ECGroupElement O = this.new ECGroupElement(null, null);
 
-    public ECGroup(BigInteger p, BigInteger a, BigInteger b) {
-        modulus = p;     this.a = a;     this.b = b;
+    public ECGroup(BigInteger p, BigInteger a, BigInteger b, BigInteger q) {
+        modulus = p;     this.a = a;     this.b = b;     order = q;
+    }
+
+    /**
+     * Calculates the y coordinate of a point on this curve using its y coordinate
+     * @param x
+     * @return the y coordinate or {@link Set8#NON_RESIDUE} if there's no point on the curve with the given x coordinate
+     */
+    public BigInteger  mapToY(BigInteger x) {
+        BigInteger   ySquared = x.pow(3).add(a.multiply(x)).add(b).mod(modulus);
+        return  Set8.squareRoot(ySquared, modulus);
     }
 
     public boolean  containsPoint(ECGroupElement elem) {
