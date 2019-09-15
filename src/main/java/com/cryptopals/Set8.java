@@ -48,7 +48,7 @@ public class Set8 {
 
     @Data
     public static class Challenge59ECDHBobResponse implements Serializable {
-        final ECGroup.ECGroupElement B;
+        final ECGroupElement B;
         final String   msg;
         final byte[]   mac;
     }
@@ -226,7 +226,7 @@ public class Set8 {
             for (int i = 0; i < n; i++) {
                 BigInteger r = newFactors.get(i);
                 if (r.equals(TWO))  continue;
-                ECGroup.ECGroupElement h = DiffieHellmanUtils.findGenerator(degenerateGroup, r);
+                ECGroupElement h = DiffieHellmanUtils.findGenerator(degenerateGroup, r);
                 Challenge59ECDHBobResponse res = bob.initiate(base, order, h);
                 for (BigInteger b = ZERO; b.compareTo(r) < 0; b = b.add(ONE)) {  /* searching for Bob's secret key b modulo r */
                     mac.init(generateSymmetricKey(h, b, 32, MAC_ALGORITHM_NAME));
@@ -249,7 +249,7 @@ public class Set8 {
     }
 
     @SneakyThrows
-    public static SecretKeySpec generateSymmetricKey(ECGroup.ECGroupElement A, BigInteger b, int len, String keyAlgorithm) {
+    public static SecretKeySpec generateSymmetricKey(ECGroupElement A, BigInteger b, int len, String keyAlgorithm) {
         MessageDigest sha = MessageDigest.getInstance(len > 20  ?  "SHA-256" : "SHA-1");
         return  new SecretKeySpec(Arrays.copyOf(sha.digest(A.scale(b).toByteArray()), len), keyAlgorithm);
     }
@@ -315,6 +315,19 @@ public class Set8 {
             b = breakChallenge59(base, q, "rmi://localhost/ECDiffieHellmanBobService");
             assert  ecBob.isValidPrivateKey(b) : "Bob's key not correct";
             System.out.printf("Recovered Bob's secret key: %x%n", b);
+
+            System.out.println("\nChallenge 60");
+            MontgomeryECGroup   mgroup = new MontgomeryECGroup(new BigInteger("233970423115425145524320034830162017933"),
+                    valueOf(534), ONE, new BigInteger("233970423115425145498902418297807005944"));
+            MontgomeryECGroup.ECGroupElement   mbase = mgroup.createPoint(
+                    valueOf(4), new BigInteger("85518893674295321206118380980485522083"));
+
+            assert  ZERO.equals(mbase.ladder(q));
+            System.out.println("base^q = " + mbase.scale(q));
+            System.out.println("base^q-1 = " + mbase.scale(q.subtract(ONE)));
+            System.out.println("base^q-2 = " + mbase.scale(q.subtract(TWO)));
+            System.out.println("base^q+1 = " + mbase.scale(q.add(ONE)));
+
 
         } catch (Exception e) {
             e.printStackTrace();

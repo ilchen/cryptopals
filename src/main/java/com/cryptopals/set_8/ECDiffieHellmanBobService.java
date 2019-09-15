@@ -24,7 +24,7 @@ public class ECDiffieHellmanBobService implements ECDiffieHellman {
 
     @Override
     @SneakyThrows
-    public Set8.Challenge59ECDHBobResponse initiate(ECGroup.ECGroupElement g, BigInteger q, ECGroup.ECGroupElement A) throws RemoteException {
+    public Set8.Challenge59ECDHBobResponse initiate(ECGroup.ECGroupElement g, BigInteger q, ECGroupElement A) throws RemoteException {
         // A bit contrived for Bob to hang on to the same private key across new sessions, however this is what
         // Challenge 59 calls for.
         if (ecg == null  ||  !ecg.equals(g.group())  ||  !this.g.equals(g)) {

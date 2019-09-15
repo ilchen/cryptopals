@@ -1,9 +1,7 @@
 package com.cryptopals;
 
 import com.cryptopals.set_5.DiffieHellmanHelper;
-import com.cryptopals.set_8.DiffieHellman;
-import com.cryptopals.set_8.ECDiffieHellman;
-import com.cryptopals.set_8.ECGroup;
+import com.cryptopals.set_8.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -18,6 +16,8 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
+import static java.math.BigInteger.ZERO;
+import static java.math.BigInteger.ONE;
 import static java.math.BigInteger.valueOf;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -96,5 +96,18 @@ class Set8Tests {
         BigInteger   b = Set8.breakChallenge59(base, q, url);
         ECDiffieHellman bob = (ECDiffieHellman) Naming.lookup(url);
         assertTrue(bob.isValidPrivateKey(b));
+    }
+
+    @DisplayName("MontgomeryFormECCurve")
+    @Test
+    void challenge60MontgomeryFormECCurve() {
+        MontgomeryECGroup group = new MontgomeryECGroup(new BigInteger("233970423115425145524320034830162017933"),
+                valueOf(534), ONE, new BigInteger("233970423115425145498902418297807005944"));
+        MontgomeryECGroup.ECGroupElement base = group.createPoint(
+                valueOf(4), new BigInteger("85518893674295321206118380980485522083"));
+        BigInteger   q = new BigInteger("29246302889428143187362802287225875743");
+        assertTrue(group.containsPoint(base));
+        assertEquals(group.O, base.scale(q));
+        assertEquals(ZERO, base.ladder(q));
     }
 }

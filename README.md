@@ -231,3 +231,34 @@ public Set8.Challenge59ECDHBobResponse initiate(ECGroup.ECGroupElement g, BigInt
         throw  new RemoteException("Public key presented not on the expected curve");
     }
 ```
+
+### Challenge 60
+[Challenge 60](https://toadstyle.org/cryptopals/60.txt) is based on the Montgomery form of representing
+elliptic curves: Bv<sup>2</sup> = u<sup>3</sup> + Au<sup>2</sup> + u
+
+A Montgomery form curve equation can always be changed into the Weierstrass form, the converse is not always true.
+Given isomorphism between EC groups of the same order regardless of their form, I abstracted the concept of
+an EC point into an interface and refactored the rest of the classes accordingly. This ensured a shared implementation
+of the `scale` method:
+```java
+public interface ECGroupElement {
+    BigInteger  getX();
+    BigInteger  getY();
+    ECGroupElement  getIdentity();
+    ECGroupElement  inverse();
+    ECGroupElement  combine(ECGroupElement that);
+
+    default ECGroupElement  scale(BigInteger k) {
+        ECGroupElement res = getIdentity(),  x = this;
+        while (k.compareTo(BigInteger.ZERO) > 0) {
+            if (Set5.isOdd(k))  res = res.combine(x);
+            x = x.combine(x);
+            k = k.shiftRight(1);
+        }
+        return  res;
+    }
+}
+```
+
+**NB** For a Montgomery curve the point at infinity O is always (0, 1). Each Montgomery curve has at least one point of order 2,
+it is always (0, 0).

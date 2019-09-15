@@ -1,6 +1,5 @@
 package com.cryptopals.set_8;
 
-import com.cryptopals.Set5;
 import com.cryptopals.Set8;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -8,7 +7,8 @@ import lombok.ToString;
 
 import java.io.Serializable;
 import java.math.BigInteger;
-import java.util.Arrays;
+
+import static java.math.BigInteger.ZERO;
 
 
 /**
@@ -17,7 +17,8 @@ import java.util.Arrays;
 @EqualsAndHashCode
 @ToString
 final public class ECGroup implements Serializable {
-    static private final BigInteger   TWO = BigInteger.valueOf(2),  THREE = BigInteger.valueOf(3);
+    private static final long serialVersionUID = -2465568918540999150L;
+    static final BigInteger   TWO = BigInteger.valueOf(2),  THREE = BigInteger.valueOf(3);
     @Getter
     private final BigInteger   modulus,  a,  b,  order;
     @EqualsAndHashCode.Exclude
@@ -29,13 +30,13 @@ final public class ECGroup implements Serializable {
     }
 
     /**
-     * Calculates the y coordinate of a point on this curve using its y coordinate
+     * Calculates the y coordinate of a point on this curve using its x coordinate
      * @param x
      * @return the y coordinate or {@link Set8#NON_RESIDUE} if there's no point on the curve with the given x coordinate
      */
     public BigInteger  mapToY(BigInteger x) {
         BigInteger   ySquared = x.pow(3).add(a.multiply(x)).add(b).mod(modulus);
-        return  Set8.squareRoot(ySquared, modulus);
+        return  ySquared.equals(ZERO)  ?  ZERO : Set8.squareRoot(ySquared, modulus);
     }
 
     public boolean  containsPoint(ECGroupElement elem) {
@@ -44,18 +45,32 @@ final public class ECGroup implements Serializable {
         return  ySquare.equals(xCube.add(a.multiply(elem.x)).add(b).mod(modulus));
     }
 
+    public ECGroupElement  createPoint(BigInteger x, BigInteger y) {
+        return  new ECGroupElement(x.mod(modulus), y.mod(modulus));
+    }
+
     /**
      * Represents an {@code (x, y)} point on the curve that is an element of E(F<sub>p</sub>).
      * {@code x} and {@code y} are stored {@code mod p}, which ensures their values are always positive.
      */
     @ToString
-    final public class ECGroupElement implements Serializable {
+    final public class ECGroupElement implements com.cryptopals.set_8.ECGroupElement, Serializable {
+        private static final long serialVersionUID = 8474348316221211363L;
         final BigInteger   x,  y;
 
         private ECGroupElement(BigInteger x, BigInteger y) {
             this.x = x;     this.y = y;
         }
 
+        public BigInteger getX() {
+            return  x;
+        }
+        public BigInteger getY() {
+            return  y;
+        }
+        public com.cryptopals.set_8.ECGroupElement  getIdentity() {
+            return  O;
+        }
         public ECGroup  group() {
             return  ECGroup.this;
         }
@@ -80,46 +95,22 @@ final public class ECGroup implements Serializable {
             return  new ECGroupElement(x, y.negate().mod(modulus));
         }
 
-        public ECGroupElement combine(ECGroupElement that) {
-            if (this == O)  return  that;
-            if (that == O)  return  this;
+        public com.cryptopals.set_8.ECGroupElement combine(com.cryptopals.set_8.ECGroupElement that) {
+            if (this.equals(O))  return  that;
+            if (that.equals(O))  return  this;
             if (this.equals(that.inverse()))  return  O;
 
             BigInteger   m;
             if (this.equals(that)) {
                 m = THREE.multiply(x.multiply(x)).add(a).multiply(TWO.multiply(y).modInverse(modulus)).mod(modulus);
             } else {
-                m = that.y.subtract(y).multiply(that.x.subtract(x).modInverse(modulus)).mod(modulus);
+                m = that.getY().subtract(y).multiply(that.getX().subtract(x).modInverse(modulus)).mod(modulus);
             }
 
-            BigInteger  x3 = m.multiply(m).subtract(x).subtract(that.x).mod(modulus);
+            BigInteger  x3 = m.multiply(m).subtract(x).subtract(that.getX()).mod(modulus);
             return  new ECGroupElement(x3, m.multiply(x.subtract(x3)).subtract(y).mod(modulus));
         }
 
-        public ECGroupElement  scale(BigInteger k) {
-            ECGroupElement   res = O,  x = this;
-            while (k.compareTo(BigInteger.ZERO) > 0) {
-                if (Set5.isOdd(k))  res = res.combine(x);
-                x = x.combine(x);
-                k = k.shiftRight(1);
-            }
-            return  res;
-        }
-
-        public byte[]  toByteArray() {
-            if (this.equals(O)) {
-                return  new byte[0];
-            } else {
-                byte[]   xBytes = x.toByteArray(),  yBytes = y.toByteArray(),  res;
-                res = Arrays.copyOf(xBytes, xBytes.length + yBytes.length);
-                System.arraycopy(yBytes, 0, res, xBytes.length, yBytes.length);
-                return  res;
-            }
-        }
-
     }
 
-    public ECGroupElement  createPoint(BigInteger x, BigInteger y) {
-        return  new ECGroupElement(x.mod(modulus), y.mod(modulus));
-    }
 }

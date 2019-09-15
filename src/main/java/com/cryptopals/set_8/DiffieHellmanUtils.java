@@ -37,17 +37,17 @@ final public class DiffieHellmanUtils {
      * @param order  the order the generator must have, it must be a divisor of the order of the curve
      * @return a generator satisfying the order given
      */
-    static public ECGroup.ECGroupElement  findGenerator(ECGroup curve, BigInteger order) {
+    static public ECGroupElement  findGenerator(ECGroup curve, BigInteger order) {
         Random rnd = new Random();
         BigInteger   otherOrder = curve.getOrder().divide(order),  x,  y;
-        ECGroup.ECGroupElement   possibleGen = curve.O;
+        ECGroupElement   possibleGen = curve.O;
         do {
             x = new BigInteger(curve.getModulus().bitLength(), rnd);
             y = curve.mapToY(x);
             if (!y.equals(NON_RESIDUE)) {
                 possibleGen = curve.createPoint(x, y).scale(otherOrder);
             }
-        }  while (possibleGen == curve.O  ||  possibleGen.equals(curve.O));
+        }  while (possibleGen == curve.O);
         return  possibleGen;
     }
 }
