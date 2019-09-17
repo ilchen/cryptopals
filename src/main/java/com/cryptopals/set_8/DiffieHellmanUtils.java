@@ -32,22 +32,4 @@ final public class DiffieHellmanUtils {
         return  factors;
     }
 
-    /**
-     * Finds a generator of a subgroup of E(GF(p)) of required order
-     * @param order  the order the generator must have, it must be a divisor of the order of the curve
-     * @return a generator satisfying the order given
-     */
-    static public ECGroupElement  findGenerator(ECGroup curve, BigInteger order) {
-        Random rnd = new Random();
-        BigInteger   otherOrder = curve.getOrder().divide(order),  x,  y;
-        ECGroupElement   possibleGen = curve.O;
-        do {
-            x = new BigInteger(curve.getModulus().bitLength(), rnd);
-            y = curve.mapToY(x);
-            if (!y.equals(NON_RESIDUE)) {
-                possibleGen = curve.createPoint(x, y).scale(otherOrder);
-            }
-        }  while (possibleGen == curve.O);
-        return  possibleGen;
-    }
 }

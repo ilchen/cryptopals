@@ -74,9 +74,9 @@ class Set8Tests {
     @DisplayName("WeierstrassFormECCurve")
     @Test
     void challenge59WeierstrassFormECCurve() {
-        ECGroup group = new ECGroup(new BigInteger("233970423115425145524320034830162017933"),
+        WeierstrassECGroup group = new WeierstrassECGroup(new BigInteger("233970423115425145524320034830162017933"),
                 valueOf(-95051), valueOf(11279326), new BigInteger("233970423115425145498902418297807005944"));
-        ECGroup.ECGroupElement   base = group.createPoint(
+        WeierstrassECGroup.ECGroupElement   base = group.createPoint(
                 valueOf(182), new BigInteger("85518893674295321206118380980485522083"));
         BigInteger   q = new BigInteger("29246302889428143187362802287225875743");
         assertTrue(group.containsPoint(base));
@@ -88,9 +88,9 @@ class Set8Tests {
         // The corresponding SpringBoot server application must be running.
     void challenge59(String url) throws RemoteException, NotBoundException, MalformedURLException,
             NoSuchAlgorithmException, InvalidKeyException{
-        ECGroup   group = new ECGroup(new BigInteger("233970423115425145524320034830162017933"),
+        WeierstrassECGroup group = new WeierstrassECGroup(new BigInteger("233970423115425145524320034830162017933"),
                 valueOf(-95051), valueOf(11279326), new BigInteger("233970423115425145498902418297807005944"));
-        ECGroup.ECGroupElement   base = group.createPoint(
+        WeierstrassECGroup.ECGroupElement   base = group.createPoint(
                 valueOf(182), new BigInteger("85518893674295321206118380980485522083"));
         BigInteger   q = new BigInteger("29246302889428143187362802287225875743");
         BigInteger   b = Set8.breakChallenge59(base, q, url);

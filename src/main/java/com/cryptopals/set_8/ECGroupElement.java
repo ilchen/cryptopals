@@ -6,7 +6,7 @@ import java.math.BigInteger;
 import java.util.Arrays;
 
 /**
- * Represents a point on an Elliptic Curve group
+ * Represents a point on an Elliptic Curve group E(F<sub>p</sub>)
  */
 public interface ECGroupElement {
     BigInteger  getX();
@@ -14,6 +14,10 @@ public interface ECGroupElement {
     ECGroupElement  getIdentity();
     ECGroupElement  inverse();
     ECGroupElement  combine(ECGroupElement that);
+    ECGroup  group();
+
+    /** Returns the x coordinate of kP where P is this point */
+    BigInteger  ladder(BigInteger k);
 
     default ECGroupElement  scale(BigInteger k) {
         ECGroupElement res = getIdentity(),  x = this;

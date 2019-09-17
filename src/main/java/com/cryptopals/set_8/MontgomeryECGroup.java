@@ -1,6 +1,5 @@
 package com.cryptopals.set_8;
 
-import com.cryptopals.Set5;
 import com.cryptopals.Set8;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -8,10 +7,9 @@ import lombok.ToString;
 
 import java.io.Serializable;
 import java.math.BigInteger;
-import java.util.Arrays;
 
-import static com.cryptopals.set_8.ECGroup.THREE;
-import static com.cryptopals.set_8.ECGroup.TWO;
+import static com.cryptopals.set_8.WeierstrassECGroup.THREE;
+import static com.cryptopals.set_8.WeierstrassECGroup.TWO;
 import static java.math.BigInteger.ONE;
 import static java.math.BigInteger.ZERO;
 
@@ -20,7 +18,7 @@ import static java.math.BigInteger.ZERO;
  */
 @EqualsAndHashCode
 @ToString
-final public class MontgomeryECGroup implements Serializable {
+final public class MontgomeryECGroup implements ECGroup, Serializable {
     static final BigInteger   FOUR = BigInteger.valueOf(4);
     private static final long serialVersionUID = 1194952055574519819L;
     @Getter
@@ -33,16 +31,8 @@ final public class MontgomeryECGroup implements Serializable {
         modulus = p;     A = a;     B = b;     order = q;
     }
 
-    /**
-     * Swaps the elements in the two element array {@code u2u3} in case {@code b.equls(BigInteger.ONE)}.
-     * This utility method is required for an efficient implementation of the Montgomery ladder
-     */
-    private static void  cswap(BigInteger u2u3[], BigInteger b) {
-        if (b.equals(ONE)) {
-            BigInteger   t = u2u3[0];
-            u2u3[0] = u2u3[1];
-            u2u3[1] = t;
-        }
+    public ECGroupElement  getIdentity() {
+        return  O;
     }
 
     /**
@@ -50,16 +40,17 @@ final public class MontgomeryECGroup implements Serializable {
      * @param u
      * @return the v coordinate or {@link Set8#NON_RESIDUE} if there's no point on the curve with the given v coordinate
      */
-    public BigInteger  mapToV(BigInteger u) {
+    public BigInteger  mapToY(BigInteger u) {
         BigInteger   uSquare = u.multiply(u),
                 vSquared = u.add(A.multiply(uSquare)).add(uSquare.multiply(u)).multiply(B.modInverse(modulus)).mod(modulus);
         return  Set8.squareRoot(vSquared, modulus);
     }
 
-    public boolean  containsPoint(ECGroupElement elem) {
-        BigInteger   vSquare = elem.v.multiply(elem.v).multiply(B).mod(modulus),
-                     uSquare = elem.u.multiply(elem.u);
-        return  vSquare.equals(uSquare.multiply(elem.u).add(A.multiply(uSquare)).add(elem.u).mod(modulus));
+    public boolean  containsPoint(com.cryptopals.set_8.ECGroupElement elem) {
+        if (!(elem instanceof ECGroupElement))  return  false;
+        BigInteger   vSquare = elem.getY().multiply(elem.getY()).multiply(B).mod(modulus),
+                     uSquare = elem.getX().multiply(elem.getX());
+        return  vSquare.equals(uSquare.multiply(elem.getX()).add(A.multiply(uSquare)).add(elem.getX()).mod(modulus));
     }
 
     public ECGroupElement createPoint(BigInteger u, BigInteger v) {
@@ -101,7 +92,6 @@ final public class MontgomeryECGroup implements Serializable {
             return  u.equals(el.u)  &&  v.equals(el.v);
         }
 
-        @Override
         public int hashCode() {
             int   res = MontgomeryECGroup.this.hashCode();
             res = 31 * res + u.hashCode();
@@ -112,7 +102,7 @@ final public class MontgomeryECGroup implements Serializable {
             return  new MontgomeryECGroup.ECGroupElement(u, v.negate().mod(modulus));
         }
 
-        public ECGroupElement  timesTwo() {
+        ECGroupElement  timesTwo() {
             if (this.equals(O))  return  this;
 
             BigInteger   uSquare = u.multiply(u),
@@ -164,5 +154,17 @@ final public class MontgomeryECGroup implements Serializable {
             return u2u3[0].multiply(w2w3[0].modPow(modulus.subtract(TWO), modulus)).mod(modulus);
         }
 
+    }
+
+    /**
+     * Swaps the elements in the two element array {@code u2u3} in case {@code b.equls(BigInteger.ONE)}.
+     * This utility method is required for an efficient implementation of the Montgomery ladder
+     */
+    private static void  cswap(BigInteger u2u3[], BigInteger b) {
+        if (b.equals(ONE)) {
+            BigInteger   t = u2u3[0];
+            u2u3[0] = u2u3[1];
+            u2u3[1] = t;
+        }
     }
 }

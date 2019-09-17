@@ -13,7 +13,7 @@ public interface ECDiffieHellman extends Remote {
      * @param A  Alice's public key
      * @throws RemoteException
      */
-    Set8.Challenge59ECDHBobResponse  initiate(ECGroup.ECGroupElement g, BigInteger q, ECGroupElement A) throws RemoteException;
+    Set8.Challenge59ECDHBobResponse  initiate(ECGroupElement g, BigInteger q, ECGroupElement A) throws RemoteException;
 
     /**
      * Can be called only once before a new private key will get generated

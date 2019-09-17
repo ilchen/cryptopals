@@ -194,20 +194,20 @@ public class Set8 {
 
     /**
      * @param base  a legitimate generator of the E(GF(p))
-     * @oaram order  an order of {@code base}
+     * @param order  an order of {@code base}
      * @param url  the URL of Bob's RMI service
      * @return  Bob's private key
      */
-    static BigInteger  breakChallenge59(ECGroup.ECGroupElement base, BigInteger order, String url) throws RemoteException, NotBoundException, MalformedURLException,
+    static BigInteger  breakChallenge59(WeierstrassECGroup.ECGroupElement base, BigInteger order, String url) throws RemoteException, NotBoundException, MalformedURLException,
             NoSuchAlgorithmException, InvalidKeyException {
         ECDiffieHellman   bob = (ECDiffieHellman) Naming.lookup(url);
 
-        ECGroup[]   degenerateGroups = {
-                new ECGroup(base.group().getModulus(), valueOf(-95051), valueOf(210),
+        WeierstrassECGroup[]   degenerateGroups = {
+                new WeierstrassECGroup(base.group().getModulus(), valueOf(-95051), valueOf(210),
                         new BigInteger("233970423115425145550826547352470124412")),
-                new ECGroup(base.group().getModulus(), valueOf(-95051), valueOf(504),
+                new WeierstrassECGroup(base.group().getModulus(), valueOf(-95051), valueOf(504),
                         new BigInteger("233970423115425145544350131142039591210")),
-                new ECGroup(base.group().getModulus(), valueOf(-95051), valueOf(727),
+                new WeierstrassECGroup(base.group().getModulus(), valueOf(-95051), valueOf(727),
                         new BigInteger("233970423115425145545378039958152057148")),
         };
         SortedSet<BigInteger> factors = new TreeSet<>();
@@ -216,7 +216,7 @@ public class Set8 {
         Mac mac = Mac.getInstance(Set8.MAC_ALGORITHM_NAME);
 
         ANOTHER_MODULUS:
-        for (ECGroup degenerateGroup : degenerateGroups) {
+        for (WeierstrassECGroup degenerateGroup : degenerateGroups) {
             List<BigInteger> newFactors = DiffieHellmanUtils.findSmallFactors(degenerateGroup.getOrder());
             newFactors.removeAll(factors);
 
@@ -226,7 +226,7 @@ public class Set8 {
             for (int i = 0; i < n; i++) {
                 BigInteger r = newFactors.get(i);
                 if (r.equals(TWO))  continue;
-                ECGroupElement h = DiffieHellmanUtils.findGenerator(degenerateGroup, r);
+                ECGroupElement h = degenerateGroup.findGenerator(r);
                 Challenge59ECDHBobResponse res = bob.initiate(base, order, h);
                 for (BigInteger b = ZERO; b.compareTo(r) < 0; b = b.add(ONE)) {  /* searching for Bob's secret key b modulo r */
                     mac.init(generateSymmetricKey(h, b, 32, MAC_ALGORITHM_NAME));
@@ -246,6 +246,52 @@ public class Set8 {
             factors.addAll(newFactors);
         }
         return garnersAlgorithm(residues);
+    }
+
+    /**
+     * @param base  a legitimate generator of the E(GF(p))
+     * @param order  an order of {@code base}
+     * @param url  the URL of Bob's RMI service
+     * @return  Bob's private key
+     */
+    static BigInteger  breakChallenge60(MontgomeryECGroup.ECGroupElement base, BigInteger order, String url) throws RemoteException, NotBoundException, MalformedURLException,
+            NoSuchAlgorithmException, InvalidKeyException {
+        ECDiffieHellman   bob = (ECDiffieHellman) Naming.lookup(url);
+
+
+        BigInteger prod = ONE;
+        List<BigInteger[]> residues = new ArrayList<>();
+        Mac mac = Mac.getInstance(Set8.MAC_ALGORITHM_NAME);
+
+
+        List<BigInteger> factors = DiffieHellmanUtils.findSmallFactors(base.group().getTwistOrder());
+
+        int n = factors.size();
+        System.out.println(factors);
+
+        for (int i = 0; i < n; i++) {
+            BigInteger r = factors.get(i);
+            if (r.equals(TWO))  continue;
+            BigInteger h = base.group().findTwistGenerator(r);
+            System.out.printf("Generator of order %d found: %d%n", r, h);
+//            Challenge59ECDHBobResponse res = bob.initiate(base, order, h);
+//            for (BigInteger b = ZERO; b.compareTo(r) < 0; b = b.add(ONE)) {  /* searching for Bob's secret key b modulo r */
+//                mac.init(generateSymmetricKey(h, b, 32, MAC_ALGORITHM_NAME));
+//                if (Arrays.equals(res.mac, mac.doFinal(res.msg.getBytes()))) {
+//                    System.out.printf("Found b%d mod r%<d: %d, %d%n", residues.size(), b, r);
+//                    residues.add(new BigInteger[]{b, r});
+//                    prod = prod.multiply(r);
+//                    if (prod.compareTo(order) > 0) {
+//                        System.out.printf("Enough found%n\tQ: %d%n\tP: %d%n", order, prod);
+//                        break ANOTHER_MODULUS;
+//                    }
+//                    break;
+//                }
+//            }
+        }
+
+
+        return null;//garnersAlgorithm(residues);
     }
 
     @SneakyThrows
@@ -295,9 +341,9 @@ public class Set8 {
 //            System.out.printf("Recovered Bob's secret key: %x%n", b);
 
             System.out.println("\nChallenge 59");
-            ECGroup   group = new ECGroup(new BigInteger("233970423115425145524320034830162017933"),
+            WeierstrassECGroup group = new WeierstrassECGroup(new BigInteger("233970423115425145524320034830162017933"),
                     valueOf(-95051), valueOf(11279326), new BigInteger("233970423115425145498902418297807005944"));
-            ECGroup.ECGroupElement   base = group.createPoint(
+            WeierstrassECGroup.ECGroupElement   base = group.createPoint(
                     valueOf(182), new BigInteger("85518893674295321206118380980485522083"));
             BigInteger   q = new BigInteger("29246302889428143187362802287225875743");
             assert  group.containsPoint(base);
@@ -327,7 +373,7 @@ public class Set8 {
             System.out.println("base^q-1 = " + mbase.scale(q.subtract(ONE)));
             System.out.println("base^q-2 = " + mbase.scale(q.subtract(TWO)));
             System.out.println("base^q+1 = " + mbase.scale(q.add(ONE)));
-
+            b = breakChallenge60(mbase, q, "rmi://localhost/ECDiffieHellmanBobService");
 
         } catch (Exception e) {
             e.printStackTrace();
