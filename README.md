@@ -208,6 +208,18 @@ to recover Bob's private key. This is because the product of  the small factors 
 the order of the generator given for the challenge `(182, 85518893674295321206118380980485522083)`. You need the distinct
 small factors collected from all the crafted curves.
 
+**NB** the algorithm suggested in Challenge 57 and this one for finding subgroups of required order
+> Suppose the
+  group has order q. Pick some random point and multiply by q/r. If you
+  land on the identity, start over.
+
+only works for _cyclic_ groups. For Challenge 57 it didn't matter much because Z<sub>p</sub><sup>*</sup> is always
+cyclic. This doesn't hold for elliptic curve groups though, i.e. not every elliptic curve group is cyclic. In fact you
+will not be able to find a generator of order 2 for `y^2 = x^3 - 95051*x + 210` if you use the order of the group
+233970423115425145550826547352470124412. The correct way to find generators of required order is to use the order
+of the largest cyclic subgroup of an elliptic curve. For this curve it is 116985211557712572775413273676235062206.
+See [my discussion with @spdevlin](https://twitter.com/_ilchen_/status/1174045790748254210?s=20).
+
 The attack in this challenge does make two assumption though, namely that
 * Bob will  hang on to the same private key across all new sessions with Alice. This is the same as in Challenge 57.
 * Bob will not check whether Alice's public key lies on the expected elliptic curve. How big of an assumption
