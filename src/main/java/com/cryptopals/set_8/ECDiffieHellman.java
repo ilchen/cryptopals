@@ -16,7 +16,15 @@ public interface ECDiffieHellman extends Remote {
     Set8.Challenge59ECDHBobResponse  initiate(ECGroupElement g, BigInteger q, ECGroupElement A) throws RemoteException;
 
     /**
-     * Can be called only once before a new private key will get generated
+     * @param g  a generator of a (sub)group of the elliptic curve group that g is a membber of
+     * @param q  the order of the generator
+     * @param xA  the x coordinate of Alice's public key
+     * @throws RemoteException
+     */
+    Set8.Challenge60ECDHBobResponse  initiate(ECGroupElement g, BigInteger q, BigInteger xA) throws RemoteException;
+
+    /**
+     * Can be called only once before a new private key is generated
      */
     boolean  isValidPrivateKey(BigInteger b) throws RemoteException;
 }

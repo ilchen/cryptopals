@@ -22,13 +22,22 @@ final public class MontgomeryECGroup implements ECGroup, Serializable {
     static final BigInteger   FOUR = BigInteger.valueOf(4);
     private static final long serialVersionUID = 1194952055574519819L;
     @Getter
-    private final BigInteger modulus,  A,  B,  order;
+    private final BigInteger modulus,  A,  B,  order,  cyclicOrder;
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
     public final ECGroupElement O = this.new ECGroupElement(ZERO, ONE);
 
     public MontgomeryECGroup(BigInteger p, BigInteger a, BigInteger b, BigInteger q) {
-        modulus = p;     A = a;     B = b;     order = q;
+        this(p, a, b, q, q);
+    }
+
+    /**
+     * Constructs a curve that isn't a cyclic group
+     * @param q  the order of the group
+     * @param cq the order of the largest cyclic subgroup
+     */
+    public MontgomeryECGroup(BigInteger p, BigInteger a, BigInteger b, BigInteger q, BigInteger cq) {
+        modulus = p;     A = a;     B = b;     order = q;   cyclicOrder = cq;
     }
 
     public ECGroupElement  getIdentity() {
@@ -55,6 +64,28 @@ final public class MontgomeryECGroup implements ECGroup, Serializable {
 
     public ECGroupElement createPoint(BigInteger u, BigInteger v) {
         return  new ECGroupElement(u.mod(modulus), v.mod(modulus));
+    }
+
+    public BigInteger ladder(BigInteger u, BigInteger k) {
+        BigInteger[]   u2u3 = { ONE, u } ,  w2w3 = { ZERO, ONE };
+        for (int i=k.bitLength()-1; i >= 0; i--) {
+            BigInteger   b = ONE.and(k.shiftRight(i)),  t,  tt,  ttt;
+            cswap(u2u3, b);
+            cswap(w2w3, b);
+            t = u2u3[0].multiply(u2u3[1]).subtract(w2w3[0].multiply(w2w3[1]));
+            tt = u2u3[0].multiply(w2w3[1]).subtract(w2w3[0].multiply(u2u3[1]));
+            u2u3[1] = t.multiply(t).mod(modulus);
+            w2w3[1] = u.multiply(tt.multiply(tt)).mod(modulus);
+            t = u2u3[0].multiply(u2u3[0]);  // u2^2
+            tt = w2w3[0].multiply(w2w3[0]); // w2^2
+            ttt = u2u3[0].multiply(w2w3[0]);// u2*w2
+            u2u3[0] = t.subtract(tt);
+            u2u3[0] = u2u3[0].multiply(u2u3[0]).mod(modulus);
+            w2w3[0] = FOUR.multiply(ttt).multiply( t.add(A.multiply(ttt)).add(tt) ).mod(modulus);
+            cswap(u2u3, b);
+            cswap(w2w3, b);
+        }
+        return u2u3[0].multiply(w2w3[0].modPow(modulus.subtract(TWO), modulus)).mod(modulus);
     }
 
     /**
@@ -133,25 +164,7 @@ final public class MontgomeryECGroup implements ECGroup, Serializable {
         }
 
         public BigInteger  ladder(BigInteger k) {
-            BigInteger[]   u2u3 = { ONE, u } ,  w2w3 = { ZERO, ONE };
-            for (int i=k.bitLength()-1; i >= 0; i--) {
-                BigInteger   b = ONE.and(k.shiftRight(i)),  t,  tt,  ttt;
-                cswap(u2u3, b);
-                cswap(w2w3, b);
-                t = u2u3[0].multiply(u2u3[1]).subtract(w2w3[0].multiply(w2w3[1]));
-                tt = u2u3[0].multiply(w2w3[1]).subtract(w2w3[0].multiply(u2u3[1]));
-                u2u3[1] = t.multiply(t).mod(modulus);
-                w2w3[1] = u.multiply(tt.multiply(tt)).mod(modulus);
-                t = u2u3[0].multiply(u2u3[0]);  // u2^2
-                tt = w2w3[0].multiply(w2w3[0]); // w2^2
-                ttt = u2u3[0].multiply(w2w3[0]);// u2*w2
-                u2u3[0] = t.subtract(tt);
-                u2u3[0] = u2u3[0].multiply(u2u3[0]).mod(modulus);
-                w2w3[0] = FOUR.multiply(ttt).multiply( t.add(A.multiply(ttt)).add(tt) ).mod(modulus);
-                cswap(u2u3, b);
-                cswap(w2w3, b);
-            }
-            return u2u3[0].multiply(w2w3[0].modPow(modulus.subtract(TWO), modulus)).mod(modulus);
+            return  MontgomeryECGroup.this.ladder(u, k);
         }
 
     }

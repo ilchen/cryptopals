@@ -18,8 +18,14 @@ import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static java.math.BigInteger.*;
 
@@ -29,7 +35,7 @@ import static java.math.BigInteger.*;
 public class Set8 {
     public static final String   CHALLENGE56_MSG = "crazy flamboyant for the rap enjoyment";
     public static final String   MAC_ALGORITHM_NAME = "HmacSHA256";
-    public static final BigInteger   NON_RESIDUE = valueOf(-1);
+    public static final BigInteger   NON_RESIDUE = valueOf(-1),  CHALLENGE60_COMPOSITE_MODULI_THREASHOLD = valueOf(100_000);
     static final BigInteger   P = new BigInteger(
             "7199773997391911030609999317773941274322764333428698921736339643928346453700085358802973900485592910475"
             + "480089726140708102474957429903531369589969318716771"),
@@ -49,6 +55,13 @@ public class Set8 {
     @Data
     public static class Challenge59ECDHBobResponse implements Serializable {
         final ECGroupElement B;
+        final String   msg;
+        final byte[]   mac;
+    }
+
+    @Data
+    public static class Challenge60ECDHBobResponse implements Serializable {
+        final BigInteger xB;
         final String   msg;
         final byte[]   mac;
     }
@@ -90,6 +103,14 @@ public class Set8 {
             t = t.multiply(c).mod(p);
             m = i;
         }
+    }
+
+    /**
+     * Reconstructs {@code x mod pq} given {@code x mod p == a} and {@code x mod q == b}
+     * @return {@code x mod pq}
+     */
+    static BigInteger  garnersFormula(BigInteger a, BigInteger p, BigInteger b, BigInteger q) {
+        return  a.subtract(b).multiply(q.modInverse(p)).mod(p).multiply(q).add(b);
     }
 
     /**
@@ -204,7 +225,8 @@ public class Set8 {
 
         WeierstrassECGroup[]   degenerateGroups = {
                 new WeierstrassECGroup(base.group().getModulus(), valueOf(-95051), valueOf(210),
-                        new BigInteger("233970423115425145550826547352470124412")),
+                        new BigInteger("233970423115425145550826547352470124412"),
+                        new BigInteger("116985211557712572775413273676235062206")),
                 new WeierstrassECGroup(base.group().getModulus(), valueOf(-95051), valueOf(504),
                         new BigInteger("233970423115425145544350131142039591210")),
                 new WeierstrassECGroup(base.group().getModulus(), valueOf(-95051), valueOf(727),
@@ -220,18 +242,15 @@ public class Set8 {
             List<BigInteger> newFactors = DiffieHellmanUtils.findSmallFactors(degenerateGroup.getOrder());
             newFactors.removeAll(factors);
 
-            int n = newFactors.size();
             System.out.println(newFactors);
 
-            for (int i = 0; i < n; i++) {
-                BigInteger r = newFactors.get(i);
-                if (r.equals(TWO))  continue;
+            for (BigInteger r : newFactors) {
                 ECGroupElement h = degenerateGroup.findGenerator(r);
                 Challenge59ECDHBobResponse res = bob.initiate(base, order, h);
                 for (BigInteger b = ZERO; b.compareTo(r) < 0; b = b.add(ONE)) {  /* searching for Bob's secret key b modulo r */
                     mac.init(generateSymmetricKey(h, b, 32, MAC_ALGORITHM_NAME));
                     if (Arrays.equals(res.mac, mac.doFinal(res.msg.getBytes()))) {
-                        System.out.printf("Found b%d mod r%<d: %d, %d%n", residues.size(), b, r);
+                        System.out.printf("Found b%d mod %d: %d%n", residues.size(), r, b);
                         residues.add(new BigInteger[]{b, r});
                         prod = prod.multiply(r);
                         if (prod.compareTo(order) > 0) {
@@ -248,50 +267,166 @@ public class Set8 {
         return garnersAlgorithm(residues);
     }
 
+
+    /**
+     * Scans the range [0, {@code upper}] for a possible value of Bob's private key mod (order of generator h)
+     * @param group  an elliptic curve group that
+     * @param h the x-coordinate of a generator of a small subgroup of the quadratic twist of {@code group}
+     * @param resp Bob's response to a DH protocol initiated by Alice, where h was presented to Bob as the x-coordinate
+     *             of Alice's public key.
+     */
+    private static BigInteger  scanRangeForPrivateKeyPar(ExecutorService executor, BigInteger upper, MontgomeryECGroup group,
+                                                         BigInteger h, Challenge60ECDHBobResponse resp) {
+        BigInteger   freq = valueOf(1_000_000);
+        AtomicBoolean   stop = new AtomicBoolean();
+        Function<BigInteger[], BigInteger>   task = (range) -> {
+            System.out.println(Thread.currentThread() + " is scanning range: " + Arrays.toString(range));
+            try {
+                Mac mac = Mac.getInstance(Set8.MAC_ALGORITHM_NAME);
+                for (BigInteger b = range[0]; b.compareTo(range[1]) < 0; b = b.add(ONE)) {  /* searching for Bob's secret key b modulo r */
+                    mac.init(generateSymmetricKey(group, h, b, 32, MAC_ALGORITHM_NAME));
+                    if (b.remainder(freq).equals(ZERO)) {
+                        System.out.printf("%s, remaining range [%d, %d)%n", Thread.currentThread(), b, range[1]);
+                        if (stop.get())  return  null;
+                    }
+                    if (Arrays.equals(resp.mac, mac.doFinal(resp.msg.getBytes()))) {
+                        return  stop.compareAndSet(false, true)  ?  b : null;
+                    }
+                }
+            } catch (Exception e) {
+                // ignore
+            }
+            return  null;
+        };
+
+        if (upper.compareTo(freq) <= 0)  {
+            return  task.apply(new BigInteger[] { ZERO, upper });
+        }
+
+        int   concurrency = Runtime.getRuntime().availableProcessors();
+        BigInteger   step = upper.divide(valueOf(concurrency)),  concur = valueOf(concurrency);
+
+        List<CompletableFuture<BigInteger>>   res = IntStream.range(0, concurrency).mapToObj(BigInteger::valueOf).map(
+                x -> CompletableFuture.completedFuture(
+                        new BigInteger[] { x.multiply(step), x.add(ONE).equals(concur)
+                                ?  upper : x.add(ONE).multiply(step) })).map(x -> x.thenApplyAsync(task, executor)).collect(Collectors.toList());
+        for (CompletableFuture<BigInteger> future : res) {
+            if (future.join() != null)  return  future.join();
+        }
+        return  null;
+    }
+
     /**
      * @param base  a legitimate generator of the E(GF(p))
      * @param order  an order of {@code base}
      * @param url  the URL of Bob's RMI service
      * @return  Bob's private key
      */
-    static BigInteger  breakChallenge60(MontgomeryECGroup.ECGroupElement base, BigInteger order, String url) throws RemoteException, NotBoundException, MalformedURLException,
+    static List<BigInteger>  breakChallenge60(MontgomeryECGroup.ECGroupElement base, BigInteger order, String url) throws RemoteException, NotBoundException, MalformedURLException,
             NoSuchAlgorithmException, InvalidKeyException {
         ECDiffieHellman   bob = (ECDiffieHellman) Naming.lookup(url);
 
-
-        BigInteger prod = ONE;
+        BigInteger prod = ONE,  x[] = new BigInteger[4];
         List<BigInteger[]> residues = new ArrayList<>();
         Mac mac = Mac.getInstance(Set8.MAC_ALGORITHM_NAME);
 
 
-        List<BigInteger> factors = DiffieHellmanUtils.findSmallFactors(base.group().getTwistOrder());
-
-        int n = factors.size();
-        System.out.println(factors);
-
-        for (int i = 0; i < n; i++) {
-            BigInteger r = factors.get(i);
-            if (r.equals(TWO))  continue;
-            BigInteger h = base.group().findTwistGenerator(r);
-            System.out.printf("Generator of order %d found: %d%n", r, h);
-//            Challenge59ECDHBobResponse res = bob.initiate(base, order, h);
-//            for (BigInteger b = ZERO; b.compareTo(r) < 0; b = b.add(ONE)) {  /* searching for Bob's secret key b modulo r */
-//                mac.init(generateSymmetricKey(h, b, 32, MAC_ALGORITHM_NAME));
-//                if (Arrays.equals(res.mac, mac.doFinal(res.msg.getBytes()))) {
-//                    System.out.printf("Found b%d mod r%<d: %d, %d%n", residues.size(), b, r);
-//                    residues.add(new BigInteger[]{b, r});
-//                    prod = prod.multiply(r);
-//                    if (prod.compareTo(order) > 0) {
-//                        System.out.printf("Enough found%n\tQ: %d%n\tP: %d%n", order, prod);
-//                        break ANOTHER_MODULUS;
-//                    }
-//                    break;
-//                }
-//            }
+        List<BigInteger> factors = DiffieHellmanUtils.findSmallFactors(base.group().getTwistOrder(), 1 << 25);
+        if (factors.isEmpty()) {
+            throw new IllegalStateException("The twist of the elliptic curve " + base.group() + " has no small subgroups");
+        }
+        if (factors.get(0).equals(TWO)) {
+            factors.remove(0);      // Handy in case the twist is not a cyclic group
         }
 
+        ExecutorService   executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        CRTCombinations   crtCombs = new CRTCombinations(factors.size());
+        Challenge60ECDHBobResponse   resp = null;
 
-        return null;//garnersAlgorithm(residues);
+        System.out.println(factors);
+
+        ANOTHER_MODULUS:
+        for (int i=0; i < factors.size(); i++) {
+            BigInteger r = factors.get(i);
+            BigInteger h = base.group().findTwistGenerator(r);
+            System.out.printf("Generator of order %d found: %d%n", r, h);
+            resp = bob.initiate(base, order, h);
+            for (BigInteger b = ZERO; b.compareTo(r) < 0; b = b.add(ONE)) {  /* searching for Bob's secret key b modulo r */
+                mac.init(generateSymmetricKey(base.group(), h, b, 32, MAC_ALGORITHM_NAME));
+                if (Arrays.equals(resp.mac, mac.doFinal(resp.msg.getBytes()))) {
+                    System.out.printf("Found b mod %d: %d or %d%n", r, b, r.subtract(b));
+                    residues.add(new BigInteger[]{b, r});
+                    crtCombs.addResidue(i, b, r);
+                    prod = prod.multiply(r);
+
+                    if (residues.size() > 1) {
+                        int   _i = residues.size() - 2;
+                        BigInteger   _b = residues.get(_i)[0],
+                                     _r = residues.get(_i)[1],
+                                     comp = r.multiply(_r),  bb;
+
+                        if (_r.compareTo(CHALLENGE60_COMPOSITE_MODULI_THREASHOLD) > 0
+                                &&  r.compareTo(CHALLENGE60_COMPOSITE_MODULI_THREASHOLD) > 0) {
+                            // It will be too computationally intensive to find the b mod comp
+                            crtCombs.addMutation(i, CRTCombinations.MutationType.ONE);
+                            break;
+                        }
+
+                        h = base.group().findTwistGenerator(comp);
+                        resp = bob.initiate(base, order, h);
+                        bb = scanRangeForPrivateKeyPar(executor, comp.divide(TWO), base.group(), h, resp);
+
+                        //System.out.printf("Found b mod %d: %d or %d%n", comp, bb, comp.subtract(bb));
+                        x[0] = garnersFormula(_b, _r, b, r);
+                        x[1] = garnersFormula(_b, _r, r.subtract(b), r);
+//                        x[2] = garnersFormula(_r.subtract(_b), _r, b, r);
+//                        x[3] = garnersFormula(_r.subtract(_b), _r, r.subtract(b), r);
+
+                        if (b.equals(ZERO)  &&  !_b.equals(ZERO)) {
+                            crtCombs.addMutation(i - 1, CRTCombinations.MutationType.ONE);
+                        } else if (_b.equals(ZERO)  &&  !b.equals(ZERO)) {
+                            crtCombs.addMutation(i, CRTCombinations.MutationType.ONE);
+                        } else if (x[0].equals(bb) || x[0].equals(comp.subtract(bb))) {
+                            crtCombs.addMutation(i - 1, CRTCombinations.MutationType.BOTH);
+                        } else if (x[1].equals(bb) || x[1].equals(comp.subtract(bb))) {
+                            crtCombs.addMutation(i - 1, CRTCombinations.MutationType.EITHER);
+                        } else {
+                            System.out.printf("No match: _b=%d, _r=%d, b=%d, r=%d, bb=%d, comp=%d%n", _b, _r, b, r, bb, comp);
+                        }
+                        break;
+                    }
+                    if (prod.compareTo(order) >= 0) {
+                        System.out.printf("Enough found%n\tQ: %d%n\tP: %d%n", order, prod);
+                        break ANOTHER_MODULUS;
+                    }
+                    break;
+                }
+            }
+        }
+
+        executor.shutdown();
+        List<BigInteger>   ret = new ArrayList<>();
+        for (BigInteger[][] _residues : crtCombs) {
+            System.out.println(Arrays.deepToString(_residues));
+        }
+
+        for (BigInteger[][] _residues : crtCombs) {
+            if (_residues == null)  break;
+            System.out.println(Arrays.deepToString(_residues));
+            BigInteger   res = garnersAlgorithm(Arrays.asList(_residues));
+            System.out.printf("b mod %d = %d%n", prod, res);
+
+            if (prod.compareTo(order) < 0) {   // Not enough moduli, need to take DLog in E(GF(p))
+                ECGroupElement gPrime = base.scale(prod),
+                        yPrime = base.group().createPoint(resp.xB, base.group().mapToY(resp.xB)).combine(base.scale(order.subtract(res)));
+                BigInteger m = base.dlog(yPrime, order.subtract(ONE).divide(prod), ECGroupElement::f);
+                res.add(m.multiply(prod));
+            }
+            ret.add(res);
+            System.out.println("Possible private key: " + res);
+        }
+        return  ret;
+
     }
 
     @SneakyThrows
@@ -299,6 +434,15 @@ public class Set8 {
         MessageDigest sha = MessageDigest.getInstance(len > 20  ?  "SHA-256" : "SHA-1");
         return  new SecretKeySpec(Arrays.copyOf(sha.digest(A.scale(b).toByteArray()), len), keyAlgorithm);
     }
+
+    public static SecretKeySpec generateSymmetricKey(ECGroup group, BigInteger xA, BigInteger b, int len, String keyAlgorithm) {
+        // The uncommented code would be better from a security standpoint, but is not strictly required based
+        // on how the challenge is formulated. It turns out to be too computationally intensive for Challenge 60
+//        MessageDigest sha = MessageDigest.getInstance(len > 20  ?  "SHA-256" : "SHA-1");
+//        return  new SecretKeySpec(Arrays.copyOf(sha.digest(group.ladder(xA, b).toByteArray()), len), keyAlgorithm);
+        return  new SecretKeySpec(Arrays.copyOf(group.ladder(xA, b).toByteArray(), len), keyAlgorithm);
+    }
+
 
     public static void main(String[] args) {
 
@@ -349,8 +493,9 @@ public class Set8 {
             assert  group.containsPoint(base);
             assert  base.scale(q) == group.O;
 
+            bobUrl = "rmi://localhost/ECDiffieHellmanBobService";
             BigInteger   privateKeyAlice = new DiffieHellmanHelper(group.getModulus(), q).generateExp().mod(q);
-            ECDiffieHellman   ecBob = (ECDiffieHellman) Naming.lookup("rmi://localhost/ECDiffieHellmanBobService");
+            ECDiffieHellman   ecBob = (ECDiffieHellman) Naming.lookup(bobUrl);
             Challenge59ECDHBobResponse  res = ecBob.initiate(base, q, base.scale(privateKeyAlice));
             Mac   mac = Mac.getInstance(MAC_ALGORITHM_NAME);
             SecretKey   macKey = generateSymmetricKey(res.B, privateKeyAlice, 32, MAC_ALGORITHM_NAME);
@@ -358,7 +503,7 @@ public class Set8 {
             assert  Arrays.equals(mac.doFinal(res.msg.getBytes()), res.mac);
             System.out.println("DiffieHellman in the EC " + group + " works");
 
-            b = breakChallenge59(base, q, "rmi://localhost/ECDiffieHellmanBobService");
+            b = breakChallenge59(base, q, bobUrl);
             assert  ecBob.isValidPrivateKey(b) : "Bob's key not correct";
             System.out.printf("Recovered Bob's secret key: %x%n", b);
 
@@ -368,12 +513,18 @@ public class Set8 {
             MontgomeryECGroup.ECGroupElement   mbase = mgroup.createPoint(
                     valueOf(4), new BigInteger("85518893674295321206118380980485522083"));
 
+            BigInteger   exponent = valueOf(12130);
+            assert  exponent.equals(mbase.dlog(mbase.scale(exponent), valueOf(1110000), ECGroupElement::f));
+
             assert  ZERO.equals(mbase.ladder(q));
             System.out.println("base^q = " + mbase.scale(q));
             System.out.println("base^q-1 = " + mbase.scale(q.subtract(ONE)));
             System.out.println("base^q-2 = " + mbase.scale(q.subtract(TWO)));
             System.out.println("base^q+1 = " + mbase.scale(q.add(ONE)));
-            b = breakChallenge60(mbase, q, "rmi://localhost/ECDiffieHellmanBobService");
+
+            for (BigInteger bb : breakChallenge60(mbase, q, bobUrl)) {
+                System.out.printf("Recovered Bob's secret key: %d? %b%n", bb, ecBob.isValidPrivateKey(b));
+            }
 
         } catch (Exception e) {
             e.printStackTrace();

@@ -110,4 +110,15 @@ class Set8Tests {
         assertEquals(group.O, base.scale(q));
         assertEquals(ZERO, base.ladder(q));
     }
+
+    @DisplayName("Pollard's kangaroo algorithm on elliptic curve groups")
+    @Test
+    void challenge60PollardsKangaroo() {
+        MontgomeryECGroup   mgroup = new MontgomeryECGroup(new BigInteger("233970423115425145524320034830162017933"),
+                valueOf(534), ONE, new BigInteger("233970423115425145498902418297807005944"));
+        MontgomeryECGroup.ECGroupElement   mbase = mgroup.createPoint(
+                valueOf(4), new BigInteger("85518893674295321206118380980485522083"));
+        BigInteger   exponent = valueOf(12130);
+        assertEquals(exponent, mbase.dlog(mbase.scale(exponent), valueOf(1110000), ECGroupElement::f));
+    }
 }

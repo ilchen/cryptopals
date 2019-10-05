@@ -15,8 +15,15 @@ final public class DiffieHellmanUtils {
     /**
      * Finds all factors of {@code r} that are smaller than 2^16 and greater than 1 (if any)
      */
-    static public List<BigInteger> findSmallFactors(BigInteger r) {
-        List<BigInteger>   factors = IntStream.range(2, 1 << 16) /* Finding all divisors of r */
+    public static List<BigInteger> findSmallFactors(BigInteger r) {
+        return  findSmallFactors(r, 1 << 16);
+    }
+
+    /**
+     * Finds all factors of {@code r} that are smaller than {@code upperBound} exclusive and greater than 1 (if any)
+     */
+    public static List<BigInteger> findSmallFactors(BigInteger r, int upperBound) {
+        List<BigInteger>   factors = IntStream.range(2, upperBound) /* Finding all divisors of r */
                 .filter(i -> r.remainder(BigInteger.valueOf(i)).equals(ZERO))
                 .boxed().map(BigInteger::valueOf).collect(Collectors.toCollection(ArrayList::new));
 

@@ -39,6 +39,9 @@ public class  DiffieHellmanBobService implements DiffieHellman {
             df = new DiffieHellmanHelperExt(p, g, q);
             privateKey = df.generateExp();
         }
+
+        System.out.printf("b mod 37220200115549684379403037 = %d%n", privateKey.mod(new BigInteger("37220200115549684379403037")));
+        System.out.printf("b mod 37220200115549684379403037 = %d%n", privateKey.mod(new BigInteger("37220200115549684379403037")));
         macKey = df.generateSymmetricKey(A, privateKey, 32, Set8.MAC_ALGORITHM_NAME);
         mac.init(macKey);
         return  new Set8.Challenge57DHBobResponse(g.modPow(privateKey, df.getModulus()), Set8.CHALLENGE56_MSG,

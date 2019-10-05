@@ -13,11 +13,14 @@ import static com.cryptopals.set_8.WeierstrassECGroup.TWO;
  */
 public interface ECGroup {
 
-    /** Returns the order field F<sub>p</sub> */
+    /** Returns the order of field F<sub>p</sub> */
     BigInteger  getModulus();
 
     /** Returns the order of this curve, i.e. the number of points on it. */
     BigInteger  getOrder();
+
+    /** If this group is cyclic, returns its order. Otherwise returns the order of the largest cyclic subgroup. */
+    BigInteger  getCyclicOrder();
 
     /** Returns the identity element of this group */
     ECGroupElement  getIdentity();
@@ -41,6 +44,8 @@ public interface ECGroup {
     /** Creates a point on this curve with designated coordinates */
     ECGroupElement createPoint(BigInteger x, BigInteger y);
 
+    BigInteger  ladder(BigInteger x, BigInteger k);
+
     /**
      * Finds a generator of a subgroup of E(GF(p)) of required order
      * @param order  the order the generator must have, it must be a divisor of the order of the curve
@@ -48,7 +53,7 @@ public interface ECGroup {
      */
     default ECGroupElement  findGenerator(BigInteger order) {
         Random rnd = new Random();
-        BigInteger   otherOrder = getOrder().divide(order),  x,  y;
+        BigInteger   otherOrder = getCyclicOrder().divide(order),  x,  y;
         ECGroupElement   possibleGen = getIdentity();
         do {
             x = new BigInteger(getModulus().bitLength(), rnd);
@@ -72,9 +77,9 @@ public interface ECGroup {
             x = new BigInteger(getModulus().bitLength(), rnd);
             y = mapToY(x);
             if (y.equals(NON_RESIDUE)) {  // We are on the twist of this curve
-                possibleGen = createPoint(x, y).ladder(otherOrder);
+                possibleGen = ladder(x, otherOrder);
             }
         }  while (possibleGen.equals(getIdentity().getX()));
-        return  possibleGen;
+        return   possibleGen;
     }
 }

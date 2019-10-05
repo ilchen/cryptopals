@@ -49,7 +49,7 @@ public class MDHelper {
     /**
      * @param position  the position of the lowest order bit is 0
      */
-    private static int  getBit(int i, int position) {
+    public static int  getBit(int i, int position) {
         return  i >> position & 1;
     }
 

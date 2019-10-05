@@ -1,6 +1,7 @@
 package com.cryptopals.set_8;
 
 import com.cryptopals.Set8;
+import com.fasterxml.jackson.databind.BeanProperty;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
@@ -20,13 +21,22 @@ final public class WeierstrassECGroup implements ECGroup, Serializable {
     private static final long serialVersionUID = -2465568918540999150L;
     static final BigInteger   TWO = BigInteger.valueOf(2),  THREE = BigInteger.valueOf(3);
     @Getter
-    private final BigInteger   modulus,  a,  b,  order;
+    private final BigInteger   modulus,  a,  b,  order,  cyclicOrder;
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
     public final ECGroupElement O = this.new ECGroupElement(null, null);
 
     public WeierstrassECGroup(BigInteger p, BigInteger a, BigInteger b, BigInteger q) {
-        modulus = p;     this.a = a;     this.b = b;     order = q;
+        this(p, a, b, q, q);
+    }
+
+    /**
+     * Constructs a curve that isn't a cyclic group
+     * @param q  the order of the group
+     * @param cq the order of the largest cyclic subgroup
+     */
+    public WeierstrassECGroup(BigInteger p, BigInteger a, BigInteger b, BigInteger q, BigInteger cq) {
+        modulus = p;     this.a = a;     this.b = b;     order = q;     cyclicOrder = cq;
     }
 
     public ECGroupElement getIdentity() {
@@ -52,6 +62,10 @@ final public class WeierstrassECGroup implements ECGroup, Serializable {
 
     public ECGroupElement  createPoint(BigInteger x, BigInteger y) {
         return  new ECGroupElement(x.mod(modulus), y.mod(modulus));
+    }
+
+    public BigInteger  ladder(BigInteger x, BigInteger k) {
+        throw  new UnsupportedOperationException();
     }
 
     /**
@@ -81,7 +95,7 @@ final public class WeierstrassECGroup implements ECGroup, Serializable {
         }
 
         public BigInteger ladder(BigInteger k) {
-            throw  new UnsupportedOperationException();
+            return  WeierstrassECGroup.this.ladder(x, k);
         }
 
         @Override
