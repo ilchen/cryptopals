@@ -251,7 +251,7 @@ elliptic curves: Bv<sup>2</sup> = u<sup>3</sup> + Au<sup>2</sup> + u
 A Montgomery form curve equation can always be changed into the Weierstrass form, the converse is not always true.
 Given isomorphism between EC groups of the same order regardless of their form, I abstracted the concept of
 an EC point into an interface and refactored the rest of the classes accordingly. This ensured a shared implementation
-of the `scale` method:
+of the `scale` and `dlog` methods:
 ```java
 public interface ECGroupElement {
     BigInteger  getX();
@@ -259,6 +259,10 @@ public interface ECGroupElement {
     ECGroupElement  getIdentity();
     ECGroupElement  inverse();
     ECGroupElement  combine(ECGroupElement that);
+    ECGroup  group();
+    
+    /** Returns the x coordinate of kP where P is this point */
+        BigInteger  ladder(BigInteger k);
 
     default ECGroupElement  scale(BigInteger k) {
         ECGroupElement res = getIdentity(),  x = this;
@@ -271,6 +275,101 @@ public interface ECGroupElement {
     }
 }
 ```
+Analogously for the concept of an EC group:
+```java
+public interface ECGroup {
 
+    /** Returns the order of field F<sub>p</sub> */
+    BigInteger  getModulus();
+
+    /** Returns the order of this curve, i.e. the number of points on it. */
+    BigInteger  getOrder();
+
+    /** If this group is cyclic, returns its order. Otherwise returns the order of the largest cyclic subgroup. */
+    BigInteger  getCyclicOrder();
+
+    /** Returns the identity element of this group */
+    ECGroupElement  getIdentity();
+
+    /**
+     * Returns the order of the quadratic twist of this curve
+     */
+    default BigInteger  getTwistOrder() {
+        return  getModulus().multiply(TWO).add(TWO).subtract(getOrder());
+    }
+
+    /**
+     * Calculates the y coordinate of a point on this curve using its x coordinate
+     */
+    BigInteger  mapToY(BigInteger x);
+
+    /** Checks if the point {@code elem} is on this curve */
+    boolean  containsPoint(ECGroupElement elem);
+
+    /** Creates a point on this curve with designated coordinates */
+    ECGroupElement createPoint(BigInteger x, BigInteger y);
+
+    BigInteger  ladder(BigInteger x, BigInteger k);
+}
+```
 **NB** For a Montgomery curve the point at infinity O is always (0, 1). Each Montgomery curve has at least one point of order 2,
 it is always (0, 0).
+
+This challenge turned out to be one of the toughest so far. Here Alice sends Bob only the x-coordinate of her public key.
+Bob then derives the DH symmetric key using the Montgomery ladder: `group.ladder(xA, b)`, where xA is the
+x-coordinate of Alice's public key and b is Bob's private key. Bob also sends back to Alice only the x-coordinate of
+his public key: `g.ladder(privateKey)`, where g is the generator of the EC group.
+
+What makes this challenge much more computationally intensive is that when the protocol uses only the x-coordinates
+of Alice's public key, Alice never learns the exact residues of Bob's private key when she foists public keys that
+are in fact generators of small subgroups. @spdevlin, the author of the challenge, gives a small hint:
+> HINT: You may come to notice that k*u = -k*u, resulting in a
+  combinatorial explosion of potential CRT outputs. Try sending extra
+  queries to narrow the range of possibilities.
+  
+By way of illustration, based on an arbitrarily generated Bob's private key. The twist of the curve has small subgroups of
+the following orders [11, 107, 197, 1621, 105143, 405373, 2323367]. Sending the generators of these subgroups disguised as Alice's public
+keys, gives you the following facts about Bob's private key b:
+```
+Generator of order 11 found: 76600469441198017145391791613091732004
+Found b mod 11: 4 or 11-4=7
+Generator of order 107 found: 215154098129284057249603159073175023533
+Found b mod 107: 24 or 107-24=83
+Generator of order 197 found: 94955123407611383099634454718224635806
+Found b mod 197: 44 or 197-44=153
+Generator of order 1621 found: 90340124320150600231802526508276130439
+Found b mod 1621: 390 or 1621-390=1231
+Generator of order 105143 found: 226695433509445480278297098756629724558
+Found b mod 105143: 6979 or 105143-6979=98164
+...
+```
+You thus have 2<sup>7</sup>=128 combinations of Bob's private key modulo the product of the
+[11, 107, 197, 1621, 105143, 405373, 2323367] moduli. And then you'll need to take a DLog for each of these combinations
+to end up with 128 guesses of Bob's private key. This will probably take a few days to compute on a typical laptop. 
+Can we do better? Yes, it is possible to ensure that the amount of combinations grows not exponentially but linearly
+in the number of subgroups. The solution I came up with works as follows. After finding the next pair of possible
+b mod r<sub>n</sub> = k<sub>n</sub> or r<sub>n</sub>-k<sub>n</sub> combinations, find a generator of order
+comp=r<sub>n-1</sub>*r<sub>n</sub> and discover two possibilities for b mod comp = kk or comp-kk.
+
+Then using Garner's formula with
+
+garnersFormula(k<sub>n-1</sub>, r<sub>n-1</sub>, k<sub>n</sub>, r<sub>n</sub>)<br>
+garnersFormula(k<sub>n-1</sub>, r<sub>n-1</sub>, r<sub>n</sub>-k<sub>n</sub>, r<sub>n</sub>)<br>
+garnersFormula(r<sub>n-1</sub>-k<sub>n-1</sub>, r<sub>n-1</sub>, k<sub>n</sub>, r<sub>n</sub>)<br>
+garnersFormula(r<sub>n-1</sub>-k<sub>n-1</sub>, r<sub>n-1</sub>, r<sub>n</sub>-k<sub>n</sub>, r<sub>n</sub>)
+
+you narrow the four combinations to just two that match kk or comp-kk. Implementation details are a bit more messy
+than this explanation. I ended up creating [a class dedicated to tracking different allowed combinations of residues](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/CRTCombinations.java)
+moduli [11, 107, 197, 1621, 105143, 405373, 2323367]. The class implements
+[Iterable<BigInteger[][]>](https://docs.oracle.com/javase/8/docs/api/java/lang/Iterable.html) and thus allows iterating
+through all legit combinations of possible residues to try. Another complication is that finding b mod comp requires
+ploughing through large ranges for the bigger subgroups. For example to find b mod (1621*105143) requires wading through
+the [0, 1621*105143/2] range, and for each element of the range you need to calculate a DH key and derive a MAC.
+Without parallelizing this easily takes an hour. I therefore implemented [logic to carry such scans in parallel](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L271-L317).
+
+This challenge is an excellent demonstration of the extra safety that one obtains by using only the x-coordinates
+of Alice's and Bob's public keys when implementing DH on an elliptic curve group. If Alice and Bob go a step further
+and also ensure that they use a twist secure elliptic curve group E(GF(p)) such as
+[the curve 25519](https://en.wikipedia.org/wiki/Curve25519), their implementation will be almost bullet-proof. E.g.
+a twist secure elliptic curve group is one whose quadratic twist Ē(GF(p)) has a prime order or an order without any
+small subgroups.
