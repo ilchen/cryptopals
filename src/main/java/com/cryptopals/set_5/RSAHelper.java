@@ -1,11 +1,15 @@
 package com.cryptopals.set_5;
 
+import com.cryptopals.set_6.RSAHelperExt;
 import lombok.Data;
 
 import com.squareup.jnagmp.Gmp;
+import lombok.SneakyThrows;
 
 import java.math.BigInteger;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
+import java.util.Arrays;
 import java.util.Random;
 
 import static com.cryptopals.Set5.isOdd;
@@ -21,6 +25,26 @@ public class RSAHelper {
         public BigInteger  encrypt(BigInteger plainText) {
             if (plainText.compareTo(modulus) >= 0)  throw  new IllegalArgumentException("Plain text too large");
             return  Gmp.modPowInsecure(plainText, e, modulus);
+        }
+        @SneakyThrows
+        public boolean  verify(byte msg[], BigInteger signature) {
+            byte[]  paddedMsg = encrypt(signature).toByteArray(),  hash;
+            // BigInteger removed the most significant 0 from the padding
+            if (paddedMsg[0] != 1)  return  false;
+            int   i = 1;
+            while (i < paddedMsg.length  &&  paddedMsg[i] == (byte) 0xff)  i++;
+            if (paddedMsg[i++] != 0)  return  false;
+            for (RSAHelperExt.HashMethod method : RSAHelperExt.HashMethod.values()) {
+                if (paddedMsg.length - i > method.asn1.length
+                        &&  Arrays.equals(method.asn1, Arrays.copyOfRange(paddedMsg, i, i + method.asn1.length))) {
+                    MessageDigest md = MessageDigest.getInstance(method.name);
+                    hash = md.digest(msg);
+                    return  paddedMsg.length - i - method.asn1.length >= hash.length
+                            &&  Arrays.equals(hash, Arrays.copyOfRange(paddedMsg,
+                            i + method.asn1.length, i + method.asn1.length + hash.length));
+                }
+            }
+            return  false;
         }
     }
     public static final BigInteger   PUBLIC_EXPONENT = BigInteger.valueOf(3L);

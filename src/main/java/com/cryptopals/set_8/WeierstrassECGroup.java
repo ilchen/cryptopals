@@ -1,7 +1,6 @@
 package com.cryptopals.set_8;
 
 import com.cryptopals.Set8;
-import com.fasterxml.jackson.databind.BeanProperty;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;

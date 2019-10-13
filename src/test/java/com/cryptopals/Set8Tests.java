@@ -1,6 +1,7 @@
 package com.cryptopals;
 
 import com.cryptopals.set_5.DiffieHellmanHelper;
+import com.cryptopals.set_6.DSAHelper;
 import com.cryptopals.set_8.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,9 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
+import static com.cryptopals.Set8.CHALLENGE56_MSG;
+import static com.cryptopals.Set8.CURVE_25519_ORDER;
+import static com.cryptopals.Set8.CURVE_25519_PRIME;
 import static java.math.BigInteger.ZERO;
 import static java.math.BigInteger.ONE;
 import static java.math.BigInteger.valueOf;
@@ -87,7 +91,7 @@ class Set8Tests {
     @ParameterizedTest @ValueSource(strings = { "rmi://localhost/ECDiffieHellmanBobService" })
         // The corresponding SpringBoot server application must be running.
     void challenge59(String url) throws RemoteException, NotBoundException, MalformedURLException,
-            NoSuchAlgorithmException, InvalidKeyException{
+            NoSuchAlgorithmException, InvalidKeyException {
         WeierstrassECGroup group = new WeierstrassECGroup(new BigInteger("233970423115425145524320034830162017933"),
                 valueOf(-95051), valueOf(11279326), new BigInteger("233970423115425145498902418297807005944"));
         WeierstrassECGroup.ECGroupElement   base = group.createPoint(
@@ -120,5 +124,22 @@ class Set8Tests {
                 valueOf(4), new BigInteger("85518893674295321206118380980485522083"));
         BigInteger   exponent = valueOf(12130);
         assertEquals(exponent, mbase.dlog(mbase.scale(exponent), valueOf(1110000), ECGroupElement::f));
+    }
+
+    @DisplayName("https://toadstyle.org/cryptopals/61.txt")
+    @Test
+    void challenge61ECDSA() {
+        MontgomeryECGroup   curve25519 = new MontgomeryECGroup(CURVE_25519_PRIME,
+                valueOf(486662), ONE, CURVE_25519_ORDER.shiftRight(3), CURVE_25519_ORDER);
+        MontgomeryECGroup.ECGroupElement   curve25519Base = curve25519.createPoint(
+                valueOf(9), curve25519.mapToY(valueOf(9)));
+        BigInteger   q = curve25519.getCyclicOrder();
+        ECDSA   ecdsa = new ECDSA(curve25519Base, q);
+        DSAHelper.Signature   signature = ecdsa.sign(CHALLENGE56_MSG.getBytes());
+        ECDSA.PublicKey   legitPk = ecdsa.getPublicKey(),
+                forgedPk = Set8.breakChallenge61ECDSA(CHALLENGE56_MSG.getBytes(), signature, ecdsa.getPublicKey());
+        assertTrue(legitPk.verifySignature(CHALLENGE56_MSG.getBytes(), signature));
+        assertTrue(forgedPk.verifySignature(CHALLENGE56_MSG.getBytes(), signature));
+        assertNotEquals(legitPk, forgedPk);
     }
 }

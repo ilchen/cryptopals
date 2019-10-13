@@ -1,6 +1,9 @@
 package com.cryptopals;
 
 import com.cryptopals.set_5.DiffieHellmanHelper;
+import com.cryptopals.set_5.RSAHelper;
+import com.cryptopals.set_6.DSAHelper;
+import com.cryptopals.set_6.RSAHelperExt;
 import com.cryptopals.set_8.*;
 import lombok.Data;
 import lombok.SneakyThrows;
@@ -27,6 +30,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static com.cryptopals.set_6.DSAHelper.hashAsBigInteger;
 import static java.math.BigInteger.*;
 
 /**
@@ -42,7 +46,9 @@ public class Set8 {
                               G = new BigInteger(
              "45653563970957406554368545034838268321361061416395634877324381953436904376061178"
              + "28318042418238184896212352329118608100083187535033402010599512641674644143"),
-                              Q = new BigInteger("236234353446506858198510045061214171961");
+                              Q = new BigInteger("236234353446506858198510045061214171961"),
+            CURVE_25519_PRIME = ONE.shiftLeft(255).subtract(valueOf(19)),
+            CURVE_25519_ORDER = ONE.shiftLeft(252).add(new BigInteger("27742317777372353535851937790883648493"));
     private static final BigInteger   TWO = valueOf(2),  THREE = valueOf(3),  FOUR = valueOf(4);
 
     @Data
@@ -286,7 +292,7 @@ public class Set8 {
                 for (BigInteger b = range[0]; b.compareTo(range[1]) < 0; b = b.add(ONE)) {  /* searching for Bob's secret key b modulo r */
                     mac.init(generateSymmetricKey(group, h, b, 32, MAC_ALGORITHM_NAME));
                     if (b.remainder(freq).equals(ZERO)) {
-                        System.out.printf("%s, remaining range [%d, %d)%n", Thread.currentThread(), b, range[1]);
+                        System.out.printf("%s remaining range: [%d, %d)%n", Thread.currentThread(), b, range[1]);
                         if (stop.get())  return  null;
                     }
                     if (Arrays.equals(resp.mac, mac.doFinal(resp.msg.getBytes()))) {
@@ -444,6 +450,99 @@ public class Set8 {
     }
 
 
+    /**
+     * Forges a public ECDSA key that is valida for a given message and ECDSA signature combination
+     * @param msg  a message
+     * @param signature  a valid ECDSA signature for {@code msg}
+     * @param pk a public key whose corresponding private key was used to produce {@code signature}
+     * @return a forged public key that validates the msg and signature combination
+     */
+    static ECDSA.PublicKey  breakChallenge61ECDSA(byte[] msg, DSAHelper.Signature signature, ECDSA.PublicKey pk) {
+        BigInteger   w = signature.getS().modInverse(pk.getN()),  u1 = hashAsBigInteger(msg).multiply(w).mod(pk.getN()),
+                     u2 = signature.getR().multiply(w).mod(pk.getN()),
+                     d_ = DSAHelper.generateK(pk.getN()),
+                     t = u1.add(u2.multiply(d_)).mod(pk.getN());
+        ECGroupElement   R = pk.getG().scale(u1).combine(pk.getQ().scale(u2)),  G_= R.scale(t.modInverse(pk.getN())),
+                         Q_ = G_.scale(d_);
+        return  new ECDSA.PublicKey(G_, pk.getN(), Q_);
+    }
+
+    /**
+     * Finds a DLog of {@code y} base {@code g} in group Zp* determined by prime {@code p}. The method
+     * uses a combination of <a href="https://en.wikipedia.org/wiki/Pohlig–Hellman_algorithm">Pohlig-Hellman</a>
+     * and Pollard's algorithms
+     * @param y
+     * @param g
+     * @param p
+     * @param factors
+     * @return
+     */
+    static BigInteger  findDLog(BigInteger y, BigInteger g, BigInteger p, List<BigInteger> factors) {
+        List<BigInteger[]>   residues = new ArrayList<>();
+        BigInteger   prod = ONE,  q;
+        int   n = factors.size();
+        System.out.println(factors);
+
+        ANOTHER_MODULUS:
+        for (int i=0; i < n; i++) {
+            BigInteger   r = factors.get(i), otherOrder = p.subtract(ONE).divide(r),
+                         gi = g.modPow(otherOrder, p),  hi = y.modPow(otherOrder, p);
+            for (BigInteger b=ZERO; b.compareTo(r) < 0; b=b.add(ONE)) {
+                if (gi.modPow(b, p).equals(hi)) {
+                    System.out.printf("Found b mod %d: %d%n", r, b);
+                    residues.add(new BigInteger[] { b, r });
+                    prod = prod.multiply(r);
+                    break;
+                }
+            }
+            if (prod.compareTo(p) >= 0)  {
+                System.out.printf("Enough found%n\tQ: %d%n\tP: %d%n", p, prod);
+                break  ANOTHER_MODULUS;
+            }
+        }
+
+        q = garnersAlgorithm(residues);
+        System.out.printf("b mod %d: %d%n", prod, q);
+
+        if (prod.compareTo(p) < 0) {
+            BigInteger  gPrime = g.modPow(prod, p),  yPrime = y.multiply(g.modPow(q.negate(), p)),
+                    m = new DiffieHellmanHelper(p, gPrime).dlog(yPrime, p.subtract(ONE).divide(prod), DiffieHellmanHelper::f);
+            return  q.add(m.multiply(prod));
+        }
+
+        return  q;
+    }
+
+    /**
+     * @param bitLength   number of bits in the RSA modulus that was used to calculate {@code rsaSignature}
+     */
+    static RSAHelper.PublicKey  breakChallenge61RSA(byte[] msg, BigInteger rsaSignature, int bitLength) {
+        DiffieHellmanUtils.PrimeAndFactors   primeAndFactorsP,  primeAndFactorsQ = null;
+        BigInteger   padm = RSAHelperExt.pkcs15Pad(msg, RSAHelperExt.HashMethod.SHA1, bitLength),  N_,  logP,  logQ;
+        do {
+            primeAndFactorsP = DiffieHellmanUtils.findSmoothPrime2(bitLength / 2);
+        }  while (!DiffieHellmanUtils.isPrimitiveRoot(padm, primeAndFactorsP.getP(), primeAndFactorsP.getFactors())
+                || !DiffieHellmanUtils.isPrimitiveRoot(rsaSignature, primeAndFactorsP.getP(), primeAndFactorsP.getFactors()));
+
+        System.out.println("One found: " + primeAndFactorsP.getFactors());
+        do {
+            primeAndFactorsQ = DiffieHellmanUtils.findSmoothPrime2(bitLength / 2);
+        } while (!DiffieHellmanUtils.isPrimitiveRoot(padm, primeAndFactorsQ.getP(), primeAndFactorsQ.getFactors())
+                ||  !DiffieHellmanUtils.isPrimitiveRoot(rsaSignature, primeAndFactorsQ.getP(), primeAndFactorsQ.getFactors()));
+
+        System.out.printf("Found desired p and q:%n\t%d%n\t%d%n", primeAndFactorsP.getP(), primeAndFactorsQ.getP());
+        N_ = primeAndFactorsP.getP().multiply(primeAndFactorsQ.getP());
+
+
+        logP = findDLog(padm, rsaSignature, primeAndFactorsP.getP(), primeAndFactorsP.getFactors());
+        System.out.println("logP: " + logP);
+
+        logQ = findDLog(padm, rsaSignature, primeAndFactorsQ.getP(), primeAndFactorsQ.getFactors());
+        System.out.println("logQ: " + logQ);
+
+        return  new RSAHelper.PublicKey(garnersFormula(logP, primeAndFactorsP.getP(), logQ, primeAndFactorsQ.getP()), N_);
+    }
+
     public static void main(String[] args) {
 
         try {
@@ -503,9 +602,9 @@ public class Set8 {
             assert  Arrays.equals(mac.doFinal(res.msg.getBytes()), res.mac);
             System.out.println("DiffieHellman in the EC " + group + " works");
 
-            b = breakChallenge59(base, q, bobUrl);
-            assert  ecBob.isValidPrivateKey(b) : "Bob's key not correct";
-            System.out.printf("Recovered Bob's secret key: %x%n", b);
+//            b = breakChallenge59(base, q, bobUrl);
+//            assert  ecBob.isValidPrivateKey(b) : "Bob's key not correct";
+//            System.out.printf("Recovered Bob's secret key: %x%n", b);
 
             System.out.println("\nChallenge 60");
             MontgomeryECGroup   mgroup = new MontgomeryECGroup(new BigInteger("233970423115425145524320034830162017933"),
@@ -522,9 +621,40 @@ public class Set8 {
             System.out.println("base^q-2 = " + mbase.scale(q.subtract(TWO)));
             System.out.println("base^q+1 = " + mbase.scale(q.add(ONE)));
 
-            for (BigInteger bb : breakChallenge60(mbase, q, bobUrl)) {
-                System.out.printf("Recovered Bob's secret key: %d? %b%n", bb, ecBob.isValidPrivateKey(b));
-            }
+//            for (BigInteger bb : breakChallenge60(mbase, q, bobUrl)) {
+//                System.out.printf("Recovered Bob's secret key: %d? %b%n", bb, ecBob.isValidPrivateKey(b));
+//            }
+
+            System.out.println("\nChallenge 61");
+            // Curve 25519
+            MontgomeryECGroup   curve25519 = new MontgomeryECGroup(CURVE_25519_PRIME,
+                    valueOf(486662), ONE, CURVE_25519_ORDER.shiftRight(3), CURVE_25519_ORDER);
+            MontgomeryECGroup.ECGroupElement   curve25519Base = curve25519.createPoint(
+                    valueOf(9), curve25519.mapToY(valueOf(9)));
+            q = curve25519.getCyclicOrder();
+            System.out.println("base^q = " + curve25519Base.scale(q));
+            System.out.println("base^q-1 = " + curve25519Base.scale(q.subtract(ONE)));
+            System.out.println("base^q-2 = " + curve25519Base.scale(q.subtract(TWO)));
+            System.out.println("base^q+1 = " + mbase.scale(q.add(ONE)));
+            System.out.println("ladder(q) = " + curve25519Base.ladder(q));
+
+            ECDSA   ecdsa = new ECDSA(curve25519Base, q);
+            DSAHelper.Signature   signature = ecdsa.sign(CHALLENGE56_MSG.getBytes());
+            ECDSA.PublicKey   legitPk = ecdsa.getPublicKey(),
+                              forgedPk = breakChallenge61ECDSA(CHALLENGE56_MSG.getBytes(), signature, ecdsa.getPublicKey());
+            assert  legitPk.verifySignature(CHALLENGE56_MSG.getBytes(), signature);
+            assert  forgedPk.verifySignature(CHALLENGE56_MSG.getBytes(), signature);
+            assert  !legitPk.equals(forgedPk);
+            System.out.println("Legit public key: " + legitPk);
+            System.out.println("Forged public key: " + forgedPk);
+
+            RSAHelperExt   rsa = new RSAHelperExt(valueOf(3), 160);
+            BigInteger   rsaSignature = rsa.sign(CHALLENGE56_MSG.getBytes(), RSAHelperExt.HashMethod.SHA1);
+            RSAHelper.PublicKey   legitRSAPk = rsa.getPublicKey(),
+                                  forgedRSAPk = breakChallenge61RSA(CHALLENGE56_MSG.getBytes(), rsaSignature,
+                                                                    legitRSAPk.getModulus().bitLength());
+            assert  legitRSAPk.verify(CHALLENGE56_MSG.getBytes(), rsaSignature);
+            assert  forgedRSAPk.verify(CHALLENGE56_MSG.getBytes(), rsaSignature);
 
         } catch (Exception e) {
             e.printStackTrace();

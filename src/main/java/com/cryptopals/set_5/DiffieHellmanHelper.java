@@ -1,5 +1,6 @@
 package com.cryptopals.set_5;
 
+import com.cryptopals.set_8.DiffieHellmanUtils;
 import com.squareup.jnagmp.Gmp;
 import lombok.SneakyThrows;
 
@@ -116,12 +117,7 @@ public class DiffieHellmanHelper {
      * @return a generator satisfying the order given
      */
     public BigInteger  findGenerator(BigInteger order) {
-        Random   rnd = new Random();
-        BigInteger   otherOrder = p.subtract(ONE).divide(order),  h;
-        do {
-            h = new BigInteger(p.bitLength(), rnd).modPow(otherOrder, p);
-        }  while (h.equals(ONE));
-        return  h;
+        return  DiffieHellmanUtils.findGenerator(p, order);
     }
 
     /**

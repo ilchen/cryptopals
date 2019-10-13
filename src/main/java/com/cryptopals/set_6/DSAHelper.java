@@ -16,14 +16,12 @@ import static java.math.BigInteger.*;
  * Created by Andrei Ilchenko on 30-03-19.
  */
 public class DSAHelper {
-        @Data
+    @Data
     public static class PublicKey {
         private final BigInteger  p,  q,  g,  y;
 
-        @SneakyThrows
         public boolean   verifySignature(byte msg[], Signature signature) {
-            MessageDigest   sha = MessageDigest.getInstance("SHA-1");
-            BigInteger   w = signature.getS().modInverse(q),  u1 = fromHash(sha.digest(msg)).multiply(w).mod(q),
+            BigInteger   w = signature.getS().modInverse(q),  u1 = hashAsBigInteger(msg).multiply(w).mod(q),
                          u2 = signature.getR().multiply(w).mod(q);
             return  g.modPow(u1, p).multiply(y.modPow(u2, p)).mod(p).mod(q).equals(signature.getR());
         }
@@ -106,7 +104,7 @@ public class DSAHelper {
 
     public DSAHelper(BigInteger p,  BigInteger q,  BigInteger g) {
         this.p = p;     this.q = q;     this.g = g;
-        x = generateK();
+        x = generateK(q);
     }
 
     public DSAHelper(BigInteger p,  BigInteger q,  BigInteger g, BigInteger x) {
@@ -114,23 +112,30 @@ public class DSAHelper {
         this.x = x;
     }
 
-    private BigInteger   generateK() {
+    /**
+     * Generates a DSA private key
+     * @param q the order of the group whose generator is used to produce a DSA public key
+     */
+    public static BigInteger  generateK(BigInteger q) {
         BigInteger   k;
         do {
-            k = new BigInteger(q.bitLength(), SECURE_RANDOM);
+            k = new BigInteger(q.bitLength(), SECURE_RANDOM).mod(q);
         }  while (k.compareTo(ONE) <= 0  ||  k.compareTo(q) >= 0);
         return  k;
+    }
+
+    @SneakyThrows
+    public static BigInteger  hashAsBigInteger(byte msg[]) {
+        return  fromHash(MessageDigest.getInstance("SHA-1").digest(msg));
     }
 
     public PublicKey  getPublicKey() {
         return  new PublicKey(p, q, g, g.modPow(x, p));
     }
 
-    @SneakyThrows
     public Signature  sign(byte msg[]) {
-        MessageDigest   sha = MessageDigest.getInstance("SHA-1");
-        BigInteger   k = generateK(),  r = g.modPow(k, p).mod(q);
-        return  new Signature(r, k.modInverse(q).multiply(fromHash(sha.digest(msg)).add(x.multiply(r))).mod(q));
+        BigInteger   k = generateK(q),  r = g.modPow(k, p).mod(q);
+        return  new Signature(r, k.modInverse(q).multiply(hashAsBigInteger(msg).add(x.multiply(r))).mod(q));
     }
 
 }
