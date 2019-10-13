@@ -377,12 +377,29 @@ small subgroups.
 
 ### Challenge 61
 The first part of [Challenge 61](https://toadstyle.org/cryptopals/61.txt) that concerns itself with Duplicate Signature
-Key Selection (DSKS) for ECDSA is almost trivial compared to anything else in Sets 7 and 8. I used [the curve 25519](https://en.wikipedia.org/wiki/Curve25519)
-for implementing ECDSA. [The implementation is quite compact](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/ECDSA.java#L15-L63)
+Key Selection (DSKS) for ECDSA is almost trivial compared to anything else in Sets 7 and 8.
+[The implementation is quite compact](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/ECDSA.java#L15-L63)
 and simpler than DSA atop of Zp* since there's only group E(F<sub>p</sub>) to deal with rather than two groups
 Z<sub>p</sub><sup>\*</sup> and Z<sub>q</sub><sup>\*</sup> as is the case in the
 classical DSA. [The effort to produce a DSKS for ECDSA is negligible](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L453-L468),
-even for an industry standard curve such as the Curve 25519.
+even for an industry standard curve such as [the curve 25519](https://en.wikipedia.org/wiki/Curve25519):
+```java
+@Test
+void challenge61ECDSA() {
+    MontgomeryECGroup   curve25519 = new MontgomeryECGroup(CURVE_25519_PRIME,
+            valueOf(486662), ONE, CURVE_25519_ORDER.shiftRight(3), CURVE_25519_ORDER);
+    MontgomeryECGroup.ECGroupElement   curve25519Base = curve25519.createPoint(
+            valueOf(9), curve25519.mapToY(valueOf(9)));
+    BigInteger   q = curve25519.getCyclicOrder();
+    ECDSA   ecdsa = new ECDSA(curve25519Base, q);
+    DSAHelper.Signature   signature = ecdsa.sign(CHALLENGE56_MSG.getBytes());
+    ECDSA.PublicKey   legitPk = ecdsa.getPublicKey(),
+            forgedPk = Set8.breakChallenge61ECDSA(CHALLENGE56_MSG.getBytes(), signature, ecdsa.getPublicKey());
+    assertTrue(legitPk.verifySignature(CHALLENGE56_MSG.getBytes(), signature));
+    assertTrue(forgedPk.verifySignature(CHALLENGE56_MSG.getBytes(), signature));
+    assertNotEquals(legitPk, forgedPk);
+}
+```
 
 Mounting a DSKS attack on RSA is much more laborious. I implemented it for relatively small RSA moduli of about 320 bits.
 
