@@ -451,7 +451,7 @@ public class Set8 {
 
 
     /**
-     * Forges a public ECDSA key that is valida for a given message and ECDSA signature combination
+     * Forges a public ECDSA key that is valid for a given message and ECDSA signature combination
      * @param msg  a message
      * @param signature  a valid ECDSA signature for {@code msg}
      * @param pk a public key whose corresponding private key was used to produce {@code signature}
@@ -471,11 +471,10 @@ public class Set8 {
      * Finds a DLog of {@code y} base {@code g} in group Zp* determined by prime {@code p}. The method
      * uses a combination of <a href="https://en.wikipedia.org/wiki/Pohlig–Hellman_algorithm">Pohlig-Hellman</a>
      * and Pollard's algorithms
-     * @param y
-     * @param g
-     * @param p
-     * @param factors
-     * @return
+     * @param y  an element of Zp* whose DLog base {@code g} needs to be found
+     * @param g  a generator of Zp*
+     * @param p  a prime defining  Zp*
+     * @param factors  factors of {@code p - 1}
      */
     static BigInteger  findDLog(BigInteger y, BigInteger g, BigInteger p, List<BigInteger> factors) {
         List<BigInteger[]>   residues = new ArrayList<>();

@@ -85,7 +85,7 @@ final public class DiffieHellmanUtils {
 
         do {
             res = BigInteger.probablePrime(minExponent, rnd);
-            residues = DiffieHellmanUtils.findSmallFactors(res.subtract(ONE), 1 << 20);
+            residues = DiffieHellmanUtils.findSmallFactors(res.subtract(ONE), 1 << 18);
         }  while (residues.size() < 10);
         return  new PrimeAndFactors(res, residues);
     }

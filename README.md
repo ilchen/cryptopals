@@ -12,7 +12,7 @@ Some challenges ([31](https://cryptopals.com/sets/4/challenges/31),
 [35](https://cryptopals.com/sets/5/challenges/35), [36](https://cryptopals.com/sets/5/challenges/36),
 [37](https://cryptopals.com/sets/5/challenges/37), [49](https://cryptopals.com/sets/7/challenges/49),
 [57](https://toadstyle.org/cryptopals/57.txt), [58](https://toadstyle.org/cryptopals/58.txt),
-[59](https://toadstyle.org/cryptopals/59.txt)) require a server-side application.
+[59](https://toadstyle.org/cryptopals/59.txt), [60](https://toadstyle.org/cryptopals/60.txt)) require a server-side application.
 This can be produced with `mvn install` and executed with
 ```
 java -jar cryptopals_server-0.2.0.jar
@@ -250,8 +250,8 @@ elliptic curves: Bv<sup>2</sup> = u<sup>3</sup> + Au<sup>2</sup> + u
 
 A Montgomery form curve equation can always be changed into the Weierstrass form, the converse is not always true.
 Given isomorphism between EC groups of the same order regardless of their form, I abstracted the concept of
-an EC point into an interface and refactored the rest of the classes accordingly. This ensured a shared implementation
-of the `scale` and `dlog` methods:
+an EC point into an interface and refactored the rest of the classes accordingly. This ensured [a shared implementation
+of the `scale` and `dlog` methods](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/ECGroupElement.java#L15-L91):
 ```java
 public interface ECGroupElement {
     BigInteger  getX();
@@ -275,7 +275,7 @@ public interface ECGroupElement {
     }
 }
 ```
-Analogously for the concept of an EC group:
+Analogously for [the concept of an EC group](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/ECGroup.java#L14-L84):
 ```java
 public interface ECGroup {
 
@@ -373,3 +373,20 @@ and also ensure that they use a twist secure elliptic curve group E(GF(p)) such 
 [the curve 25519](https://en.wikipedia.org/wiki/Curve25519), their implementation will be almost bullet-proof. E.g.
 a twist secure elliptic curve group is one whose quadratic twist Ē(GF(p)) has a prime order or an order without any
 small subgroups.
+
+
+### Challenge 61
+The first part of [Challenge 61](https://toadstyle.org/cryptopals/61.txt) that concerns itself with Duplicate Signature
+Key Selection (DSKS) for ECDSA is almost trivial compared to anything else in Sets 7 and 8. I used [the curve 25519](https://en.wikipedia.org/wiki/Curve25519)
+for implementing ECDSA. [The implementation is quite compact](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/ECDSA.java#L15-L63)
+and simpler than DSA atop of Zp* since there's only group E(F<sub>p</sub>) to deal with rather than two groups
+Z<sub>p</sub><sup>\*</sup> and Z<sub>q</sub><sup>\*</sup> as is the case in the
+classical DSA. [The effort to produce a DSKS for ECDSA is negligible](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L453-L468),
+even for an industry standard curve such as the Curve 25519.
+
+Mounting a DSKS attack on RSA is much more laborious. I implemented it for relatively small RSA moduli of about 320 bits.
+
+Thwarting DSKS attacks is trivial, the signer needs to attach their public key to the message before signing it. While 
+the verifier should do an extra check to ensure the public key they use to verify corresponds to the one added
+to the message. This way, the signing public key is authenticated along with the message.
+
