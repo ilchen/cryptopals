@@ -381,7 +381,7 @@ Key Selection (DSKS) for ECDSA is almost trivial compared to anything else in Se
 [The implementation is quite compact](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/ECDSA.java#L15-L63)
 and simpler than DSA atop of Zp* since there's only group E(F<sub>p</sub>) to deal with rather than two groups
 Z<sub>p</sub><sup>\*</sup> and Z<sub>q</sub><sup>\*</sup> as is the case in the
-classical DSA. [The effort to produce a DSKS for ECDSA is negligible](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L453-L468),
+classical DSA. [The effort to produce a DSKS for ECDSA is negligible](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L468-L482),
 even for an industry standard curve such as [the curve 25519](https://en.wikipedia.org/wiki/Curve25519):
 ```java
 @Test
