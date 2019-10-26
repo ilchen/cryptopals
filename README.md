@@ -429,9 +429,16 @@ The following part of the problem description deserves a word of caution
 > 4\. Use the Chinese Remainder Theorem to put ep and eq together:
 
          e' = crt([ep, eq], [p-1, q-1])
-Here `crt` doesn't refer to Garner's formula, rather it implies what is delineated in Section 4.1 of [this paper](http://mpqs.free.fr/corr98-42.pdf).
+The reasoning behind this formula is pretty straightforward: we know that s<sup>ep</sup>&equiv;pad(m) mod p and that
+s<sup>eq</sup>&equiv;pad(m) mod q. Since the computations are in GF(p) and GF(q) by Fermat's theorem this is equivallent to
+s<sup>ep mod (p-1)</sup>&equiv;pad(m) mod p and s<sup>eq mod (q-1)</sup>&equiv;pad(m) mod q. Thus we need to find e such that 
+e &equiv; ep mod (p-1) and e &equiv; eq mod (q-1). However plugging it into the CRT formula
+
+> e = ( ((ep−eq) ((q-1)<sup>−1</sup> mod (p-1) )) mod (p-1) )·(q-1) + eq
+
+will fail because (q-1) is not invertible mod (p-1) as they are both even. I used the approach delineated
+in Section 4.1 of [this paper](http://mpqs.free.fr/corr98-42.pdf) to correctly tackle it.
 
 Thwarting DSKS attacks is trivial, the signer needs to attach their public key to the message before signing it. While 
 the verifier should do an extra check to ensure the public key they use to verify corresponds to the one added
 to the message. This way, the signing public key is authenticated along with the message.
-
