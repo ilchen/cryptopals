@@ -48,8 +48,8 @@ public class RSAHelper {
         }
     }
     public static final BigInteger   PUBLIC_EXPONENT = BigInteger.valueOf(3L);
-    private static final int      NUM_BITS = 1024;
-    protected static final Random   SECURE_RANDOM = new SecureRandom(); // Thread safe
+    private static final int         NUM_BITS = 1024;
+    protected static final Random    SECURE_RANDOM = new SecureRandom(); // Thread safe
 
     protected final BigInteger    d,  n;
     private final PublicKey    pk;
@@ -86,6 +86,15 @@ public class RSAHelper {
             }
         }
         n = _n;     d = _d;
+        pk = new PublicKey(e, n);
+    }
+
+    public RSAHelper(BigInteger p, BigInteger q, BigInteger e) {
+        BigInteger pOrd = p.subtract(ONE), qOrd = q.subtract(ONE);
+        // Dividing by the GCD below results in a smaller private key.
+        BigInteger et = pOrd.multiply(qOrd)/*.divide(pOrd.gcd(qOrd))*/;
+        d = e.modInverse(et);
+        n = p.multiply(q);
         pk = new PublicKey(e, n);
     }
 

@@ -1,7 +1,9 @@
 package com.cryptopals;
 
 import com.cryptopals.set_5.DiffieHellmanHelper;
+import com.cryptopals.set_5.RSAHelper;
 import com.cryptopals.set_6.DSAHelper;
+import com.cryptopals.set_6.RSAHelperExt;
 import com.cryptopals.set_8.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,6 +18,8 @@ import java.rmi.RemoteException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.cryptopals.Set8.CHALLENGE56_MSG;
 import static com.cryptopals.Set8.CURVE_25519_ORDER;
@@ -141,5 +145,44 @@ class Set8Tests {
         assertTrue(legitPk.verifySignature(CHALLENGE56_MSG.getBytes(), signature));
         assertTrue(forgedPk.verifySignature(CHALLENGE56_MSG.getBytes(), signature));
         assertNotEquals(legitPk, forgedPk);
+    }
+
+    @DisplayName("https://toadstyle.org/cryptopals/61.txt")
+    @Test
+    void challenge61RSA() {
+        RSAHelperExt rsa = new RSAHelperExt(RSAHelper.PUBLIC_EXPONENT, 160);
+        BigInteger rsaSignature = rsa.sign(CHALLENGE56_MSG.getBytes(), RSAHelperExt.HashMethod.SHA1);
+
+        RSAHelper.PublicKey legitRSAPk = rsa.getPublicKey(),
+                forgedRSAPk = Set8.breakChallenge61RSA(CHALLENGE56_MSG.getBytes(), rsaSignature,
+                                                       legitRSAPk.getModulus().bitLength());
+
+        assertTrue(legitRSAPk.verify(CHALLENGE56_MSG.getBytes(), rsaSignature));
+        assertTrue(forgedRSAPk.verify(CHALLENGE56_MSG.getBytes(), rsaSignature));
+    }
+
+    @DisplayName("https://toadstyle.org/cryptopals/61.txt")
+    @Test
+    void challenge61RSAPrecomputedPrimes() {
+        RSAHelperExt rsa = new RSAHelperExt(new BigInteger("1244531015222089066686014345871128487293834311511"),
+                new BigInteger("1203007175264872213635758749034760908717988390329"), RSAHelper.PUBLIC_EXPONENT);
+        BigInteger rsaSignature = rsa.sign(CHALLENGE56_MSG.getBytes(), RSAHelperExt.HashMethod.SHA1);
+
+        DiffieHellmanUtils.PrimeAndFactors pq[] = new DiffieHellmanUtils.PrimeAndFactors[]{
+                new DiffieHellmanUtils.PrimeAndFactors(
+                        new BigInteger("2252226720431925817465020447075111488063403846689"),
+                        Stream.of(2, 7, 277, 647, 2039, 2953, 14633, 139123, 479387, 904847).map(BigInteger::valueOf).collect(Collectors.toList())
+                ),
+                new DiffieHellmanUtils.PrimeAndFactors(
+                        new BigInteger("2713856776699319359494147955700110393372009838087"),
+                        Stream.of(2, 13, 17, 23, 26141, 56633, 80429, 241567, 652429, 1049941).map(BigInteger::valueOf).collect(Collectors.toList())
+                ),
+        };
+
+        RSAHelper.PublicKey legitRSAPk = rsa.getPublicKey(),
+                            forgedRSAPk = Set8.breakChallenge61RSA(CHALLENGE56_MSG.getBytes(), rsaSignature, pq,
+                                                                   legitRSAPk.getModulus().bitLength());
+        assertTrue(legitRSAPk.verify(CHALLENGE56_MSG.getBytes(), rsaSignature));
+        assertTrue(forgedRSAPk.verify(CHALLENGE56_MSG.getBytes(), rsaSignature));
     }
 }

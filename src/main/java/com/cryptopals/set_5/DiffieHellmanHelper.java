@@ -162,15 +162,15 @@ public class DiffieHellmanHelper {
         for (BigInteger i=ZERO; i.compareTo(n) < 0; i=i.add(ONE)) {
             xt = xt.add(f.apply(yt, k));
             //yt = yt.multiply(g.modPow(f(yt, k), p)).remainder(p);
-            yt = yt.multiply(Gmp.modPowInsecure(g, f(yt, k), p)).remainder(p);
+            yt = yt.multiply(Gmp.modPowInsecure(g, f.apply(yt, k), p)).remainder(p);
         }
         System.out.printf("xt=%d, upperBound=%d%nyt=%d%n", xt, b.add(xt), yt);
 
         BigInteger   xw = ZERO,  yw = y;
         while (xw.compareTo(b.add(xt)) < 0) {
-            xw = xw.add(f(yw, k));
+            xw = xw.add(f.apply(yw, k));
             //yw = yw.multiply(g.modPow(f(yw, k), p)).remainder(p);
-            yw = yw.multiply(Gmp.modPowInsecure(g, f(yw, k), p)).remainder(p);
+            yw = yw.multiply(Gmp.modPowInsecure(g, f.apply(yw, k), p)).remainder(p);
             if (yw.equals(yt))  {
                 return  b.add(xt).subtract(xw);
             }

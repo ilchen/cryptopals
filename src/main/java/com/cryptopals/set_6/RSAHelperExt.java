@@ -40,6 +40,7 @@ public class RSAHelperExt extends RSAHelper {
         }
     }
 
+
     private final Set<ByteBuffer>   processed = ConcurrentHashMap.newKeySet();
     private final int    numBytes = (n.bitLength() + 7 & ~7) / 8;
     public RSAHelperExt() {
@@ -50,6 +51,14 @@ public class RSAHelperExt extends RSAHelper {
     }
     public RSAHelperExt(BigInteger e, int numBits) {
         super(e, numBits);
+    }
+    public RSAHelperExt(BigInteger p, BigInteger q, BigInteger e) {
+        super(p, q, e);
+    }
+
+    @Override
+    public RSAHelper.PublicKey getPublicKey() {
+        return  new PublicKey(super.getPublicKey().getE(), n);
     }
 
     @SneakyThrows
@@ -69,6 +78,12 @@ public class RSAHelperExt extends RSAHelper {
         return  repr.length == numBytes - 1  &&  repr[0] == 2;
     }
 
+    /**
+     * Pads {@code plainText} using the PKCS#1 v1.5 padding mode 2 (encryption)
+     * @param plainText  the message to pad
+     * @param bitNum  the bit length of the RSA modulus
+     * @return
+     */
     public static BigInteger  pkcs15Pad(byte plainText[], int bitNum) {
         byte   pad[] = new byte[(bitNum + 7 & ~7) / 8];
         if (pad.length - plainText.length <= 11) // 00 02 at-least-8-bytes-of-randomness 00 message-bytes
@@ -84,6 +99,7 @@ public class RSAHelperExt extends RSAHelper {
 
     public byte[]  pkcs15Unpad(BigInteger paddedPlainText) {
         byte   repr[] = paddedPlainText.toByteArray();
+        // BigInteger removes the most significant 0 from the padding
         if (repr.length == numBytes - 1  && repr[0] == 2) {
             for (int i=1; i < repr.length; i++) {
                 if (repr[i] == 0  &&  i >= 10)  {
@@ -94,6 +110,14 @@ public class RSAHelperExt extends RSAHelper {
         throw  new IllegalArgumentException(paddedPlainText + " is not PKCS padded");
     }
 
+    /**
+     * Pads {@code msg} using the PKCS#1 v1.5 padding mode 1 (signing): <p>
+     * <code>00h 01h ffh ffh ... ffh ffh 00h ASN.1 GOOP HASH</code></p>
+     * @param msg  the message to pad
+     * @param hMethod  one of { {@link HashMethod#MD5}, {@link HashMethod#SHA1}, {@link HashMethod#SHA256} }
+     * @param bitLength  the bit length of the RSA modulus
+     * @return  an PKCS1.5-padded message
+     */
     @SneakyThrows
     public static BigInteger  pkcs15Pad(byte msg[], HashMethod hMethod, int bitLength) {
         final int   MIN_PAD = 3;   // \x00\x01\xff...xff\x00"
@@ -110,22 +134,13 @@ public class RSAHelperExt extends RSAHelper {
 
     @SneakyThrows
     public BigInteger  sign(byte msg[], HashMethod hMethod) {
-        final int   MIN_PAD = 3;   // \x00\x01\xff...xff\x00"
-        MessageDigest   md = MessageDigest.getInstance(hMethod.name);
-        byte[]   hash = md.digest(msg),  paddedMsg;
-        int      lenPad = n.bitLength() / 8 - (hash.length + hMethod.asn1.length + MIN_PAD + 1);
-        paddedMsg = new byte[lenPad + hash.length + hMethod.asn1.length + MIN_PAD];
-        paddedMsg[1] = 1;
-        Arrays.fill(paddedMsg, MIN_PAD - 1, MIN_PAD - 1 + lenPad, (byte) 0xff);
-        System.arraycopy(hMethod.asn1, 0, paddedMsg, MIN_PAD + lenPad, hMethod.asn1.length);
-        System.arraycopy(hash, 0, paddedMsg, MIN_PAD + lenPad + hMethod.asn1.length, hash.length);
-        return  new BigInteger(paddedMsg).modPow(d, n);
+        return  pkcs15Pad(msg, hMethod, n.bitLength()).modPow(d, n);
     }
 
     @SneakyThrows
     public boolean  verify(byte msg[], BigInteger signature) {
         byte[]  paddedMsg = getPublicKey().encrypt(signature).toByteArray(),  hash;
-        // BigInteger removed the most significant 0 from the padding
+        // BigInteger removes the most significant 0 from the padding
         if (paddedMsg[0] != 1)  return  false;
         int   i = 1;
         while (i < paddedMsg.length  &&  paddedMsg[i] == (byte) 0xff)  i++;

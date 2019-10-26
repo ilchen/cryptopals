@@ -29,6 +29,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static com.cryptopals.set_6.DSAHelper.hashAsBigInteger;
 import static java.math.BigInteger.*;
@@ -149,6 +150,20 @@ public class Set8 {
         return  x;
     }
 
+    /**
+     * Implements a recovery of e' from ep and eq as is explained in Section 4.1 of <a href="http://mpqs.free.fr/corr98-42.pdf">this paper</a>
+     * @param ep  log<sub>s</sub>(pad(m)) mod p
+     * @param eq  log<sub>s</sub>(pad(m)) mod q
+     * @param pMin1  p-1
+     * @param qMin1  q-1
+     * @return  log<sub>s</sub>(pad(m)) mod pq
+     */
+    private static BigInteger  crt(BigInteger ep, BigInteger eq, BigInteger pMin1, BigInteger qMin1) {
+        BigInteger   t = eq.subtract(ep).divide(TWO).multiply(pMin1.divide(TWO).modInverse(qMin1.divide(TWO))),
+                lambda = pMin1.multiply(qMin1).divide(TWO);
+        return  ep.add(t.multiply(pMin1)).mod(lambda);
+    }
+
     static BigInteger  breakChallenge57(String url) throws RemoteException, NotBoundException, MalformedURLException,
             NoSuchAlgorithmException, InvalidKeyException {
         DiffieHellman   bob = (DiffieHellman) Naming.lookup(url);
@@ -203,7 +218,7 @@ public class Set8 {
         Mac   mac = Mac.getInstance(Set8.MAC_ALGORITHM_NAME);
 
         // Using only the largest found factor rather than trying them all. This leads to a more realistic attack
-        // vector for Bob is unlikely to hang on to the same private key across diferent sessions with Alice
+        // vector for Bob is unlikely to hang on to the same private key across different sessions with Alice
         BigInteger   r = factors.get(n-1),  h = dh.findGenerator(r);
         Challenge57DHBobResponse   res = bob.initiate(p, g, q, h);
         for (BigInteger b=ZERO; b.compareTo(r) < 0; b=b.add(ONE)) {  /* searching for Bob's secret key b modulo r */
@@ -506,40 +521,125 @@ public class Set8 {
         if (prod.compareTo(p) < 0) {
             BigInteger  gPrime = g.modPow(prod, p),  yPrime = y.multiply(g.modPow(q.negate(), p)),
                     m = new DiffieHellmanHelper(p, gPrime).dlog(yPrime, p.subtract(ONE).divide(prod), DiffieHellmanHelper::f);
+
+            System.out.printf("g^log(y) mod p = %d%ny mod p = %d%n", g.modPow(q.add(m.multiply(prod)), p), y.mod(p) );
             return  q.add(m.multiply(prod));
         }
 
         return  q;
     }
 
+    private static DiffieHellmanUtils.PrimeAndFactors[]  searchForPQPar(BigInteger padm, BigInteger sign, int bitLength) {
+        final int   freq = 10;
+        final int   smallPrimes[] = DiffieHellmanUtils.findSmallPrimes((1 << 20) + (1 << 16));
+        final BigInteger   minProd = new BigInteger("3687215552105618314733653394033100");
+        DiffieHellmanUtils.PrimeAndFactors[]  res = new DiffieHellmanUtils.PrimeAndFactors[2];
+        AtomicBoolean   stop = new AtomicBoolean();
+
+        Runnable   task = () -> {
+            System.out.println(Thread.currentThread() + " is searching");
+            DiffieHellmanUtils.PrimeAndFactors   primeAndFactors;
+            BigInteger   product;
+            int   i = 0;
+
+            while (true) {
+                do {
+                    if (++i % freq == 0) {
+                        System.out.println(Thread.currentThread() + " sieved through another " + freq + " primes");
+                        if (stop.get())  return;
+                    }
+                    // An extra bit to ensure the product is at least bitLength long
+                    primeAndFactors = DiffieHellmanUtils.findSmoothPrime(bitLength / 2 + 1, smallPrimes);
+                    product = primeAndFactors.getFactors().stream().reduce(ONE, BigInteger::multiply);
+                } while (product.compareTo(minProd) < 0
+                        || !DiffieHellmanUtils.isPrimitiveRoot(padm, primeAndFactors.getP(), primeAndFactors.getFactors())
+                        || !DiffieHellmanUtils.isPrimitiveRoot(sign, primeAndFactors.getP(), primeAndFactors.getFactors()));
+
+                synchronized (res) {
+                    if (res[0] == null) {
+                        res[0] = primeAndFactors;
+                        System.out.println("One prime found: " + primeAndFactors);
+                    } else {
+                        // The only shared factor between p-1 and q-1 must be 2
+                        if (primeAndFactors.getP().subtract(ONE).gcd(res[0].getP().subtract(ONE)).equals(TWO)) {
+                            if (res[1] == null) {
+                                res[1] = primeAndFactors;
+                            }
+                            stop.set(true);
+                            return;
+                        }
+                    }
+                }
+            }
+        };
+
+        int   concurrency = Runtime.getRuntime().availableProcessors();
+        ExecutorService   executor = Executors.newFixedThreadPool(concurrency);
+
+        CompletableFuture.anyOf(IntStream.range(0, concurrency)
+                .mapToObj(x -> CompletableFuture.runAsync(task, executor)).toArray(CompletableFuture[]::new)).join();
+
+        executor.shutdown();
+        return  res;
+    }
+
+
+    /**
+     * @param pq   an already precomputed suitable p and q primes that meet the requirements for 1) {@code p-1} and {@code q-1}
+     *             being smooth and 2) both {@code rsaSignature} and {@code pad(msg)} being generators of the entire
+     *             Zp* and Zq* groups.
+     * @param bitLength   number of bits in the RSA modulus that was used to calculate {@code rsaSignature}
+     */
+    static RSAHelper.PublicKey  breakChallenge61RSA(byte[] msg, BigInteger rsaSignature,
+                                                    DiffieHellmanUtils.PrimeAndFactors[] pq, int bitLength) {
+        BigInteger   padm = RSAHelperExt.pkcs15Pad(msg, RSAHelperExt.HashMethod.SHA1, bitLength);
+
+        System.out.println("Modulus bitLength: " + bitLength);
+        System.out.println("p * q bitLength: " + pq[0].getP().multiply(pq[1].getP()).bitLength());
+        if (!DiffieHellmanUtils.isPrimitiveRoot(rsaSignature, pq[0].getP(), pq[0].getFactors())
+            ||  !DiffieHellmanUtils.isPrimitiveRoot(rsaSignature, pq[1].getP(), pq[1].getFactors())
+            ||  !DiffieHellmanUtils.isPrimitiveRoot(padm, pq[0].getP(), pq[0].getFactors())
+            ||  !DiffieHellmanUtils.isPrimitiveRoot(padm, pq[1].getP(), pq[1].getFactors())) {
+            throw  new IllegalArgumentException("Primes p and q don't meet the requirement of ");
+        }
+
+        BigInteger   logs[] = Stream.of(pq).parallel()
+                .map(x -> findDLog(padm, rsaSignature, x.getP(), x.getFactors())).toArray(BigInteger[]::new);
+
+        System.out.println("s: " + rsaSignature);
+        System.out.println("pad(m): " + padm);
+        System.out.println("p: " + pq[0].getP());
+        System.out.println("q: " + pq[1].getP());
+        System.out.println("logP: " + logs[0]);
+        System.out.println("logQ: " + logs[1]);
+
+        System.out.printf("s^logs(pad(m)) mod p: %d%ns^logs(pad(m)) mod q: %d%n",
+                rsaSignature.modPow(logs[0], pq[0].getP()),
+                rsaSignature.modPow(logs[1], pq[1].getP()));
+
+        System.out.printf("pad(msg) mod p: %d%npad(msg) mod q: %d%n",
+                padm.mod(pq[0].getP()),
+                padm.mod(pq[1].getP()) );
+
+        System.out.printf("s^log(p) = pad(msg) mod p: %b%ns^log(q) = pad(msg) mod q: %b%n",
+                rsaSignature.modPow(logs[0], pq[0].getP()).equals(padm.mod(pq[0].getP())),
+                rsaSignature.modPow(logs[1], pq[1].getP()).equals(padm.mod(pq[1].getP())));
+
+
+        return  new RSAHelper.PublicKey(crt(logs[0], logs[1], pq[0].getP().subtract(ONE), pq[1].getP().subtract(ONE)),
+                                        pq[0].getP().multiply(pq[1].getP()));
+    }
+
+
     /**
      * @param bitLength   number of bits in the RSA modulus that was used to calculate {@code rsaSignature}
      */
     static RSAHelper.PublicKey  breakChallenge61RSA(byte[] msg, BigInteger rsaSignature, int bitLength) {
-        DiffieHellmanUtils.PrimeAndFactors   primeAndFactorsP,  primeAndFactorsQ = null;
-        BigInteger   padm = RSAHelperExt.pkcs15Pad(msg, RSAHelperExt.HashMethod.SHA1, bitLength),  N_,  logP,  logQ;
-        do {
-            primeAndFactorsP = DiffieHellmanUtils.findSmoothPrime2(bitLength / 2);
-        }  while (!DiffieHellmanUtils.isPrimitiveRoot(padm, primeAndFactorsP.getP(), primeAndFactorsP.getFactors())
-                || !DiffieHellmanUtils.isPrimitiveRoot(rsaSignature, primeAndFactorsP.getP(), primeAndFactorsP.getFactors()));
+        BigInteger   padm = RSAHelperExt.pkcs15Pad(msg, RSAHelperExt.HashMethod.SHA1, bitLength);
+        DiffieHellmanUtils.PrimeAndFactors[]   primeAndFactors = searchForPQPar(padm, rsaSignature, bitLength);
 
-        System.out.println("One found: " + primeAndFactorsP.getFactors());
-        do {
-            primeAndFactorsQ = DiffieHellmanUtils.findSmoothPrime2(bitLength / 2);
-        } while (!DiffieHellmanUtils.isPrimitiveRoot(padm, primeAndFactorsQ.getP(), primeAndFactorsQ.getFactors())
-                ||  !DiffieHellmanUtils.isPrimitiveRoot(rsaSignature, primeAndFactorsQ.getP(), primeAndFactorsQ.getFactors()));
-
-        System.out.printf("Found desired p and q:%n\t%d%n\t%d%n", primeAndFactorsP.getP(), primeAndFactorsQ.getP());
-        N_ = primeAndFactorsP.getP().multiply(primeAndFactorsQ.getP());
-
-
-        logP = findDLog(padm, rsaSignature, primeAndFactorsP.getP(), primeAndFactorsP.getFactors());
-        System.out.println("logP: " + logP);
-
-        logQ = findDLog(padm, rsaSignature, primeAndFactorsQ.getP(), primeAndFactorsQ.getFactors());
-        System.out.println("logQ: " + logQ);
-
-        return  new RSAHelper.PublicKey(garnersFormula(logP, primeAndFactorsP.getP(), logQ, primeAndFactorsQ.getP()), N_);
+        System.out.println("Suitable primes found: " + Arrays.toString(primeAndFactors));
+        return  breakChallenge61RSA(msg, rsaSignature, primeAndFactors, bitLength);
     }
 
     public static void main(String[] args) {
@@ -573,14 +673,14 @@ public class Set8 {
             System.out.printf("Recovered dlog of %d:%n %d%n", y, b);
             assert  dh.getGenerator().modPow(b, dh.getModulus()).equals(y);
 
-//            y = new BigInteger("9388897478013399550694114614498790691034187453089355259602614074132918843899833277397448144245883225611726912025846772975325932794909655215329941809013733");
-//            b = dh.dlog(y, valueOf(2).pow(40), DiffieHellmanHelper::f);
-//            System.out.printf("Recovered dlog of %d:%n %d%n", y, b);
-//            assert  dh.getGenerator().modPow(b, dh.getModulus()).equals(y);
+            y = new BigInteger("9388897478013399550694114614498790691034187453089355259602614074132918843899833277397448144245883225611726912025846772975325932794909655215329941809013733");
+            b = dh.dlog(y, valueOf(2).pow(40), DiffieHellmanHelper::f);
+            System.out.printf("Recovered dlog of %d:%n %d%n", y, b);
+            assert  dh.getGenerator().modPow(b, dh.getModulus()).equals(y);
 
-//            b = breakChallenge58("rmi://localhost/DiffieHellmanBobService");
-//            assert  bob.isValidPrivateKey(b) : "Bob's key not correct";
-//            System.out.printf("Recovered Bob's secret key: %x%n", b);
+            b = breakChallenge58("rmi://localhost/DiffieHellmanBobService");
+            assert  bob.isValidPrivateKey(b) : "Bob's key not correct";
+            System.out.printf("Recovered Bob's secret key: %x%n", b);
 
             System.out.println("\nChallenge 59");
             WeierstrassECGroup group = new WeierstrassECGroup(new BigInteger("233970423115425145524320034830162017933"),
@@ -601,9 +701,9 @@ public class Set8 {
             assert  Arrays.equals(mac.doFinal(res.msg.getBytes()), res.mac);
             System.out.println("DiffieHellman in the EC " + group + " works");
 
-//            b = breakChallenge59(base, q, bobUrl);
-//            assert  ecBob.isValidPrivateKey(b) : "Bob's key not correct";
-//            System.out.printf("Recovered Bob's secret key: %x%n", b);
+            b = breakChallenge59(base, q, bobUrl);
+            assert  ecBob.isValidPrivateKey(b) : "Bob's key not correct";
+            System.out.printf("Recovered Bob's secret key: %x%n", b);
 
             System.out.println("\nChallenge 60");
             MontgomeryECGroup   mgroup = new MontgomeryECGroup(new BigInteger("233970423115425145524320034830162017933"),
@@ -647,13 +747,19 @@ public class Set8 {
             System.out.println("Legit public key: " + legitPk);
             System.out.println("Forged public key: " + forgedPk);
 
-            RSAHelperExt   rsa = new RSAHelperExt(valueOf(3), 160);
-            BigInteger   rsaSignature = rsa.sign(CHALLENGE56_MSG.getBytes(), RSAHelperExt.HashMethod.SHA1);
-            RSAHelper.PublicKey   legitRSAPk = rsa.getPublicKey(),
-                                  forgedRSAPk = breakChallenge61RSA(CHALLENGE56_MSG.getBytes(), rsaSignature,
-                                                                    legitRSAPk.getModulus().bitLength());
-            assert  legitRSAPk.verify(CHALLENGE56_MSG.getBytes(), rsaSignature);
-            assert  forgedRSAPk.verify(CHALLENGE56_MSG.getBytes(), rsaSignature);
+
+            RSAHelperExt rsa = new RSAHelperExt(RSAHelper.PUBLIC_EXPONENT, 160);
+            BigInteger rsaSignature = rsa.sign(CHALLENGE56_MSG.getBytes(), RSAHelperExt.HashMethod.SHA1);
+
+            RSAHelper.PublicKey legitRSAPk = rsa.getPublicKey(),
+                    forgedRSAPk = breakChallenge61RSA(CHALLENGE56_MSG.getBytes(), rsaSignature,
+                        legitRSAPk.getModulus().bitLength());
+
+            System.out.println("Does legit key verify?: " + legitRSAPk.verify(CHALLENGE56_MSG.getBytes(), rsaSignature));
+            System.out.println("Does forged key verify?: " + forgedRSAPk.verify(CHALLENGE56_MSG.getBytes(), rsaSignature));
+
+            assert legitRSAPk.verify(CHALLENGE56_MSG.getBytes(), rsaSignature);
+            assert forgedRSAPk.verify(CHALLENGE56_MSG.getBytes(), rsaSignature);
 
         } catch (Exception e) {
             e.printStackTrace();

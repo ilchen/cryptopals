@@ -43,9 +43,10 @@ public class ECDSA {
     }
 
     /**
-     * Constructs an ECDSA sk/pk pair
+     * Constructs an ECDSA with a given sk/pk pair
      * @param g  a generator of a cyclic elliptic curve group
      * @param order  the order of the generator
+     * @param d  the secret key to use
      */
     public ECDSA(ECGroupElement g, BigInteger order, BigInteger d) {
         G = g;     n = order;
