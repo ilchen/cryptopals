@@ -546,7 +546,7 @@ public class Set8 {
         final int   smallPrimes[] = DiffieHellmanUtils.findSmallPrimes((1 << 20) + (1 << 16));
 
         // minProd is a heuristically established minimum product of factors to make DLog tractable
-        final BigInteger   minProd = new BigInteger("3687215552105618314733653394033100");
+        final BigInteger   minProd = new BigInteger("3700000000000000000000000000000000");
         DiffieHellmanUtils.PrimeAndFactors[]  res = new DiffieHellmanUtils.PrimeAndFactors[2];
         AtomicBoolean   stop = new AtomicBoolean();
 

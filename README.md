@@ -401,7 +401,35 @@ void challenge61ECDSA() {
 }
 ```
 
-Mounting a DSKS attack on RSA is much more laborious. I implemented it for relatively small RSA moduli of about 320 bits.
+Mounting a DSKS attack on RSA is much more laborious. I implemented it for relatively small RSA moduli of 320 bits.
+The biggest effort went into finding primes `p` and `q` that meet the requirements for 1) `p-1` and `q-1` being smooth, 2)
+both `s` and `pad(m)` (`s^e = pad(m) mod N`) being generators of the entire Zp* and Zq* groups, and 3) `gcd(p-1, q-1)=2`.
+I used PKCS#1 v1.5 mode 1 padding with SHA-1, just like in [Challenge 42](https://cryptopals.com/sets/6/challenges/42).
+Since the overhead of PKCS#1 padding with SHA-1 is at least 20+3+15+1=39 bytes, the minimum RSA modulus is 316 bits.
+
+I ended up writing [quite a bit of concurrent code](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L532-L598)
+to tackle this, and pre-calculated all small primes less than 2<sup>20</sup>
+so as to be able to find primes meeting the criterion 1) above in linear time. Even with such relatively small moduli
+(both p and q are around 160 bits), finding them takes on the order of 20 minutes on my MacBook Pro with all cores searching.
+**NB** it is vital that p*q is larger than the modulus of the original public key, so I search for primes that are 161 bits
+long to play it safe.
+```
+Suitable primes found:
+DiffieHellmanUtils.PrimeAndFactors(p=2252226720431925817465020447075111488063403846689, factors=[2, 7, 277, 647, 2039, 2953, 14633, 139123, 479387, 904847]),
+DiffieHellmanUtils.PrimeAndFactors(p=2713856776699319359494147955700110393372009838087, factors=[2, 13, 17, 23, 26141, 56633, 80429, 241567, 652429, 1049941])]
+```
+
+After that I calculate ep=log<sub>s</sub>(pad(m)) mod p and eq=log<sub>s</sub>(pad(m)) mod q using [a combination of
+Pohlig-Hellman and J.M. Pollard's Lambda Method](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L485-L530) using a technique from [Challenge 59](https://toadstyle.org/cryptopals/58.txt).
+To make Pollard's Lambda Method tractable I ensured that the product
+of all prime factors for each of `p-1` and `q-1` is at least 3700000000000000000000000000000000. I arrived at this 
+number heuristically, for DLogs whose prime is around 160 bits long Pollard's Lambda Method works reasonably fast.
+
+The following part of the problem description deserves a word of caution
+> 4\. Use the Chinese Remainder Theorem to put ep and eq together:
+
+         e' = crt([ep, eq], [p-1, q-1])
+Here `crt` doesn't refer to Garner's formula, rather it implies what is delineated in Section 4.1 of [this paper](http://mpqs.free.fr/corr98-42.pdf).
 
 Thwarting DSKS attacks is trivial, the signer needs to attach their public key to the message before signing it. While 
 the verifier should do an extra check to ensure the public key they use to verify corresponds to the one added
