@@ -529,9 +529,23 @@ public class Set8 {
         return  q;
     }
 
+    /**
+     * Finds primes p and q meeting the following requirements:
+     * <ol>
+     *     <li> p-1 and q-1 are smooth
+     *     <li> both s and pad(m) ({@code s^e = pad(m) mod N}) are generators of the entire Zp* and Zq* groups</li>
+     *     <li> gcd(p-1, q-1)=2</li>
+     * </ol>
+     * @param padm  a PKCS#1 v1.5 mode 1 padded message
+     * @param sign  an RSA signature of {@code padm}
+     * @param bitLength  the bit length of the RSA modulus that was used to produce {@code sign}
+     * @return suitable primes along with the factors of their Zp*, Zq* group orders
+     */
     private static DiffieHellmanUtils.PrimeAndFactors[]  searchForPQPar(BigInteger padm, BigInteger sign, int bitLength) {
         final int   freq = 10;
         final int   smallPrimes[] = DiffieHellmanUtils.findSmallPrimes((1 << 20) + (1 << 16));
+
+        // minProd is a heuristically established minimum product of factors to make DLog tractable
         final BigInteger   minProd = new BigInteger("3687215552105618314733653394033100");
         DiffieHellmanUtils.PrimeAndFactors[]  res = new DiffieHellmanUtils.PrimeAndFactors[2];
         AtomicBoolean   stop = new AtomicBoolean();
