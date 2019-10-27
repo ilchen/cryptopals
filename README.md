@@ -441,4 +441,6 @@ in Section 4.1 of [this paper](http://mpqs.free.fr/corr98-42.pdf) to correctly t
 
 Thwarting DSKS attacks is trivial, the signer needs to attach their public key to the message before signing it. While 
 the verifier should do an extra check to ensure the public key they use to verify corresponds to the one added
-to the message. This way, the signing public key is authenticated along with the message.
+to the message. This way, the signing public key is authenticated along with the message. On top of it it makes sense
+to pay attention to the public keys of RSA and be suspicious of public exponents `e` that are not among the commonly
+used ones: { 3, 5, 17, 65537 }.

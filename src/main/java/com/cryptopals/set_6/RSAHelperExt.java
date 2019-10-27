@@ -1,7 +1,6 @@
 package com.cryptopals.set_6;
 
 import com.cryptopals.set_5.RSAHelper;
-import com.cryptopals.set_8.DiffieHellmanUtils;
 import lombok.SneakyThrows;
 
 import com.squareup.jnagmp.Gmp;
@@ -11,10 +10,6 @@ import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.IntStream;
-
-import static java.math.BigInteger.ONE;
-import static java.math.BigInteger.ZERO;
 
 public class RSAHelperExt extends RSAHelper {
     public enum HashMethod {
