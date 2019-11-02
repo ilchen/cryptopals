@@ -185,4 +185,31 @@ class Set8Tests {
         assertTrue(legitRSAPk.verify(CHALLENGE56_MSG.getBytes(), rsaSignature));
         assertTrue(forgedRSAPk.verify(CHALLENGE56_MSG.getBytes(), rsaSignature));
     }
+
+    @DisplayName("Polynomial Galois Field over GF(2)")
+    @Test
+    void polynomialGaloisFieldOverGF2() {
+        BigInteger   modulus = ONE.shiftLeft(128).or(valueOf(135));
+        PolynomialGaloisFieldOverGF2   gf = new PolynomialGaloisFieldOverGF2(modulus);
+        PolynomialGaloisFieldOverGF2.FieldElement   a = gf.createElement(valueOf(3)),  b = gf.createElement(valueOf(15));
+        System.out.println("a: " + a);
+        System.out.println("b: " + b);
+        System.out.println("a + b: " + a.add(b));
+        assertEquals(a.add(b), gf.createElement(valueOf(12)));
+        System.out.println("a * b: " + a.multiply(b));
+        assertEquals(a.multiply(b), gf.createElement(valueOf(17)));
+        System.out.println("a * modulus: " + a.multiply(gf.createElement(modulus)));
+        assertEquals(a.multiply(gf.createElement(modulus)), gf.getAdditiveIdentity());
+        System.out.println("a^-1: " + a.modInverse());
+        System.out.println("a * a^-1: " + a.multiply(a.modInverse()));
+        assertEquals(a.multiply(a.modInverse()), gf.getMultiplicativeIdentity());
+
+        gf = new PolynomialGaloisFieldOverGF2(valueOf(19));
+        a = gf.createElement(valueOf(2));
+        for (int i=0; i < 1 << 4; i++) {
+            System.out.printf("x^%d = %s%n", i, a.scale(valueOf(i)));
+        }
+        assertEquals(a.scale(gf.getMultiplicativeGroupOrder()), gf.getMultiplicativeIdentity());
+        assertEquals(a.scale(gf.getOrder()), a);
+    }
 }
