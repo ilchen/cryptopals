@@ -5,6 +5,7 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 
 import java.math.BigInteger;
+import java.util.Arrays;
 
 import static java.math.BigInteger.*;
 
@@ -57,7 +58,23 @@ public class PolynomialGaloisFieldOverGF2 {
             return  new FieldElement(polynomial.xor(that.polynomial));
         }
 
+        public byte[]  asArray() {
+            int   byteSize = degree(modulus) >> 3;
+            byte[]   res = polynomial.toByteArray();
+            assert  res.length > byteSize  ||  (res[0] & 0x80) == 0;
+            if (res.length > byteSize) {
+                res = Arrays.copyOfRange(res, 1, byteSize + 1);
+            }  else if (res.length < byteSize) {
+                byte[]   r = new byte[byteSize];
+                System.arraycopy(res, 0, r, byteSize - res.length, res.length);
+                res = r;
+            }
+            return  GCM.reverseBits(res);
+        }
+
         public FieldElement  multiply(FieldElement that) {
+            assert  polynomial.signum() >= 0;
+            assert  that.polynomial.signum() >= 0;
             BigInteger product = ZERO, a = polynomial, b = that.polynomial;
             while (!a.equals(ZERO)) {
                 if (a.and(ONE).equals(ONE)) {

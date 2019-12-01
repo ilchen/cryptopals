@@ -4,6 +4,7 @@ import lombok.Data;
 
 import javax.crypto.*;
 import javax.xml.bind.DatatypeConverter;
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.security.InvalidKeyException;
@@ -37,7 +38,7 @@ public class Set3 extends Set2 {
 
     private byte   randomIV[];
 
-    Set3(int mode, SecretKey key) throws InvalidKeyException, NoSuchPaddingException, NoSuchAlgorithmException {
+    public Set3(int mode, SecretKey key) throws InvalidKeyException, NoSuchPaddingException, NoSuchAlgorithmException {
         super(mode, key);
         randomIV = new byte[cipher.getBlockSize()];
         secRandGen.nextBytes(randomIV);
@@ -141,6 +142,23 @@ public class Set3 extends Set2 {
             curBlock = Arrays.copyOfRange(plainText, i, i+16);
             Set2.xorBlock(randomPad, curBlock);
             System.arraycopy(randomPad, 0, res, i, 16);
+        }
+
+        return  i == plainText.length  ?  res : Arrays.copyOf(res, plainText.length);
+    }
+
+    protected byte[]  cipherCTR(byte[] plainText, byte[] ctr) {
+        byte[]   res = new byte[(plainText.length + 15) / 16 * 16],  curBlock,  randomPad;
+        int      i = 0;
+        BigInteger   ivCounter  = new BigInteger(Arrays.copyOfRange(ctr, 0, 16));
+
+        for (; i < plainText.length; i+=16) {
+            randomPad = cipher.update(ctr);
+            curBlock = Arrays.copyOfRange(plainText, i, i+16);
+            Set2.xorBlock(randomPad, curBlock);
+            System.arraycopy(randomPad, 0, res, i, 16);
+            ivCounter = ivCounter.add(BigInteger.ONE);
+            ctr = ivCounter.toByteArray();
         }
 
         return  i == plainText.length  ?  res : Arrays.copyOf(res, plainText.length);

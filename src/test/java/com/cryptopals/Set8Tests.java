@@ -10,13 +10,17 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import javax.crypto.*;
+import javax.crypto.spec.GCMParameterSpec;
 import java.math.BigInteger;
 import java.net.MalformedURLException;
 import java.rmi.Naming;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -211,5 +215,32 @@ class Set8Tests {
         }
         assertEquals(a.scale(gf.getMultiplicativeGroupOrder()), gf.getMultiplicativeIdentity());
         assertEquals(a.scale(gf.getOrder()), a);
+    }
+
+    @DisplayName("GCM mode implemented correctly")
+    @Test
+    void GCM() throws NoSuchAlgorithmException, IllegalBlockSizeException, InvalidKeyException, BadPaddingException,
+            NoSuchPaddingException, InvalidAlgorithmParameterException {
+        KeyGenerator aesKeyGen = KeyGenerator.getInstance("AES");
+        SecretKey key = aesKeyGen.generateKey();
+        GCM   gcm = new GCM(key);
+        byte[]   nonce = new byte[12],  plnText = CHALLENGE56_MSG.getBytes(),  cTxt1,  cTxt2,  assocData = new byte[0];
+        new SecureRandom().nextBytes(nonce);
+        cTxt1 = gcm.cipher(plnText, assocData, nonce);
+
+        // Confirm that we get the same ciphertext as that obtained from a reference implementation.
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+        // Create GCMParameterSpec
+        GCMParameterSpec   gcmParameterSpec = new GCMParameterSpec(16 * 8, nonce);
+        cipher.init(Cipher.ENCRYPT_MODE, key, gcmParameterSpec);
+        cTxt2 = cipher.doFinal(plnText);
+        assertArrayEquals(cTxt2, cTxt1);
+
+        // Confirm that decrypting will produce the original plain text
+        assertArrayEquals(plnText, gcm.decipher(cTxt1, assocData, nonce));
+
+        // Confirm that garbling a single byte of cipher text will result in the bottom symbol
+        cTxt1[0] ^= 0x03;
+        assertArrayEquals(null, gcm.decipher(cTxt1, assocData, nonce));
     }
 }

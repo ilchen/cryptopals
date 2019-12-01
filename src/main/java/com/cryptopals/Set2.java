@@ -27,7 +27,7 @@ public class Set2 {
                     + "dXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUg"
                     + "YnkK");
     private static final String  AES_TRANSFORMATION = "AES/ECB/NoPadding";
-    Cipher   cipher;
+    protected Cipher   cipher;
     Random   randGen,  secRandGen;
     byte[] randPfx;
 

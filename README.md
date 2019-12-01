@@ -444,3 +444,54 @@ the verifier should do an extra check to ensure the public key they use to verif
 to the message. This way, the signing public key is authenticated along with the message. On top of it it makes sense
 to pay attention to the public keys of RSA and be suspicious of public exponents `e` that are not among the commonly
 used ones: { 3, 5, 17, 65537 }.
+
+
+### Challenge 63
+[Challenge 63](https://toadstyle.org/cryptopals/63.txt) consists of three parts:
+1. Implementing GF(2<sup>128</sup>) &mdash; Polynomial Galois field over GF(2)
+2. Implementing Galois Counter Mode (GCM) where the earlier devised GF(2<sup>128</sup>) is used to calculate 
+the one-time-MAC &mdash; GMAC
+3. Realising the actual attack of recovering the authentication key of GMAC provided a nonce was repeated
+
+I came up with a fairly straightforward implementaiton of GF(2<sup>128</sup>) using [Java's BigInteger](https://docs.oracle.com/javase/8/docs/api/java/math/BigInteger.html).
+See [com.cryptopals.set_8.PolynomialGaloisFieldOverGF2](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/PolynomialGaloisFieldOverGF2.java)
+for details.
+
+A correct implementation of GCM turned out a bit more tricky to get right. Here are a couple of important nuances to
+bear in mind:
+* When preparing a buffer over which to calculate the GMAC `a0 || a1 || c0 || c1 || c2 || len(AD) || len(C)` everything
+must be encoded using a big-endian ordering. Padding is done with zero bits appended.
+I found [this document from NIST](https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf) to
+to be a good reference.
+* When converting blocks of plain text into elements of GF(2<sup>128</sup>) and vice versa, the following enjoinder
+from @spdevlin is crucial
+> We can convert a block into a field element trivially; the leftmost bit is the coefficient of x^0, and so on.
+
+At the end all fell into place and I was able to confirm my implementation of the GCM to produce the same results
+as that from the JRE:
+```java
+@Test
+void GCM() {
+    KeyGenerator aesKeyGen = KeyGenerator.getInstance("AES");
+    SecretKey key = aesKeyGen.generateKey();
+    GCM   gcm = new GCM(key);
+    byte[]   nonce = new byte[12],  plnText = CHALLENGE56_MSG.getBytes(),  cTxt1,  cTxt2,  assocData = new byte[0];
+    new SecureRandom().nextBytes(nonce);
+    cTxt1 = gcm.cipher(plnText, assocData, nonce);
+
+    // Confirm that we get the same ciphertext as that obtained from a reference implementation.
+    Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+    // Create GCMParameterSpec
+    GCMParameterSpec   gcmParameterSpec = new GCMParameterSpec(16 * 8, nonce);
+    cipher.init(Cipher.ENCRYPT_MODE, key, gcmParameterSpec);
+    cTxt2 = cipher.doFinal(plnText);
+    assertArrayEquals(cTxt2, cTxt1);
+
+    // Confirm that decrypting will produce the original plain text
+    assertArrayEquals(plnText, gcm.decipher(cTxt1, assocData, nonce));
+
+    // Confirm that garbling a single byte of cipher text will result in the bottom symbol
+    cTxt1[0] ^= 0x03;
+    assertArrayEquals(null, gcm.decipher(cTxt1, assocData, nonce));
+}
+```
