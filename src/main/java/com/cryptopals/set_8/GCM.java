@@ -105,7 +105,7 @@ public class GCM extends Set3 {
      * Reverses the bits in {@code polynomial} such that the leftmost bit becomes the rightmost bit, the one but
      * leftmost becomes the one but rightmost etc.
      */
-    public static byte[] reverseBits(byte[] polynomial) {
+    static byte[] reverseBits(byte[] polynomial) {
         ByteBuffer   long1 = ByteBuffer.allocate(8),  long2 = ByteBuffer.allocate(8),  res = ByteBuffer.allocate(16);
         long1.put(polynomial, 0, 4);
         long2.put(polynomial, 4, 8);
@@ -118,12 +118,12 @@ public class GCM extends Set3 {
         return  res.array();
     }
 
-    private static PolynomialGaloisFieldOverGF2.FieldElement  toFE(BigInteger polynomial) {
-        if (polynomial.signum() == -1)  {
-            polynomial = polynomial.add(TWO_POW_128);
-        }
-        return  GF.createElement(polynomial);
-    }
+//    private static PolynomialGaloisFieldOverGF2.FieldElement  toFE(BigInteger polynomial) {
+//        if (polynomial.signum() == -1)  {
+//            polynomial = polynomial.add(TWO_POW_128);
+//        }
+//        return  GF.createElement(polynomial);
+//    }
 
     /**
      * Converts a block into an element of GF(2^128)
@@ -134,6 +134,19 @@ public class GCM extends Set3 {
         PolynomialGaloisFieldOverGF2.FieldElement   r = GF.createElement((buf2[0] & 0x80) != 0  ?  res.add(TWO_POW_128) : res);
         assert  Arrays.equals(buf, r.asArray());
         return  r;
+    }
+
+    /**
+     * Converts an array whose size is a multiple of 16 bytes into a polynomial ring over GF(2<sup>128</sup>).
+     * @param buf  an array whose length must be a multiple of 16
+     * @return  a polynomial ring whose x^0 coefficient is the last 16 byte block in {@code buf}, and the highest
+     *          term coefficient is the first.
+     */
+    public static PolynomialRing<PolynomialGaloisFieldOverGF2.FieldElement>  toPolynomialRing(byte[] buf) {
+        int bSize = 16,  last = buf.length / bSize;
+        return  new PolynomialRing<>(IntStream.range(0, last)
+                .mapToObj(i -> toFE( Arrays.copyOfRange(buf, (last - i - 1) * bSize, (last - i) * bSize)) )
+                .toArray(PolynomialGaloisFieldOverGF2.FieldElement[]::new));
     }
 
 }

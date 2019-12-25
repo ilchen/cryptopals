@@ -23,6 +23,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static com.cryptopals.Set8.CHALLENGE56_MSG;
@@ -242,5 +243,57 @@ class Set8Tests {
         // Confirm that garbling a single byte of cipher text will result in the bottom symbol
         cTxt1[0] ^= 0x03;
         assertArrayEquals(null, gcm.decipher(cTxt1, assocData, nonce));
+    }
+
+    @DisplayName("Polynomial rings implemented correctly")
+    @Test
+    void PolynomialsRing() {
+        ZpField   field = new ZpField(53);
+        int[]   coeff1 = { 3, 43, 5, 5, 8, 10 },  coeff2 = { 7, 44, 6, 4 };
+        PolynomialRing<ZpField.ZpFieldElement>   poly1 = new PolynomialRing<>(
+                IntStream.of(3, 43, 5, 5, 8, 10).mapToObj(field::createElement).toArray(ZpField.ZpFieldElement[]::new)),
+            poly2 = new PolynomialRing<>(IntStream.of(7, 44, 6, 4).mapToObj(field::createElement).toArray(ZpField.ZpFieldElement[]::new));
+        System.out.println(poly1 + "\n" + poly2);
+        System.out.println(poly1.add(poly2));
+
+        assertEquals(poly1.add(poly2), poly2.add(poly1));
+        assertEquals(poly1, poly2.add(poly1).subtract(poly2));
+        assertEquals(poly1, poly1.add(poly2).subtract(poly2));
+        assertEquals(poly1.getZeroPolynomial(), poly1.subtract(poly1));
+        System.out.println(poly1.multiply(poly2));
+        assertEquals(poly1.multiply(poly2), poly2.multiply(poly1));
+
+
+        PolynomialRing<ZpField.ZpFieldElement>   quotient = poly1.divide(poly2),  remainder = poly1.subtract(quotient.multiply(poly2)),
+            quotientAndRemainder[] = poly1.divideAndRemainder(poly2);
+        System.out.println(quotient);
+        System.out.println(quotient.multiply(poly2));
+        assertEquals(quotient, quotientAndRemainder[0]);
+        System.out.println(remainder);
+        System.out.println(quotient.multiply(poly2).add(remainder));
+        assertEquals(remainder, quotientAndRemainder[1]);
+    }
+
+    @DisplayName("https://toadstyle.org/cryptopals/61.txt")
+    @Test
+    void challenge63() throws NoSuchAlgorithmException, IllegalBlockSizeException, InvalidKeyException, BadPaddingException, NoSuchPaddingException {
+        KeyGenerator aesKeyGen = KeyGenerator.getInstance("AES");
+        SecretKey key = aesKeyGen.generateKey();
+        GCM   gcm = new GCM(key);
+        byte[]   nonce = new byte[12],  plnText = CHALLENGE56_MSG.getBytes(),  plnText2 = "dummy text to try".getBytes(),
+                 cTxt1,  cTxt2,  assocData = new byte[0];
+        new SecureRandom().nextBytes(nonce);
+        // a0 || a1 || c0 || c1 || c2 || (len(AD) || len(C)) || t
+        cTxt1 = gcm.cipher(plnText, assocData, nonce);
+        // Reusing the same nonce, thereby making ourselves vulnerable to the attack.
+        cTxt2 = gcm.cipher(plnText2, assocData, nonce);
+
+
+        PolynomialRing<PolynomialGaloisFieldOverGF2.FieldElement>   ring1 = GCM.toPolynomialRing(cTxt1),
+                                                                    ring2 = GCM.toPolynomialRing(cTxt2),
+                                                                    equation = ring1.add(ring2);
+        System.out.println(ring1 + "\n" + ring2 + "\n" + equation);
+        equation = equation.toMonicPolynomial();
+        System.out.println(equation);
     }
 }

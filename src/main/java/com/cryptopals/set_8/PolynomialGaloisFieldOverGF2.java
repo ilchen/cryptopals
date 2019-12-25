@@ -46,19 +46,32 @@ public class PolynomialGaloisFieldOverGF2 {
     /**
      * Represents an element of a Polynomial Galois field over GF(2).
      */
-    final public class FieldElement {
+    final public class FieldElement implements FiniteFieldElement {
         private final BigInteger   polynomial;
 
         public FieldElement(BigInteger poly) {
             polynomial = poly;
         }
 
-        public FieldElement add(FieldElement that) {
+        public FieldElement getAdditiveIdentity() {
+            return additiveIdentity;
+        }
+
+        public FieldElement getMultiplicativeIdentity() {
+            return additiveIdentity;
+        }
+
+        public FieldElement add(FiniteFieldElement t) {
+            FieldElement  that = (FieldElement) t;
             if (!group().equals(that.group()))  throw  new IllegalArgumentException();
             return  new FieldElement(polynomial.xor(that.polynomial));
         }
 
-        public byte[]  asArray() {
+        public FieldElement subtract(FiniteFieldElement t) {
+            return  add(t);
+        }
+
+        byte[]  asArray() {
             int   byteSize = degree(modulus) >> 3;
             byte[]   res = polynomial.toByteArray();
             assert  res.length > byteSize  ||  (res[0] & 0x80) == 0;
@@ -72,7 +85,8 @@ public class PolynomialGaloisFieldOverGF2 {
             return  GCM.reverseBits(res);
         }
 
-        public FieldElement  multiply(FieldElement that) {
+        public FieldElement  multiply(FiniteFieldElement t) {
+            FieldElement  that = (FieldElement) t;
             assert  polynomial.signum() >= 0;
             assert  that.polynomial.signum() >= 0;
             BigInteger product = ZERO, a = polynomial, b = that.polynomial;
@@ -137,8 +151,11 @@ public class PolynomialGaloisFieldOverGF2 {
         }
 
         @Override
+//        public String toString() {
+//            return  printAsPolynomial(polynomial) + " / " + group();
+//        }
         public String toString() {
-            return  printAsPolynomial(polynomial) + " / " + group();
+            return  polynomial.toString(16);
         }
     }
 

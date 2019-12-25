@@ -447,11 +447,12 @@ used ones: { 3, 5, 17, 65537 }.
 
 
 ### Challenge 63
-[Challenge 63](https://toadstyle.org/cryptopals/63.txt) consists of three parts:
+[Challenge 63](https://toadstyle.org/cryptopals/63.txt) consists of four parts:
 1. Implementing GF(2<sup>128</sup>) &mdash; Polynomial Galois field over GF(2)
 2. Implementing Galois Counter Mode (GCM) where the earlier devised GF(2<sup>128</sup>) is used to calculate 
 the one-time-MAC &mdash; GMAC
-3. Realising the actual attack of recovering the authentication key of GMAC provided a nonce was repeated
+3. Implementing a polynomial ring over GF(2<sup>128</sup>)
+4. Realising the actual attack of recovering the authentication key of GMAC provided a nonce was repeated
 
 I came up with a fairly straightforward implementaiton of GF(2<sup>128</sup>) using [Java's BigInteger](https://docs.oracle.com/javase/8/docs/api/java/math/BigInteger.html).
 See [com.cryptopals.set_8.PolynomialGaloisFieldOverGF2](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/PolynomialGaloisFieldOverGF2.java)
@@ -495,3 +496,6 @@ void GCM() {
     assertArrayEquals(null, gcm.decipher(cTxt1, assocData, nonce));
 }
 ```
+
+So as to test my implementation of polynomial rings, I made it a generic class and tested it on GF(Zp). It is much
+easier to reason about Zp arithmetic than arithmetic in GF(2<sup>128</sup>).
