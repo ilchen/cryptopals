@@ -61,6 +61,15 @@ public class PolynomialGaloisFieldOverGF2 {
             return additiveIdentity;
         }
 
+        public BigInteger  getOrder() {
+            return  PolynomialGaloisFieldOverGF2.this.getOrder();
+        }
+
+        @Override
+        public BigInteger getCharacteristic() {
+            return  valueOf(2);
+        }
+
         public FieldElement add(FiniteFieldElement t) {
             FieldElement  that = (FieldElement) t;
             if (!group().equals(that.group()))  throw  new IllegalArgumentException();
@@ -69,6 +78,16 @@ public class PolynomialGaloisFieldOverGF2 {
 
         public FieldElement subtract(FiniteFieldElement t) {
             return  add(t);
+        }
+
+        public FieldElement times(BigInteger k) {
+            FieldElement res = additiveIdentity,  x = this;
+            while (!k.equals(BigInteger.ZERO)) {
+                if (Set5.isOdd(k))  res = res.add(x);
+                x = x.add(x);
+                k = k.shiftRight(1);
+            }
+            return  res;
         }
 
         byte[]  asArray() {

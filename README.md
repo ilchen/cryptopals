@@ -447,17 +447,23 @@ used ones: { 3, 5, 17, 65537 }.
 
 
 ### Challenge 63
-[Challenge 63](https://toadstyle.org/cryptopals/63.txt) consists of four parts:
+[Challenge 63](https://toadstyle.org/cryptopals/63.txt) consists of five parts:
 1. Implementing GF(2<sup>128</sup>) &mdash; Polynomial Galois field over GF(2)
 2. Implementing Galois Counter Mode (GCM) where the earlier devised GF(2<sup>128</sup>) is used to calculate 
 the one-time-MAC &mdash; GMAC
 3. Implementing a polynomial ring over GF(2<sup>128</sup>)
-4. Realising the actual attack of recovering the authentication key of GMAC provided a nonce was repeated
+4. Solving the problem of factoring polynomials
+5. Realising the actual attack of recovering the authentication key of GMAC provided a nonce was repeated
 
+All in all it is a fairly laborious challenge that took me quite some time to complete. On the other hand it helped me consolidate
+my understanding of finite fields and polynomial rings like no text book would ever permit.
+
+#### Implementing GF(2<sup>128</sup>)
 I came up with a fairly straightforward implementaiton of GF(2<sup>128</sup>) using [Java's BigInteger](https://docs.oracle.com/javase/8/docs/api/java/math/BigInteger.html).
 See [com.cryptopals.set_8.PolynomialGaloisFieldOverGF2](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/PolynomialGaloisFieldOverGF2.java)
 for details.
 
+#### Implementing Galois Counter Mode (GCM)
 A correct implementation of GCM turned out a bit more tricky to get right. Here are a couple of important nuances to
 bear in mind:
 * When preparing a buffer over which to calculate the GMAC `a0 || a1 || c0 || c1 || c2 || len(AD) || len(C)` everything
@@ -497,5 +503,42 @@ void GCM() {
 }
 ```
 
-So as to test my implementation of polynomial rings, I made it a generic class and tested it on GF(Zp). It is much
-easier to reason about Zp arithmetic than arithmetic in GF(2<sup>128</sup>).
+#### Implementing a polynomial ring over a finite field
+Instead of implementing a polynomial ring over GF(2<sup>128</sup>) I decided to implement it as
+[a generic class](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/PolynomialRing.java)
+over [any finite field](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/FiniteFieldElement.java):
+```java
+public interface FiniteFieldElement {
+    FiniteFieldElement  add(FiniteFieldElement e);
+    FiniteFieldElement  subtract(FiniteFieldElement e);
+    /**
+     * Computes this + this + ... + this {@code k} times
+     * @return  an object of the implementing class.
+     */
+    FiniteFieldElement  times(BigInteger k);
+    FiniteFieldElement  multiply(FiniteFieldElement e);
+    FiniteFieldElement  modInverse();
+    /**
+     * Computes this * this * ... * this {@code k} times, i.e. computes this<sup>k</sup>
+     * @return  an object of the implementing class.
+     */
+    FiniteFieldElement  scale(BigInteger k);
+    FiniteFieldElement  getAdditiveIdentity();
+    FiniteFieldElement  getMultiplicativeIdentity();
+    BigInteger  getOrder();
+    BigInteger  getCharacteristic();
+}
+```
+
+So as to test my implementation of polynomial rings, I wrote a class representing
+[GF(Z<sub>p</sub>) fields](https://github.com/ilchen/cryptopals/blob/master/src/test/java/com/cryptopals/ZpField.java).
+It is much easier to reason about Z<sub>p</sub> arithmetic than arithmetic in GF(2<sup>128</sup>).
+
+#### Solving the problem of factoring polynomials
+This entailed working out:
+* Division of polynomials: https://en.wikipedia.org/wiki/Polynomial_long_division#Pseudocode
+* Differentiation of polynomials
+* GCD for polynomials
+* Square-free factorization of polynomials: https://en.wikipedia.org/wiki/Factorization_of_polynomials_over_finite_fields#Square-free_factorization
+* Distinct-degree factorization of polynomials: https://en.wikipedia.org/wiki/Factorization_of_polynomials_over_finite_fields#Distinct-degree_factorization
+* Equal-degree factorization of polynomials: https://en.wikipedia.org/wiki/Factorization_of_polynomials_over_finite_fields#Equal-degree_factorization

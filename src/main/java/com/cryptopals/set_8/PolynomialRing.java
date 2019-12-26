@@ -1,9 +1,16 @@
 package com.cryptopals.set_8;
 
+import com.cryptopals.Set5;
+import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.lang.reflect.Array;
+import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+
+import static java.math.BigInteger.valueOf;
 
 /**
  * Represents a polynomial ring over {@code T}
@@ -35,6 +42,11 @@ public class PolynomialRing<T extends FiniteFieldElement> {
     @SuppressWarnings("unchecked")
     public PolynomialRing<T> getZeroPolynomial() {
         return new PolynomialRing<>(0, (T) coefficients[0].getAdditiveIdentity());
+    }
+
+    @SuppressWarnings("unchecked")
+    public PolynomialRing<T> getMultiplicativeIdentity() {
+        return new PolynomialRing<>(0, (T) coefficients[0].getMultiplicativeIdentity());
     }
 
     @SuppressWarnings("unchecked")
@@ -93,7 +105,8 @@ public class PolynomialRing<T extends FiniteFieldElement> {
 
     public PolynomialRing<T>  divide(PolynomialRing<T> d) {
         if (d.degree() == 0  &&  d.coefficients[0].equals(d.coefficients[0].getAdditiveIdentity()))
-            throw  new IllegalArgumentException("Cannot devide by a zero polynomial");
+            throw  new IllegalArgumentException("Cannot divide by a zero polynomial");
+        if (d.equals(getMultiplicativeIdentity()))  return  this;
         if (degree() < d.degree()) {
             return  getZeroPolynomial();
         }
@@ -106,19 +119,89 @@ public class PolynomialRing<T extends FiniteFieldElement> {
     @SuppressWarnings("unchecked")
     public PolynomialRing<T>[]  divideAndRemainder(PolynomialRing<T> d) {
         if (d.degree() == 0  &&  d.coefficients[0].equals(d.coefficients[0].getAdditiveIdentity()))
-            throw  new IllegalArgumentException("Cannot devide by a zero polynomial");
+            throw  new IllegalArgumentException("Cannot divide by a zero polynomial");
         PolynomialRing<T>   zero = getZeroPolynomial(),  q = zero,  r = this;
         if (degree() < d.degree()) {
             return  (PolynomialRing<T>[]) new PolynomialRing[] { zero, this } ;
         }
         while (!r.equals(zero)  &&  r.degree() >= d.degree()) {
-            @SuppressWarnings("unchecked")
             T coeff = (T) r.coefficients[r.coefficients.length - 1].multiply(d.coefficients[d.coefficients.length - 1].modInverse());
             PolynomialRing<T> c = new PolynomialRing<>(r.degree() - d.degree(), coeff);
             q = q.add(c);
             r = r.subtract(c.multiply(d));
         }
         return  (PolynomialRing<T>[]) new PolynomialRing[] { q, r } ;
+    }
+
+    public PolynomialRing<T>  differentiate() {
+        if (coefficients.length == 1) {
+            return  getZeroPolynomial();
+        }
+        T[]   newCoeffs = Arrays.copyOfRange(coefficients, 1, coefficients.length);
+        for (int i=2; i < coefficients.length; i++) {
+            @SuppressWarnings("unchecked")
+            T  newCoef = (T) newCoeffs[i-1].times(valueOf(i));
+            newCoeffs[i-1] = newCoef;
+        }
+        return  new PolynomialRing<>(newCoeffs);
+    }
+
+    public PolynomialRing<T>  gcd(PolynomialRing<T> h) {
+        PolynomialRing<T>   zero = getZeroPolynomial(),  g = this,  r;
+        while (!h.equals(zero)) {
+            r = g.divideAndRemainder(h)[1];     g = h;     h = r;
+        }
+        return  g.toMonicPolynomial();
+    }
+
+    public PolynomialRing<T>  scale(BigInteger k) {
+        PolynomialRing<T> res = getMultiplicativeIdentity(),  x = this;
+        while (!k.equals(BigInteger.ZERO)) {
+            if (Set5.isOdd(k))  res = res.multiply(x);
+            x = x.multiply(x);
+            k = k.shiftRight(1);
+        }
+        return  res;
+    }
+
+    @Data
+    public static final class PolynomialAndPower<T extends FiniteFieldElement> {
+        final PolynomialRing<T>   factor;
+        final int  power;
+    }
+
+    /**
+     * Returns square-free factorization of this polynomial using
+     * <a href="https://en.wikipedia.org/wiki/Factorization_of_polynomials_over_finite_fields#Square-free_factorization">
+     *     the following algorithm</a>
+     */
+    public List<PolynomialAndPower<T>>  squareFreeFactorization() {
+        PolynomialRing<T>  one = getMultiplicativeIdentity(),  c = gcd(differentiate()),  w = divide(c),  y,  fac;
+        List<PolynomialAndPower<T>>   res = new ArrayList<>();
+        int   i = 1;
+        while (!w.equals(one)) {
+            y = w.gcd(c);
+            fac = w.divide(y);
+            if (!fac.equals(one)) {
+                res.add(new PolynomialAndPower<>(fac, i));
+            }
+            i++;     w = y;     c = c.divide(y);
+        }
+
+        while (!c.equals(one)) {
+            int   characteristic = c.coefficients[0].getCharacteristic().intValue(),
+                  remainder = c.coefficients.length % characteristic,
+                  newLen = c.coefficients.length / characteristic + (remainder != 0  ?  1 : 0);
+            T[]   newCoeffs = Arrays.copyOf(c.coefficients, newLen);
+            for (i=0; i < c.coefficients.length; i+=characteristic) {
+                newCoeffs[i / characteristic] = c.coefficients[i];
+            }
+            c = new PolynomialRing<>(newCoeffs);
+            if (!c.equals(one)) {
+                res.add(new PolynomialAndPower<>(c, characteristic));
+            }
+        }
+        return  res;
     }
 
     @Override
@@ -128,7 +211,7 @@ public class PolynomialRing<T extends FiniteFieldElement> {
             T   coeff = coefficients[i];
             if (coeff.equals(coeff.getAdditiveIdentity())  &&  coefficients.length > 1)  continue;
             if (sb.length() > 0)  sb.append(" + ");
-            if (!coeff.equals(coeff.getMultiplicativeIdentity()))  sb.append(coefficients[i].toString());
+            if (!coeff.equals(coeff.getMultiplicativeIdentity())  ||  i == 0)  sb.append(coefficients[i].toString());
             if (i > 1) {
                 sb.append("x^").append(i);
             } else if (i == 1) {

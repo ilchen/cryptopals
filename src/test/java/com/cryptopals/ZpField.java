@@ -48,41 +48,56 @@ public class ZpField {
         }
 
         @Override
-        public FiniteFieldElement add(FiniteFieldElement that) {
+        public ZpFieldElement add(FiniteFieldElement that) {
             ZpFieldElement zpFieldElem = (ZpFieldElement) that;
             return  new ZpFieldElement(e + zpFieldElem.e);
         }
 
         @Override
-        public FiniteFieldElement subtract(FiniteFieldElement that) {
+        public ZpFieldElement subtract(FiniteFieldElement that) {
             ZpFieldElement zpFieldElem = (ZpFieldElement) that;
             return  new ZpFieldElement(e - zpFieldElem.e);
         }
 
         @Override
-        public FiniteFieldElement multiply(FiniteFieldElement that) {
+        public ZpFieldElement times(BigInteger k) {
+            return  new ZpFieldElement(e * k.longValue());
+        }
+
+        @Override
+        public ZpFieldElement multiply(FiniteFieldElement that) {
             ZpFieldElement zpFieldElem = (ZpFieldElement) that;
             return  new ZpFieldElement(e * zpFieldElem.e);
         }
 
         @Override
-        public FiniteFieldElement modInverse() {
+        public ZpFieldElement modInverse() {
             return new ZpFieldElement(valueOf(e).modInverse(pBI).longValue());
         }
 
         @Override
-        public FiniteFieldElement scale(BigInteger k) {
+        public ZpFieldElement scale(BigInteger k) {
             return new ZpFieldElement(valueOf(e).modPow(k, pBI).longValue());
         }
 
         @Override
-        public FiniteFieldElement getAdditiveIdentity() {
+        public ZpFieldElement getAdditiveIdentity() {
             return  additiveIdentity;
         }
 
         @Override
-        public FiniteFieldElement getMultiplicativeIdentity() {
+        public ZpFieldElement getMultiplicativeIdentity() {
             return  multiplicativeIdentity;
+        }
+
+        @Override
+        public BigInteger getOrder() {
+            return  valueOf(p);
+        }
+
+        @Override
+        public BigInteger getCharacteristic() {
+            return  getOrder();
         }
 
         @Override

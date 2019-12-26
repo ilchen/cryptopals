@@ -22,6 +22,7 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -249,29 +250,51 @@ class Set8Tests {
     @Test
     void PolynomialsRing() {
         ZpField   field = new ZpField(53);
-        int[]   coeff1 = { 3, 43, 5, 5, 8, 10 },  coeff2 = { 7, 44, 6, 4 };
         PolynomialRing<ZpField.ZpFieldElement>   poly1 = new PolynomialRing<>(
                 IntStream.of(3, 43, 5, 5, 8, 10).mapToObj(field::createElement).toArray(ZpField.ZpFieldElement[]::new)),
-            poly2 = new PolynomialRing<>(IntStream.of(7, 44, 6, 4).mapToObj(field::createElement).toArray(ZpField.ZpFieldElement[]::new));
-        System.out.println(poly1 + "\n" + poly2);
-        System.out.println(poly1.add(poly2));
+            poly2 = new PolynomialRing<>(IntStream.of(7, 44, 6, 4).mapToObj(field::createElement).toArray(ZpField.ZpFieldElement[]::new)),
+            product = new PolynomialRing<>(IntStream.of(21, 9, 37, 48, 1, 48, 31, 39, 40).mapToObj(field::createElement).toArray(ZpField.ZpFieldElement[]::new)),
+            derivative = new PolynomialRing<>(IntStream.of(9, 21, 38, 4, 28, 27, 8, 2).mapToObj(field::createElement).toArray(ZpField.ZpFieldElement[]::new)),
+            xPlus1Cubed = new PolynomialRing<>(IntStream.of(1, 3, 3, 1).mapToObj(field::createElement).toArray(ZpField.ZpFieldElement[]::new)),
+            xPlus1Squared = new PolynomialRing<>(IntStream.of(1, 2, 1).mapToObj(field::createElement).toArray(ZpField.ZpFieldElement[]::new));
+        System.out.println("p: "+ poly1 + "\nq: " + poly2);
+        System.out.println("p+q: " + poly1.add(poly2));
 
         assertEquals(poly1.add(poly2), poly2.add(poly1));
         assertEquals(poly1, poly2.add(poly1).subtract(poly2));
         assertEquals(poly1, poly1.add(poly2).subtract(poly2));
         assertEquals(poly1.getZeroPolynomial(), poly1.subtract(poly1));
-        System.out.println(poly1.multiply(poly2));
+        System.out.println("p*q: " + poly1.multiply(poly2));
         assertEquals(poly1.multiply(poly2), poly2.multiply(poly1));
-
+        assertEquals(product, poly1.multiply(poly2));
 
         PolynomialRing<ZpField.ZpFieldElement>   quotient = poly1.divide(poly2),  remainder = poly1.subtract(quotient.multiply(poly2)),
             quotientAndRemainder[] = poly1.divideAndRemainder(poly2);
-        System.out.println(quotient);
-        System.out.println(quotient.multiply(poly2));
+        System.out.println("p/q: " + quotient);
+        System.out.println("p/q * q: " + quotient.multiply(poly2));
         assertEquals(quotient, quotientAndRemainder[0]);
-        System.out.println(remainder);
-        System.out.println(quotient.multiply(poly2).add(remainder));
+        System.out.println("p%q: " + remainder);
         assertEquals(remainder, quotientAndRemainder[1]);
+
+        // Differentiation
+        System.out.println("p': " + poly1.differentiate() + "\nq': " + poly2.differentiate());
+        System.out.println("(p*q)': " + poly1.multiply(poly2).differentiate());
+        assertEquals(derivative, product.differentiate());
+
+        System.out.println(xPlus1Cubed.gcd(xPlus1Squared));
+        assertEquals(xPlus1Cubed.gcd(xPlus1Squared), xPlus1Squared.gcd(xPlus1Cubed));
+
+        field = new ZpField(3);
+        poly1 = new PolynomialRing<>(
+                IntStream.of(1, 0, 2, 2, 0, 1, 1, 0, 2, 2, 0, 1).mapToObj(field::createElement).toArray(ZpField.ZpFieldElement[]::new));
+        List<PolynomialRing.PolynomialAndPower<ZpField.ZpFieldElement>>  factors = poly1.squareFreeFactorization();
+
+        System.out.print("The factorization of " + poly1 + " is: ");
+        for (PolynomialRing.PolynomialAndPower<ZpField.ZpFieldElement> factor : factors) {
+            System.out.print("(" + factor.getFactor() + ")");
+            if (factor.getPower() > 1) System.out.printf("^%d", factor.getPower());
+        }
+
     }
 
     @DisplayName("https://toadstyle.org/cryptopals/61.txt")
