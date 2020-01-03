@@ -6,33 +6,50 @@ import lombok.EqualsAndHashCode;
 
 import java.lang.reflect.Array;
 import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
+import static java.math.BigInteger.ONE;
 import static java.math.BigInteger.valueOf;
 
 /**
- * Represents a polynomial ring over {@code T}
+ * Represents a polynomial ring over {@code T}. This class stores all coefficients of a polynomial using an array.
  * @param <T>  a class representing a finite field
  */
 @EqualsAndHashCode
 public class PolynomialRing<T extends FiniteFieldElement> {
 
     /** The element with index {@code i} represents the coefficient of {@code x}<sup>i</sup> */
-    final private T[]   coefficients;
+    private final T[]   coefficients;
+
+    @EqualsAndHashCode.Exclude
+    private final T   ZERO,  ONE;
 
     @SuppressWarnings("unchecked")
     public PolynomialRing(int degree, T lastCoeff) {
-        T   zero = (T) lastCoeff.getAdditiveIdentity();
+        ZERO = (T) lastCoeff.getAdditiveIdentity();
+        ONE = (T) lastCoeff.getMultiplicativeIdentity();
         coefficients = (T[]) Array.newInstance(lastCoeff.getClass(), degree + 1);
         coefficients[degree] = lastCoeff;
         while (degree > 0) {
-            coefficients[--degree] = zero;
+            coefficients[--degree] = ZERO;
         }
     }
+
+    @SuppressWarnings("unchecked")
     public PolynomialRing(T[] coeffs) {
-        coefficients = coeffs.clone();
+        ZERO = (T) coeffs[0].getAdditiveIdentity();
+        ONE = (T) coeffs[0].getMultiplicativeIdentity();
+        if (coeffs[coeffs.length-1].equals(ZERO)  &&  coeffs.length > 1) {
+            int  idx = coeffs.length - 2;
+            for (; idx > 0; idx--) {
+                if (!coeffs[idx].equals(ZERO))  {
+                    break;
+                }
+            }
+            coefficients = Arrays.copyOf(coeffs, idx + 1);
+        } else {
+            coefficients = coeffs.clone();
+        }
     }
 
     public int  degree() {
@@ -41,12 +58,12 @@ public class PolynomialRing<T extends FiniteFieldElement> {
 
     @SuppressWarnings("unchecked")
     public PolynomialRing<T> getZeroPolynomial() {
-        return new PolynomialRing<>(0, (T) coefficients[0].getAdditiveIdentity());
+        return new PolynomialRing<>(0, ZERO);
     }
 
     @SuppressWarnings("unchecked")
     public PolynomialRing<T> getMultiplicativeIdentity() {
-        return new PolynomialRing<>(0, (T) coefficients[0].getMultiplicativeIdentity());
+        return new PolynomialRing<>(0, ONE);
     }
 
     @SuppressWarnings("unchecked")
@@ -104,7 +121,7 @@ public class PolynomialRing<T extends FiniteFieldElement> {
     }
 
     public PolynomialRing<T>  divide(PolynomialRing<T> d) {
-        if (d.degree() == 0  &&  d.coefficients[0].equals(d.coefficients[0].getAdditiveIdentity()))
+        if (d.degree() == 0  &&  d.coefficients[0].equals(ZERO))
             throw  new IllegalArgumentException("Cannot divide by a zero polynomial");
         if (d.equals(getMultiplicativeIdentity()))  return  this;
         if (degree() < d.degree()) {
@@ -118,7 +135,7 @@ public class PolynomialRing<T extends FiniteFieldElement> {
 
     @SuppressWarnings("unchecked")
     public PolynomialRing<T>[]  divideAndRemainder(PolynomialRing<T> d) {
-        if (d.degree() == 0  &&  d.coefficients[0].equals(d.coefficients[0].getAdditiveIdentity()))
+        if (d.degree() == 0  &&  d.coefficients[0].equals(ZERO))
             throw  new IllegalArgumentException("Cannot divide by a zero polynomial");
         PolynomialRing<T>   zero = getZeroPolynomial(),  q = zero,  r = this;
         if (degree() < d.degree()) {
@@ -189,7 +206,7 @@ public class PolynomialRing<T extends FiniteFieldElement> {
         }
 
         while (!c.equals(one)) {
-            int   characteristic = c.coefficients[0].getCharacteristic().intValue(),
+            int   characteristic = ZERO.getCharacteristic().intValue(),
                   remainder = c.coefficients.length % characteristic,
                   newLen = c.coefficients.length / characteristic + (remainder != 0  ?  1 : 0);
             T[]   newCoeffs = Arrays.copyOf(c.coefficients, newLen);
@@ -204,14 +221,42 @@ public class PolynomialRing<T extends FiniteFieldElement> {
         return  res;
     }
 
+    /**
+     * This polynomial must be square-free for this method to work.
+     */
+//    public List<PolynomialAndPower<T>>  distinctDegreeFactorization() {
+//        PolynomialRing<T>  fPrime = this,  g,  one = getMultiplicativeIdentity();
+//        List<PolynomialAndPower<T>>   res = new ArrayList<>();
+//        int   i = 1;
+//        while (fPrime.degree() >= i << 1) {
+//            Map<BigInteger, T>   map = new LinkedHashMap<>();
+//            map.put(BigInteger.ONE, (T) ZERO.subtract(ONE));
+//            map.put(ONE.getOrder().pow(i), ONE);
+//            g = fPrime.gcd(new PolynomialAsMap<T>(map));
+//            if (!g.equals(one)) {
+//                res.add(new PolynomialAndPower<>(g, i));
+//                fPrime = fPrime.divide(g);
+//            }
+//            i++;
+//        }
+//        if (!fPrime.equals(one)) {
+//            res.add(new PolynomialAndPower<>(fPrime, fPrime.degree()));
+//        }
+//
+//        if (res.isEmpty()) {
+//            res.add(new PolynomialAndPower<>(this, 1));
+//        }
+//        return  res;
+//    }
+
     @Override
     public String toString() {
         StringBuilder   sb = new StringBuilder();
         for (int i = coefficients.length - 1; i >= 0 ; i--) {
             T   coeff = coefficients[i];
-            if (coeff.equals(coeff.getAdditiveIdentity())  &&  coefficients.length > 1)  continue;
+            if (coeff.equals(ZERO)  &&  coefficients.length > 1)  continue;
             if (sb.length() > 0)  sb.append(" + ");
-            if (!coeff.equals(coeff.getMultiplicativeIdentity())  ||  i == 0)  sb.append(coefficients[i].toString());
+            if (!coeff.equals(ONE)  ||  i == 0)  sb.append(coeff.toString());
             if (i > 1) {
                 sb.append("x^").append(i);
             } else if (i == 1) {

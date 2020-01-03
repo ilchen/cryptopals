@@ -58,7 +58,7 @@ public class PolynomialGaloisFieldOverGF2 {
         }
 
         public FieldElement getMultiplicativeIdentity() {
-            return additiveIdentity;
+            return multiplicativeIdentity;
         }
 
         public BigInteger  getOrder() {

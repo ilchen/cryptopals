@@ -149,4 +149,10 @@ public class GCM extends Set3 {
                 .toArray(PolynomialGaloisFieldOverGF2.FieldElement[]::new));
     }
 
+    public static PolynomialRing2<PolynomialGaloisFieldOverGF2.FieldElement>  toPolynomialRing2(byte[] buf) {
+        int bSize = 16,  last = buf.length / bSize;
+        return  new PolynomialRing2<>(IntStream.range(0, last)
+                .mapToObj(i -> toFE( Arrays.copyOfRange(buf, (last - i - 1) * bSize, (last - i) * bSize)) )
+                .toArray(PolynomialGaloisFieldOverGF2.FieldElement[]::new));
+    }
 }

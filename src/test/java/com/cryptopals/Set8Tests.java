@@ -248,7 +248,7 @@ class Set8Tests {
 
     @DisplayName("Polynomial rings implemented correctly")
     @Test
-    void PolynomialsRing() {
+    void PolynomialRing() {
         ZpField   field = new ZpField(53);
         PolynomialRing<ZpField.ZpFieldElement>   poly1 = new PolynomialRing<>(
                 IntStream.of(3, 43, 5, 5, 8, 10).mapToObj(field::createElement).toArray(ZpField.ZpFieldElement[]::new)),
@@ -295,6 +295,25 @@ class Set8Tests {
             if (factor.getPower() > 1) System.out.printf("^%d", factor.getPower());
         }
 
+        PolynomialRing2<ZpField.ZpFieldElement> poly1_ = new PolynomialRing2<>(
+                IntStream.of(1, 0, 2, 2, 0, 1, 1, 0, 2, 2, 0, 1).mapToObj(field::createElement).toArray(ZpField.ZpFieldElement[]::new));
+        List<PolynomialRing2.PolynomialAndPower<ZpField.ZpFieldElement>>  factors_ = poly1_.squareFreeFactorization();
+
+        System.out.print("\nThe factorization of " + poly1_ + " is: ");
+        for (PolynomialRing2.PolynomialAndPower<ZpField.ZpFieldElement> factor : factors_) {
+            System.out.print("(" + factor.getFactor() + ")");
+            if (factor.getPower() > 1) System.out.printf("^%d", factor.getPower());
+        }
+
+        for (PolynomialRing2.PolynomialAndPower<ZpField.ZpFieldElement> factor : factors_) {
+            System.out.printf("%nFactor: %s breaks down into: ", factor.getFactor().toString());
+            List<PolynomialRing2.PolynomialAndPower<ZpField.ZpFieldElement>>  factors__ = factor.getFactor().distinctDegreeFactorization();
+            for (PolynomialRing2.PolynomialAndPower<ZpField.ZpFieldElement> factor_ : factors__) {
+                System.out.print("(" + factor_.getFactor() + ")");
+                if (factor_.getPower() > 1) System.out.printf("^%d", factor_.getPower());
+            }
+        }
+
     }
 
     @DisplayName("https://toadstyle.org/cryptopals/61.txt")
@@ -318,5 +337,20 @@ class Set8Tests {
         System.out.println(ring1 + "\n" + ring2 + "\n" + equation);
         equation = equation.toMonicPolynomial();
         System.out.println(equation);
+        System.out.println(equation.squareFreeFactorization());
+
+        PolynomialRing2<PolynomialGaloisFieldOverGF2.FieldElement>   ring12 = GCM.toPolynomialRing2(cTxt1),
+                ring22 = GCM.toPolynomialRing2(cTxt2),
+                equation2 = ring12.add(ring22);
+        System.out.println(ring12 + "\n" + ring22 + "\n" + equation2);
+        equation2 = equation2.toMonicPolynomial();
+        System.out.println(equation2);
+
+        System.out.println(equation2.squareFreeFactorization());
+        System.out.println(equation2.distinctDegreeFactorization());
+
+        equation2.squareFreeFactorization().stream().map(PolynomialRing2.PolynomialAndPower::getFactor)
+                .flatMap(x -> x.distinctDegreeFactorization().stream()).map(PolynomialRing2.PolynomialAndPower::getFactor)
+                .forEach(System.out::println);
     }
 }
