@@ -307,16 +307,13 @@ class Set8Tests {
 
         for (PolynomialRing2.PolynomialAndPower<ZpField.ZpFieldElement> factor : factors_) {
             System.out.printf("%nFactor: %s breaks down into: ", factor.getFactor().toString());
-            List<PolynomialRing2.PolynomialAndPower<ZpField.ZpFieldElement>>  factors__ = factor.getFactor().distinctDegreeFactorization();
-            for (PolynomialRing2.PolynomialAndPower<ZpField.ZpFieldElement> factor_ : factors__) {
-                System.out.print("(" + factor_.getFactor() + ")");
-                if (factor_.getPower() > 1) System.out.printf("^%d", factor_.getPower());
-            }
+            List<PolynomialRing2<ZpField.ZpFieldElement>>  factors__ = factor.getFactor().distinctDegreeFactorization();
+            factors__.forEach(x -> System.out.print("(" + x + ")"));
         }
 
     }
 
-    @DisplayName("https://toadstyle.org/cryptopals/61.txt")
+    @DisplayName("https://toadstyle.org/cryptopals/63.txt")
     @Test
     void challenge63() throws NoSuchAlgorithmException, IllegalBlockSizeException, InvalidKeyException, BadPaddingException, NoSuchPaddingException {
         KeyGenerator aesKeyGen = KeyGenerator.getInstance("AES");
@@ -350,7 +347,7 @@ class Set8Tests {
         System.out.println(equation2.distinctDegreeFactorization());
 
         equation2.squareFreeFactorization().stream().map(PolynomialRing2.PolynomialAndPower::getFactor)
-                .flatMap(x -> x.distinctDegreeFactorization().stream()).map(PolynomialRing2.PolynomialAndPower::getFactor)
+                .flatMap(x -> x.distinctDegreeFactorization().stream())
                 .forEach(System.out::println);
     }
 }

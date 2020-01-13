@@ -8,7 +8,6 @@ import java.lang.reflect.Array;
 import java.math.BigInteger;
 import java.util.*;
 
-import static java.math.BigInteger.ONE;
 import static java.math.BigInteger.valueOf;
 
 /**
@@ -68,6 +67,7 @@ public class PolynomialRing<T extends FiniteFieldElement> {
 
     @SuppressWarnings("unchecked")
     public PolynomialRing<T> toMonicPolynomial() {
+        if (coefficients[coefficients.length - 1].equals(ONE))  return  this;
         T   newCoeffs[] = coefficients.clone(),  inv = (T) coefficients[coefficients.length - 1].modInverse();
         for (int i=0; i < newCoeffs.length; i++) {
             newCoeffs[i] = (T) newCoeffs[i].multiply(inv);
@@ -224,7 +224,7 @@ public class PolynomialRing<T extends FiniteFieldElement> {
     /**
      * This polynomial must be square-free for this method to work.
      */
-//    public List<PolynomialAndPower<T>>  distinctDegreeFactorization() {
+//    public List<PolynomialAndPower<T>>  distinctDegreeFactorizationNaive() {
 //        PolynomialRing<T>  fPrime = this,  g,  one = getMultiplicativeIdentity();
 //        List<PolynomialAndPower<T>>   res = new ArrayList<>();
 //        int   i = 1;

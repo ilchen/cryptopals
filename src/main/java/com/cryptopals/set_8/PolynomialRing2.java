@@ -103,6 +103,7 @@ public final class PolynomialRing2<T extends FiniteFieldElement> {
 
     @SuppressWarnings("unchecked")
     public PolynomialRing2<T> toMonicPolynomial() {
+        if (getLeadingCoefficient().equals(ONE))  return  this;
         T   inv = (T) getLeadingCoefficient().modInverse();
         Map<BigInteger, T>   newMap = new HashMap<>();
         for (Map.Entry<BigInteger, T> entry : coefficientsMap.entrySet()) {
@@ -206,6 +207,20 @@ public final class PolynomialRing2<T extends FiniteFieldElement> {
         return  g.toMonicPolynomial();
     }
 
+    public PolynomialRing2<T>  extendedGcd(PolynomialRing2<T> h) {
+        PolynomialRing2<T>   zero = getZeroPolynomial(),  r0 = this,  r1 = h,  s0 = getMultiplicativeIdentity(),  s1 = zero, t0 = s1,  t1 = s0,  q,  tmp;
+        int   i = 1;
+
+        while (!r1.equals(zero)) {
+            r1 = r1.toMonicPolynomial();
+            q = r0.divideAndRemainder(r1)[0];
+            tmp = r1;   r1 = r0.subtract(q.multiply(r1));   r0 = tmp;
+            tmp = s1;   s1 = s0.subtract(q.multiply(s1));   s0 = tmp;
+            tmp = t1;   t1 = t0.subtract(q.multiply(t1));   t0 = tmp;
+        }
+        return  r0;
+    }
+
 
     public PolynomialRing2<T>  scale(BigInteger k) {
         PolynomialRing2<T> res = getMultiplicativeIdentity(),  x = this;
@@ -260,31 +275,107 @@ public final class PolynomialRing2<T extends FiniteFieldElement> {
     }
 
     /**
-     * This polynomial must be square-free for this method to work.
+     * Returns a distinct degree factorization of this polynomial. This polynomial must be square-free for this method to work.<br><br>
+     *
+     * <b>NB:</b> This method uses <a href="https://en.wikipedia.org/wiki/Factorization_of_polynomials_over_finite_fields#Distinct-degree_factorization">
+     *     a naive implementation of distinct degree factorization</a> that has a computational
+     * complexity of O(q), where q is the order of field {@link T}.
      */
-    public List<PolynomialAndPower<T>>  distinctDegreeFactorization() {
+    public List<PolynomialRing2<T>> distinctDegreeFactorizationNaive() {
         PolynomialRing2<T>  fPrime = this,  g,  one = getMultiplicativeIdentity(),  large;
-        List<PolynomialAndPower<T>>   res = new ArrayList<>();
+        List<PolynomialRing2<T>>   res = new ArrayList<>();
         int   i = 1;
         while (fPrime.degree.compareTo(valueOf(i << 1)) >= 0) {
             large = new PolynomialRing2<>(ONE.getOrder().pow(i), ONE);
             large = large.subtract(new PolynomialRing2<>(1, ONE));
 
+//            System.out.println("checking x^" + ONE.getOrder().pow(i) + " mod " + fPrime + ":");
+//            System.out.println(new PolynomialRing2<>(ONE.getOrder().pow(i), ONE).divideAndRemainder(fPrime)[1]);
+//            System.out.println(fPrime.modRepeatedSquaring(ONE.getOrder().pow(i)));
+
+            assert  large.divideAndRemainder(fPrime)[1].equals(
+                    fPrime.modRepeatedSquaring(ONE.getOrder().pow(i)).subtract(new PolynomialRing2<>(1, ONE).divideAndRemainder(fPrime)[1]));
+
             g = fPrime.gcd(large);
             if (!g.equals(one)) {
-                res.add(new PolynomialAndPower<>(g, i));
+                res.add(g);
                 fPrime = fPrime.divide(g);
             }
             i++;
         }
         if (!fPrime.equals(one)) {
-            res.add(new PolynomialAndPower<>(fPrime, fPrime.intDegree()));
+            res.add(fPrime);
         }
 
         if (res.isEmpty()) {
-            res.add(new PolynomialAndPower<>(this, 1));
+            res.add(this);
         }
         return  res;
+    }
+
+    /**
+     * Returns a distinct degree factorization of this polynomial. This polynomial must be square-free for this method to work.
+     * This method uses a repeated squaring technique to ensure a computational complexity which is logarithmic in
+     * the order of field {@link T}.
+     *
+     * See <a href="https://www.cmi.ac.in/~ramprasad/lecturenotes/comp_numb_theory/lecture10.pdf"/>this paper</a>
+     * for implementation details.
+     */
+    public List<PolynomialRing2<T>> distinctDegreeFactorization() {
+        PolynomialRing2<T>  fPrev = this,  g,  one = getMultiplicativeIdentity(),  x = new PolynomialRing2<>(1, ONE),  large;
+        List<PolynomialRing2<T>>   res = new ArrayList<>();
+        int   i = 1;
+        while (i <= intDegree()) {
+            large = fPrev.modRepeatedSquaring(ONE.getOrder().pow(i)).subtract(x);
+            //assert  large.equals(fPrev.modRepeatedSquaringToPowerOf2(ONE.getOrder().pow(i).bitLength() - 1).subtract(x));
+            i++;
+            g = fPrev.gcd(large);
+            fPrev = fPrev.divide(g);
+            if (!g.equals(one)) {
+                res.add(g);
+            }
+        }
+        return  res;
+    }
+
+    /**
+     * Calculates x<sup>2*power</sup> modulo this polynomial
+     */
+    public PolynomialRing2<T> modRepeatedSquaringToPowerOf2(int power) {
+        if (power == 0)  return  getMultiplicativeIdentity();
+        int   i = 0,  n = intDegree();
+        PolynomialRing2<T>   g = new PolynomialRing2<>(1, ONE);  // g = x
+        while (i++ < power) {
+            g = g.multiply(g);
+            if (g.intDegree() >= n) {
+                g = g.divideAndRemainder(this)[1];
+            }
+        }
+        return  g;
+    }
+
+    /**
+     * Calculates x<sup>power</sup> modulo this polynomial
+     * <a href="https://www.cmi.ac.in/~ramprasad/lecturenotes/comp_numb_theory/lecture10.pdf">using this algorithm</a>
+     */
+    public PolynomialRing2<T> modRepeatedSquaring(BigInteger power) {
+        int   i = 1,  n = intDegree();
+        PolynomialRing2<T>   g = new PolynomialRing2<>(1, ONE),  one = getMultiplicativeIdentity(),
+                             res = power.testBit(0)  ?  g : one;  // g = x
+        while (i < power.bitLength()) {
+            g = g.multiply(g);
+            if (g.intDegree() >= n) {
+                g = g.divideAndRemainder(this)[1];
+            }
+            if (power.testBit(i++)) {
+                res = res.multiply(g);
+            }
+            if (res.intDegree() >= n) {
+                res = res.divideAndRemainder(this)[1];
+            }
+        }
+        return  res;
+
     }
 
     @Override

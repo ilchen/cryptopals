@@ -505,7 +505,7 @@ void GCM() {
 
 #### Implementing a polynomial ring over a finite field
 Instead of implementing a polynomial ring over GF(2<sup>128</sup>) I decided to implement it as
-[a generic class](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/PolynomialRing.java)
+[a generic class](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/PolynomialRing2.java)
 over [any finite field](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/FiniteFieldElement.java):
 ```java
 public interface FiniteFieldElement {
@@ -542,3 +542,14 @@ This entailed working out:
 * Square-free factorization of polynomials: https://en.wikipedia.org/wiki/Factorization_of_polynomials_over_finite_fields#Square-free_factorization
 * Distinct-degree factorization of polynomials: https://en.wikipedia.org/wiki/Factorization_of_polynomials_over_finite_fields#Distinct-degree_factorization
 * Equal-degree factorization of polynomials: https://en.wikipedia.org/wiki/Factorization_of_polynomials_over_finite_fields#Equal-degree_factorization
+
+Of these problems I spent the most time getting distinct-degree factorization to work. The first obstacle I faced was my earlier
+decision to represent polynomials as [arrays of coefficients](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/PolynomialRing.java#L14-L22).
+This algorithm requires dealing with polynomials whose degree is the order of the field and higher, which turns out
+to be 2<sup>128</sup> for this field. E.g.
+x<sup>2<sup>128</sup></sup> - x = x<sup>340282366920938463463374607431768211456</sup> + x in GF(2<sup>128</sup>).
+To tackle it I switched to representing polynomials in [a way that stores only their non-zero coefficients](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/PolynomialRing2.java#L13-L25).
+
+The second obstacle was the awful running time of [the Distinct-degree factorization algorithm from Wikipedia](https://en.wikipedia.org/wiki/Factorization_of_polynomials_over_finite_fields#Distinct-degree_factorization).
+It has a running of O(q) where q is the order of GF(2<sup>128</sup>), which takes forever. I tackled it by
+adopting [a Distinct-degree factorization algorithm that uses repeated squaring](https://www.cmi.ac.in/~ramprasad/lecturenotes/comp_numb_theory/lecture10.pdf).
