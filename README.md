@@ -455,8 +455,9 @@ the one-time-MAC &mdash; GMAC
 4. Solving the problem of factoring polynomials
 5. Realising the actual attack of recovering the authentication key of GMAC provided a nonce was repeated
 
-All in all it is a fairly laborious challenge that took me quite some time to complete. On the other hand it helped me consolidate
-my understanding of finite fields and polynomial rings like no text book would ever permit.
+All in all it is a fairly laborious challenge that took me quite some time to complete. The effort is commensurate
+to a university coursework. On the other hand it helped me consolidate my understanding of finite fields
+and polynomial rings like no text book would ever permit.
 
 #### Implementing GF(2<sup>128</sup>)
 I came up with a fairly straightforward implementaiton of GF(2<sup>128</sup>) using [Java's BigInteger](https://docs.oracle.com/javase/8/docs/api/java/math/BigInteger.html).
