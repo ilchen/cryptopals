@@ -107,13 +107,13 @@ P<sub>16</sub> and P<sub>32</sub> and fully corraborates the results in Figure 4
 reconstruct Bob's private key from its residues per subset of the moduli of p-1.
 
 All in all the challenge presents an attack that can bypass DH implementations where Bob makes some rudimentary checks
-the offered subgroup description (p, q, g) for correctness:
+on the offered subgroup description (p, q, g):
 * Are both p and q prime?
 * Does q divide p-1?
 * Is g different from 1?
 * Is g<sup>q</sup> equal 1?
 
-The challenge does make two big assumption though, namely that
+The challenge does make two big assumptions though, namely that
 * Bob will naively hang on to the same private key across all new sessions with Alice.
 * That group Z<sub>p</sub><sup>*</sup> contains a large number of subgroups with small order. The attack will for example
 not work if p is [a safe prime](https://en.wikipedia.org/wiki/Safe_prime).
@@ -125,8 +125,8 @@ It can be mounted against a group where `p-1` has at least one large factor in a
 The attack makes use of J.M. Pollard's Lambda Method for Catching Kangaroos, as outlined in
 [Section 3 of Pollard's paper](https://www.ams.org/journals/mcom/1978-32-143/S0025-5718-1978-0491431-9/S0025-5718-1978-0491431-9.pdf).
 
-Pollard's method makes use of a pseudo-random mapping function f that maps from set {1, 2, ..., p-1} to set {0, 1, ... k-1}.
-The challenge suggested the following simplistic defintion for f (which is similar to what Pollard gives in one of his examples):
+Pollard's method employs a pseudo-random mapping function f that maps from set {1, 2, ..., p-1} to set {0, 1, ... k-1}.
+The challenge suggested the following simplistic definition for f (which is similar to what Pollard gives in one of his examples):
 ```
 f(y) = 2^(y mod k)
 ```
@@ -204,7 +204,7 @@ ECGroup(modulus=233970423115425145524320034830162017933, a=-95051, b=727, order=
 ```
 
 The orders of these elliptic curves do have many small factors. Interestingly all the three crafted curves are required
-to recover Bob's private key. This is because the product of  the small factors of each of these curves is less than
+to recover Bob's private key. This is because the product of the small factors of each of these curves is less than
 the order of the generator given for the challenge `(182, 85518893674295321206118380980485522083)`. You need the distinct
 small factors collected from all the crafted curves.
 
@@ -220,8 +220,8 @@ will not be able to find a generator of order 2 for `y^2 = x^3 - 95051*x + 210` 
 of the largest cyclic subgroup of an elliptic curve. For this curve it is 116985211557712572775413273676235062206.
 See [my discussion with @spdevlin](https://twitter.com/_ilchen_/status/1174045790748254210?s=20).
 
-The attack in this challenge does make two assumption though, namely that
-* Bob will  hang on to the same private key across all new sessions with Alice. This is the same as in Challenge 57.
+The attack in this challenge does make two assumptions though, namely that
+* Bob will hang on to the same private key across all new sessions with Alice. This is the same as in Challenge 57.
 * Bob will not check whether Alice's public key lies on the expected elliptic curve. How big of an assumption
  is that? Unfortunately not too big because in many implementations of ECDH Bob is only sent the x coordinate of
  Alice's public key for the sake of efficiency, and the implementation doesn't check if x<sup>3</sup> + ax + b is
@@ -460,7 +460,7 @@ to a university coursework. On the other hand it helped me consolidate my unders
 and polynomial rings like no text book would ever permit.
 
 #### Implementing GF(2<sup>128</sup>)
-I came up with a fairly straightforward implementaiton of GF(2<sup>128</sup>) using [Java's BigInteger](https://docs.oracle.com/javase/8/docs/api/java/math/BigInteger.html).
+I came up with a fairly straightforward implementation of GF(2<sup>128</sup>) using [Java's BigInteger](https://docs.oracle.com/javase/8/docs/api/java/math/BigInteger.html).
 See [com.cryptopals.set_8.PolynomialGaloisFieldOverGF2](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/PolynomialGaloisFieldOverGF2.java)
 for details.
 
@@ -547,10 +547,10 @@ This entailed working out:
 Of these problems I spent the most time getting distinct-degree factorization to work. The first obstacle I faced was my earlier
 decision to represent polynomials as [arrays of coefficients](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/PolynomialRing.java#L14-L22).
 This algorithm requires dealing with polynomials whose degree is the order of the field and higher, which turns out
-to be 2<sup>128</sup> for this field. E.g.
+to be 2<sup>128</sup> for this field. E.g. a polynomial like this one:
 x<sup>2<sup>128</sup></sup> - x = x<sup>340282366920938463463374607431768211456</sup> + x in GF(2<sup>128</sup>).
 To tackle it I switched to representing polynomials in [a way that stores only their non-zero coefficients](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/PolynomialRing2.java#L13-L25).
 
 The second obstacle was the awful running time of [the Distinct-degree factorization algorithm from Wikipedia](https://en.wikipedia.org/wiki/Factorization_of_polynomials_over_finite_fields#Distinct-degree_factorization).
-It has a running of O(q) where q is the order of GF(2<sup>128</sup>), which takes forever. I tackled it by
+It has a running time of O(q) where q is the order of GF(2<sup>128</sup>), which takes forever. I tackled it by
 adopting [a Distinct-degree factorization algorithm that uses repeated squaring](https://www.cmi.ac.in/~ramprasad/lecturenotes/comp_numb_theory/lecture10.pdf).
