@@ -563,7 +563,7 @@ with, calculating
 ```g := h^((q^d - 1)/3) - 1 mod f```
 as specified in the problem description will take forever for the very same reason as I indicated above &mdash;
 the order (q<sup>d</sup>-1)/3 will be too large. You need to raise to this high a power by constantly taking modulus
-of f in your exponentiation routine. I solved it by implementing a sacleMod method on my Polynomial Ring class.
+of f in your exponentiation routine. I solved it by implementing [a scaleMod method](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/PolynomialRing2.java#L235-L257) on my Polynomial Ring class.
 
 The other difficulty is that the square-free polynomial without distinct-degree factors that you pass to your edf implementation 
 might not have factors of the degree you specify. This would lead to the algorithm running ad infinitum...
