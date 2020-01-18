@@ -18,6 +18,7 @@ import static java.math.BigInteger.*;
  * <a href="https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf">NIST recommendations.</a>
  */
 public class GCM extends Set3 {
+    private static final int   BLOCK_SIZE = 16;
     private static final BigInteger   TWO_POW_128 = BigInteger.ONE.shiftLeft(128);
     private static final PolynomialGaloisFieldOverGF2   GF = new PolynomialGaloisFieldOverGF2(ONE.shiftLeft(128).or(valueOf(135)));
     private final PolynomialGaloisFieldOverGF2.FieldElement   h;
@@ -74,18 +75,10 @@ public class GCM extends Set3 {
      */
     public byte[]  decipher(byte[] cipherText, byte[] assocData, byte[] nonce) throws BadPaddingException, IllegalBlockSizeException {
         if (nonce.length != 12)  throw  new IllegalArgumentException("Nonce is not 12 bytes but " + nonce.length);
-        int    bSize = cipher.getBlockSize(),  plainTextLen = cipherText.length - bSize,
-                assocDataPaddedLen = (assocData.length / bSize + (assocData.length % bSize != 0  ?  1 : 0)) * bSize,
-                plainTextPaddedLen = (plainTextLen / bSize + (plainTextLen % bSize != 0  ?  1 : 0)) * bSize;
-        byte[]   buf = new byte[assocDataPaddedLen + plainTextPaddedLen + bSize],  res,  s;
-        System.arraycopy(assocData, 0, buf, 0, assocData.length);
-        System.arraycopy(cipherText, 0, buf, assocDataPaddedLen, plainTextLen);
-        ByteBuffer nonceBuf = ByteBuffer.allocate(bSize).order(ByteOrder.BIG_ENDIAN)
-                .putLong(assocData.length * Byte.SIZE).putLong(plainTextLen * Byte.SIZE);
-        System.arraycopy(nonceBuf.array(), 0, buf, assocDataPaddedLen + plainTextPaddedLen, bSize);
+        int    bSize = cipher.getBlockSize(),  plainTextLen = cipherText.length - bSize;
+        byte[]   buf = prepareBuffer(cipherText, assocData, false),  res,  s;
 
-        nonceBuf.clear();
-        nonceBuf.put(nonce).order(ByteOrder.BIG_ENDIAN).putInt(1);
+        ByteBuffer nonceBuf = ByteBuffer.allocate(bSize).order(ByteOrder.BIG_ENDIAN).put(nonce).order(ByteOrder.BIG_ENDIAN).putInt(1);
 
         // Decrypt
         res = cipherCTR(Arrays.copyOf(cipherText, plainTextLen), new BigInteger(nonceBuf.array()).add(ONE).toByteArray());
@@ -99,6 +92,37 @@ public class GCM extends Set3 {
 
         return  Arrays.equals(Arrays.copyOfRange(cipherText, plainTextLen, cipherText.length), ss.add(g).asArray())
                     ? res : null;
+    }
+
+    /**
+     * @return  the authentication key of the one-time-MAC
+     */
+    public PolynomialGaloisFieldOverGF2.FieldElement  getAuthenticationKey() {
+        return  h;
+    }
+
+    /**
+     * Prepares a buffer over which GHASH will be calculated if {@code includeTag==false}, otherwise returns
+     * the buffer over which GHASH was calculated appended with the actual GHASH tag
+     * @param cipherText  byte array representing GCM ciphertext
+     * @param assocData  byte array representing associated data
+     * @param includeTag  indicates whether the last block of cipher text, which represents a GHASH tag, must be
+     *                    copied as the last block of the array returned
+     */
+    private static byte[]  prepareBuffer(byte[] cipherText, byte[] assocData, boolean includeTag) {
+        int    plainTextLen = cipherText.length - BLOCK_SIZE,
+                assocDataPaddedLen = (assocData.length / BLOCK_SIZE + (assocData.length % BLOCK_SIZE != 0  ?  1 : 0)) * BLOCK_SIZE,
+                plainTextPaddedLen = (plainTextLen / BLOCK_SIZE + (plainTextLen % BLOCK_SIZE != 0  ?  1 : 0)) * BLOCK_SIZE;
+        byte[]   buf = new byte[assocDataPaddedLen + plainTextPaddedLen + BLOCK_SIZE + (includeTag ? BLOCK_SIZE : 0)],  res,  s;
+        System.arraycopy(assocData, 0, buf, 0, assocData.length);
+        System.arraycopy(cipherText, 0, buf, assocDataPaddedLen, plainTextLen);
+        ByteBuffer nonceBuf = ByteBuffer.allocate(BLOCK_SIZE).order(ByteOrder.BIG_ENDIAN)
+                .putLong(assocData.length * Byte.SIZE).putLong(plainTextLen * Byte.SIZE);
+        System.arraycopy(nonceBuf.array(), 0, buf, assocDataPaddedLen + plainTextPaddedLen, BLOCK_SIZE);
+        if (includeTag) {
+            System.arraycopy(cipherText, plainTextLen, buf, assocDataPaddedLen + plainTextPaddedLen + BLOCK_SIZE, BLOCK_SIZE);
+        }
+        return  buf;
     }
 
     /**
@@ -137,22 +161,59 @@ public class GCM extends Set3 {
     }
 
     /**
-     * Converts an array whose size is a multiple of 16 bytes into a polynomial ring over GF(2<sup>128</sup>).
-     * @param buf  an array whose length must be a multiple of 16
+     * Converts ciphertext and associated data into a polynomial ring over GF(2<sup>128</sup>).
      * @return  a polynomial ring whose x^0 coefficient is the last 16 byte block in {@code buf}, and the highest
      *          term coefficient is the first.
      */
-    public static PolynomialRing<PolynomialGaloisFieldOverGF2.FieldElement>  toPolynomialRing(byte[] buf) {
-        int bSize = 16,  last = buf.length / bSize;
-        return  new PolynomialRing<>(IntStream.range(0, last)
-                .mapToObj(i -> toFE( Arrays.copyOfRange(buf, (last - i - 1) * bSize, (last - i) * bSize)) )
+    public static PolynomialRing2<PolynomialGaloisFieldOverGF2.FieldElement>  toPolynomialRing2(byte[] cipherText, byte[] assocData) {
+        byte[]   buf = prepareBuffer(cipherText, assocData, true);
+        int      last = buf.length / BLOCK_SIZE;
+        return  new PolynomialRing2<>(IntStream.range(0, last)
+                .mapToObj(i -> toFE( Arrays.copyOfRange(buf, (last - i - 1) * BLOCK_SIZE, (last - i) * BLOCK_SIZE)) )
                 .toArray(PolynomialGaloisFieldOverGF2.FieldElement[]::new));
     }
 
-    public static PolynomialRing2<PolynomialGaloisFieldOverGF2.FieldElement>  toPolynomialRing2(byte[] buf) {
-        int bSize = 16,  last = buf.length / bSize;
-        return  new PolynomialRing2<>(IntStream.range(0, last)
-                .mapToObj(i -> toFE( Arrays.copyOfRange(buf, (last - i - 1) * bSize, (last - i) * bSize)) )
-                .toArray(PolynomialGaloisFieldOverGF2.FieldElement[]::new));
+    /**
+     * Forges valid cipher text from legit cipher text and associated data coupled with a recovered authentication key.
+     * @param additionalBogusAssocData  blocksize-long buffer, must be the same size as padded {@code legitAssocData}
+     */
+    public static byte[]  forgeCipherText(byte[] legitCipherText, byte[] legitAssocData, byte[] additionalBogusAssocData,
+                                          PolynomialGaloisFieldOverGF2.FieldElement authenticationKey) {
+        int    plainTextLen = legitCipherText.length - BLOCK_SIZE,
+               assocDataPaddedLen = (legitAssocData.length / BLOCK_SIZE + (legitAssocData.length % BLOCK_SIZE != 0  ?  1 : 0)) * BLOCK_SIZE,
+               plainTextPaddedLen = (plainTextLen / BLOCK_SIZE + (plainTextLen % BLOCK_SIZE != 0  ?  1 : 0)) * BLOCK_SIZE,
+               lastPower = plainTextPaddedLen / BLOCK_SIZE + 1,
+               last = additionalBogusAssocData.length / BLOCK_SIZE;
+
+        if (additionalBogusAssocData.length != assocDataPaddedLen) {
+            throw new IllegalArgumentException("additionalBogusAssocData must be of same length as padded legit associated data and not "
+                                               + additionalBogusAssocData.length);
+        }
+
+        // We start with the original legit tag...
+        PolynomialGaloisFieldOverGF2.FieldElement   forgedTag = toFE(Arrays.copyOfRange(
+                legitCipherText, legitCipherText.length - BLOCK_SIZE, legitCipherText.length));
+
+        byte[]   buf = new byte[assocDataPaddedLen];
+        System.arraycopy(legitAssocData, 0, buf, 0, legitAssocData.length);
+
+        // ... and then subtract from it the legit associated data and
+        //     add to it bogus associated data.
+        for (int i=last; i > 0; i-=1) {
+            lastPower++;
+
+            // Remove the summand of the legit associated data
+            forgedTag = forgedTag.subtract(
+                    toFE( Arrays.copyOfRange(legitAssocData, (last - 1) * BLOCK_SIZE, last * BLOCK_SIZE))
+                            .multiply(authenticationKey.scale(valueOf(lastPower))) );
+
+            // And then add the summand of the bogus associate data
+            forgedTag = forgedTag.add(
+                    toFE( Arrays.copyOfRange(additionalBogusAssocData, (last - 1) * BLOCK_SIZE, last * BLOCK_SIZE))
+                        .multiply(authenticationKey.scale(valueOf(lastPower))) );
+        }
+        byte[]  res = legitCipherText.clone();
+        System.arraycopy(forgedTag.asArray(), 0, res, legitCipherText.length - BLOCK_SIZE, BLOCK_SIZE);
+        return  res;
     }
 }

@@ -4,6 +4,8 @@ import com.cryptopals.set_8.FiniteFieldElement;
 import lombok.EqualsAndHashCode;
 
 import java.math.BigInteger;
+import java.util.Random;
+
 import static java.math.BigInteger.valueOf;
 
 /**
@@ -91,6 +93,11 @@ public class ZpField {
         }
 
         @Override
+        public ZpFieldElement getRandomElement() {
+            return  new ZpFieldElement(new Random().nextInt((int) p));
+        }
+
+        @Override
         public BigInteger getOrder() {
             return  valueOf(p);
         }
@@ -103,6 +110,12 @@ public class ZpField {
         @Override
         public String toString() {
             return Long.toString(e);
+        }
+
+        @Override
+        public int compareTo(FiniteFieldElement o) {
+            ZpFieldElement   that = (ZpFieldElement) o;
+            return  Long.compare(e, that.e);
         }
     }
 }

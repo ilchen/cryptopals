@@ -12,6 +12,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import javax.crypto.*;
 import javax.crypto.spec.GCMParameterSpec;
+import javax.xml.bind.DatatypeConverter;
 import java.math.BigInteger;
 import java.net.MalformedURLException;
 import java.rmi.Naming;
@@ -21,6 +22,7 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -250,13 +252,14 @@ class Set8Tests {
     @Test
     void PolynomialRing() {
         ZpField   field = new ZpField(53);
-        PolynomialRing<ZpField.ZpFieldElement>   poly1 = new PolynomialRing<>(
+        PolynomialRing2<ZpField.ZpFieldElement>   poly1 = new PolynomialRing2<>(
                 IntStream.of(3, 43, 5, 5, 8, 10).mapToObj(field::createElement).toArray(ZpField.ZpFieldElement[]::new)),
-            poly2 = new PolynomialRing<>(IntStream.of(7, 44, 6, 4).mapToObj(field::createElement).toArray(ZpField.ZpFieldElement[]::new)),
-            product = new PolynomialRing<>(IntStream.of(21, 9, 37, 48, 1, 48, 31, 39, 40).mapToObj(field::createElement).toArray(ZpField.ZpFieldElement[]::new)),
-            derivative = new PolynomialRing<>(IntStream.of(9, 21, 38, 4, 28, 27, 8, 2).mapToObj(field::createElement).toArray(ZpField.ZpFieldElement[]::new)),
-            xPlus1Cubed = new PolynomialRing<>(IntStream.of(1, 3, 3, 1).mapToObj(field::createElement).toArray(ZpField.ZpFieldElement[]::new)),
-            xPlus1Squared = new PolynomialRing<>(IntStream.of(1, 2, 1).mapToObj(field::createElement).toArray(ZpField.ZpFieldElement[]::new));
+            poly2 = new PolynomialRing2<>(IntStream.of(7, 44, 6, 4).mapToObj(field::createElement).toArray(ZpField.ZpFieldElement[]::new)),
+            product = new PolynomialRing2<>(IntStream.of(21, 9, 37, 48, 1, 48, 31, 39, 40).mapToObj(field::createElement).toArray(ZpField.ZpFieldElement[]::new)),
+            derivative = new PolynomialRing2<>(IntStream.of(9, 21, 38, 4, 28, 27, 8, 2).mapToObj(field::createElement).toArray(ZpField.ZpFieldElement[]::new)),
+            xPlus1Cubed = new PolynomialRing2<>(IntStream.of(1, 3, 3, 1).mapToObj(field::createElement).toArray(ZpField.ZpFieldElement[]::new)),
+            xPlus1Squared = new PolynomialRing2<>(IntStream.of(1, 2, 1).mapToObj(field::createElement).toArray(ZpField.ZpFieldElement[]::new)),
+            xPlus1xPlus2 = new PolynomialRing2<>(IntStream.of(2, 3, 1).mapToObj(field::createElement).toArray(ZpField.ZpFieldElement[]::new));
         System.out.println("p: "+ poly1 + "\nq: " + poly2);
         System.out.println("p+q: " + poly1.add(poly2));
 
@@ -268,7 +271,7 @@ class Set8Tests {
         assertEquals(poly1.multiply(poly2), poly2.multiply(poly1));
         assertEquals(product, poly1.multiply(poly2));
 
-        PolynomialRing<ZpField.ZpFieldElement>   quotient = poly1.divide(poly2),  remainder = poly1.subtract(quotient.multiply(poly2)),
+        PolynomialRing2<ZpField.ZpFieldElement>   quotient = poly1.divide(poly2),  remainder = poly1.subtract(quotient.multiply(poly2)),
             quotientAndRemainder[] = poly1.divideAndRemainder(poly2);
         System.out.println("p/q: " + quotient);
         System.out.println("p/q * q: " + quotient.multiply(poly2));
@@ -283,29 +286,41 @@ class Set8Tests {
 
         System.out.println(xPlus1Cubed.gcd(xPlus1Squared));
         assertEquals(xPlus1Cubed.gcd(xPlus1Squared), xPlus1Squared.gcd(xPlus1Cubed));
+        System.out.println(xPlus1Cubed.squareFreeFactorization());
+        System.out.println(xPlus1Squared.squareFreeFactorization());
+        System.out.println(xPlus1xPlus2.equalDegreeFactorization(1));
+
+        BigInteger   power = new BigInteger("545");
+
+        remainder = poly1.scale(power).divideAndRemainder(poly2)[1];
+        assertEquals(remainder, poly1.scaleMod(power, poly2));
+        System.out.println("Remainder1: " + remainder + "\nRemainder2: " + poly1.scaleMod(power, poly2));
+
 
         field = new ZpField(3);
-        poly1 = new PolynomialRing<>(
+        poly1 = new PolynomialRing2<>(
                 IntStream.of(1, 0, 2, 2, 0, 1, 1, 0, 2, 2, 0, 1).mapToObj(field::createElement).toArray(ZpField.ZpFieldElement[]::new));
-        List<PolynomialRing.PolynomialAndPower<ZpField.ZpFieldElement>>  factors = poly1.squareFreeFactorization();
+        PolynomialRing2<ZpField.ZpFieldElement>   factor1 = new PolynomialRing2<>(
+                        IntStream.of(1, 1).mapToObj(field::createElement).toArray(ZpField.ZpFieldElement[]::new)),
+                factor2 = new PolynomialRing2<>(
+                        IntStream.of(2, 1).mapToObj(field::createElement).toArray(ZpField.ZpFieldElement[]::new)),
+                factor3 = new PolynomialRing2<>(
+                        IntStream.of(1, 0, 1).mapToObj(field::createElement).toArray(ZpField.ZpFieldElement[]::new));
+        ;
+        List<PolynomialRing2.PolynomialAndPower<ZpField.ZpFieldElement>>  factors = poly1.squareFreeFactorization(),
+                expectedFactors = new ArrayList<>();
+        expectedFactors.add(new PolynomialRing2.PolynomialAndPower<>(factor1, 1));
+        expectedFactors.add(new PolynomialRing2.PolynomialAndPower<>(factor2, 4));
+        expectedFactors.add(new PolynomialRing2.PolynomialAndPower<>(factor3, 3));
+        assertEquals(expectedFactors, factors);
 
-        System.out.print("The factorization of " + poly1 + " is: ");
-        for (PolynomialRing.PolynomialAndPower<ZpField.ZpFieldElement> factor : factors) {
+        System.out.print("\nThe factorization of " + poly1 + " is: ");
+        for (PolynomialRing2.PolynomialAndPower<ZpField.ZpFieldElement> factor : factors) {
             System.out.print("(" + factor.getFactor() + ")");
             if (factor.getPower() > 1) System.out.printf("^%d", factor.getPower());
         }
 
-        PolynomialRing2<ZpField.ZpFieldElement> poly1_ = new PolynomialRing2<>(
-                IntStream.of(1, 0, 2, 2, 0, 1, 1, 0, 2, 2, 0, 1).mapToObj(field::createElement).toArray(ZpField.ZpFieldElement[]::new));
-        List<PolynomialRing2.PolynomialAndPower<ZpField.ZpFieldElement>>  factors_ = poly1_.squareFreeFactorization();
-
-        System.out.print("\nThe factorization of " + poly1_ + " is: ");
-        for (PolynomialRing2.PolynomialAndPower<ZpField.ZpFieldElement> factor : factors_) {
-            System.out.print("(" + factor.getFactor() + ")");
-            if (factor.getPower() > 1) System.out.printf("^%d", factor.getPower());
-        }
-
-        for (PolynomialRing2.PolynomialAndPower<ZpField.ZpFieldElement> factor : factors_) {
+        for (PolynomialRing2.PolynomialAndPower<ZpField.ZpFieldElement> factor : factors) {
             System.out.printf("%nFactor: %s breaks down into: ", factor.getFactor().toString());
             List<PolynomialRing2<ZpField.ZpFieldElement>>  factors__ = factor.getFactor().distinctDegreeFactorization();
             factors__.forEach(x -> System.out.print("(" + x + ")"));
@@ -320,7 +335,7 @@ class Set8Tests {
         SecretKey key = aesKeyGen.generateKey();
         GCM   gcm = new GCM(key);
         byte[]   nonce = new byte[12],  plnText = CHALLENGE56_MSG.getBytes(),  plnText2 = "dummy text to try".getBytes(),
-                 cTxt1,  cTxt2,  assocData = new byte[0];
+                 cTxt1,  cTxt2,  assocData = "valid assoc.Data".getBytes();
         new SecureRandom().nextBytes(nonce);
         // a0 || a1 || c0 || c1 || c2 || (len(AD) || len(C)) || t
         cTxt1 = gcm.cipher(plnText, assocData, nonce);
@@ -328,26 +343,46 @@ class Set8Tests {
         cTxt2 = gcm.cipher(plnText2, assocData, nonce);
 
 
-        PolynomialRing<PolynomialGaloisFieldOverGF2.FieldElement>   ring1 = GCM.toPolynomialRing(cTxt1),
-                                                                    ring2 = GCM.toPolynomialRing(cTxt2),
-                                                                    equation = ring1.add(ring2);
-        System.out.println(ring1 + "\n" + ring2 + "\n" + equation);
-        equation = equation.toMonicPolynomial();
-        System.out.println(equation);
-        System.out.println(equation.squareFreeFactorization());
+        PolynomialRing2<PolynomialGaloisFieldOverGF2.FieldElement>   poly1 = GCM.toPolynomialRing2(cTxt1, assocData),
+                                                                     poly2 = GCM.toPolynomialRing2(cTxt2, assocData),
+                                                                     equation = poly1.add(poly2).toMonicPolynomial();
+        System.out.println("cTxt1 polynomial: " + poly1);
+        System.out.println("cTxt2 polynomial: " + poly2);
+        System.out.println("Equation: " + equation);
 
-        PolynomialRing2<PolynomialGaloisFieldOverGF2.FieldElement>   ring12 = GCM.toPolynomialRing2(cTxt1),
-                ring22 = GCM.toPolynomialRing2(cTxt2),
-                equation2 = ring12.add(ring22);
-        System.out.println(ring12 + "\n" + ring22 + "\n" + equation2);
-        equation2 = equation2.toMonicPolynomial();
-        System.out.println(equation2);
+        List<PolynomialRing2<PolynomialGaloisFieldOverGF2.FieldElement>>
+                allFactors = equation.squareFreeFactorization().stream().map(PolynomialRing2.PolynomialAndPower::getFactor)
+                        .flatMap(x -> x.distinctDegreeFactorization().stream()).collect(Collectors.toList()),
 
-        System.out.println(equation2.squareFreeFactorization());
-        System.out.println(equation2.distinctDegreeFactorization());
+                oneDegreeFactors = allFactors.stream().filter(x -> x.intDegree() == 1).collect(Collectors.toList()),
 
-        equation2.squareFreeFactorization().stream().map(PolynomialRing2.PolynomialAndPower::getFactor)
-                .flatMap(x -> x.distinctDegreeFactorization().stream())
-                .forEach(System.out::println);
+                oneDegreeFactorsThroughEdf = allFactors.stream().filter(x -> x.intDegree() > 1)
+                    .flatMap(x -> x.equalDegreeFactorization(1).stream()).collect(Collectors.toList());
+
+        System.out.println("Actual authentication key: " + gcm.getAuthenticationKey());
+        System.out.println("Candidates found after distinct-degree factorization: " + oneDegreeFactors);
+        System.out.println("Additional candidates found after equal-degree factorization: " + oneDegreeFactorsThroughEdf);
+
+        oneDegreeFactors.addAll(oneDegreeFactorsThroughEdf);
+        List<PolynomialGaloisFieldOverGF2.FieldElement>   candidateAuthenticationKeys =
+                oneDegreeFactors.stream().map(x -> x.getCoef(0)).collect(Collectors.toList());
+        assertTrue(candidateAuthenticationKeys.contains(gcm.getAuthenticationKey()));
+
+        // Now that we have recovered the authentication key, we can forge a bogus ciphertext that will authenticate.
+        byte[]   additionalBogusAssociatedData = "bogus assoc.Data".getBytes(),  forgedCipherTxt,
+                 plainTxt;
+        for (PolynomialGaloisFieldOverGF2.FieldElement candidateAuthenticationKey : candidateAuthenticationKeys) {
+            forgedCipherTxt = GCM.forgeCipherText(cTxt1, assocData, additionalBogusAssociatedData, candidateAuthenticationKey);
+            assertNotEquals(forgedCipherTxt, cTxt1);
+            plainTxt = gcm.decipher(forgedCipherTxt, additionalBogusAssociatedData, nonce);
+            System.out.println("\nRecovered authentication key: " + candidateAuthenticationKey);
+            System.out.println("Legit associated data: " + new String(assocData));
+            System.out.println("Bogus associated data: " + new String(additionalBogusAssociatedData));
+            System.out.println("Legit  cipher text: " + DatatypeConverter.printHexBinary(cTxt1));
+            System.out.println("Forged cipher text: " + DatatypeConverter.printHexBinary(forgedCipherTxt));
+            System.out.println("Decrypted by the crypto system under attack into: "
+                    + (plainTxt == null ? "\u22A5" : new String(plainTxt)) );
+        }
+
     }
 }

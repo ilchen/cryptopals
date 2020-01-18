@@ -6,6 +6,7 @@ import lombok.Getter;
 
 import java.math.BigInteger;
 import java.util.Arrays;
+import java.util.Random;
 
 import static java.math.BigInteger.*;
 
@@ -43,13 +44,17 @@ public class PolynomialGaloisFieldOverGF2 {
         return  new FieldElement(polynomial).mod();
     }
 
+    public FieldElement  createRandomElement() {
+        return  new FieldElement(new BigInteger(modulus.bitLength(), new Random())).mod();
+    }
+
     /**
      * Represents an element of a Polynomial Galois field over GF(2).
      */
     final public class FieldElement implements FiniteFieldElement {
         private final BigInteger   polynomial;
 
-        public FieldElement(BigInteger poly) {
+        FieldElement(BigInteger poly) {
             polynomial = poly;
         }
 
@@ -59,6 +64,11 @@ public class PolynomialGaloisFieldOverGF2 {
 
         public FieldElement getMultiplicativeIdentity() {
             return multiplicativeIdentity;
+        }
+
+        /** Returns a uniformly distributed element of this polynomial field */
+        public FieldElement getRandomElement() {
+            return  createRandomElement();
         }
 
         public BigInteger  getOrder() {
@@ -175,6 +185,12 @@ public class PolynomialGaloisFieldOverGF2 {
 //        }
         public String toString() {
             return  polynomial.toString(16);
+        }
+
+        @Override
+        public int compareTo(FiniteFieldElement o) {
+            FieldElement   that = (FieldElement) o;
+            return polynomial.compareTo(that.polynomial);
         }
     }
 

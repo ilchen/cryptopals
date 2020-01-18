@@ -16,7 +16,7 @@ import static java.math.BigInteger.valueOf;
  * @param <T>  a class representing a finite field
  */
 @EqualsAndHashCode
-public final class PolynomialRing2<T extends FiniteFieldElement> {
+public final class PolynomialRing2<T extends FiniteFieldElement> implements Comparable<PolynomialRing2<T>> {
 
     /**
      * The element with key {@code i} represents the coefficient of {@code x}<sup>i</sup>. The invariant of this
@@ -232,6 +232,44 @@ public final class PolynomialRing2<T extends FiniteFieldElement> {
         return  res;
     }
 
+    /**
+     * Calculates  this<sup>k</sup> mod modulus using repeated squaring
+     * @param k
+     * @param modulus
+     * @return
+     */
+    public PolynomialRing2<T>  scaleMod(BigInteger k, PolynomialRing2<T> modulus) {
+        PolynomialRing2<T> res = getMultiplicativeIdentity(),  x = this;
+        while (!k.equals(BigInteger.ZERO)) {
+            if (Set5.isOdd(k))  {
+                res = res.multiply(x);
+                if (res.degree.compareTo(modulus.degree) >= 0) {
+                    res = res.divideAndRemainder(modulus)[1];
+                }
+            }
+            x = x.multiply(x);
+            if (x.degree.compareTo(modulus.degree) >= 0) {
+                x = x.divideAndRemainder(modulus)[1];
+            }
+            k = k.shiftRight(1);
+        }
+        return  res;
+    }
+
+
+    /**
+     * Performs a lexicographic compare.
+     */
+    @Override
+    public int compareTo(PolynomialRing2<T> o) {
+        if (!degree.equals(o.degree))  return  degree.compareTo(o.degree);
+        for (BigInteger i=degree; i.compareTo(BigInteger.ZERO) >= 0; i=i.subtract(BigInteger.ONE)) {
+            int   res = getCoef(i).compareTo(o.getCoef(i));
+            if (res != 0)  return  res;
+        }
+        return 0;
+    }
+
     @Data
     public static final class PolynomialAndPower<T extends FiniteFieldElement> {
         final PolynomialRing2<T>   factor;
@@ -376,6 +414,60 @@ public final class PolynomialRing2<T extends FiniteFieldElement> {
         }
         return  res;
 
+    }
+
+    /**
+     * Returns a random monic polynomial of specified degree.
+     * @param degree  degree of the polynomial to be constructed, it must be {@code >= 1}
+     */
+    public PolynomialRing2<T>  getRandomMonicPolynomial(int degree) {
+        if (degree < 1)  throw  new IllegalArgumentException("Degree is less than 1: " + degree);
+        PolynomialRing2<T>   res = new PolynomialRing2<>(degree, ONE);
+        while (--degree >= 0) {
+            @SuppressWarnings("unchecked")
+            PolynomialRing2<T>   next = new PolynomialRing2<>(degree, (T) ONE.getRandomElement());
+            res = res.add(next);
+        }
+        return  res;
+    }
+
+    /**
+     * Carries out an equal degree factorization using the Cantor-Zassenhaus algorithm. This polynomial must
+     * be a product of {@code d}-degree polynomials.
+     * @param d  desired degree of the factors of this polynomial to be produced
+     * @return  a set of {@code d}-degree polynomials or an empty set if this polynomial cannot be factored into
+     *          {@code d}-degree polynomials
+     */
+    public Set<PolynomialRing2<T>>  equalDegreeFactorization(int d) {
+        Set<PolynomialRing2<T>>   res = new TreeSet<>();     res.add(this);
+        PolynomialRing2<T>   g,  h,  one = getMultiplicativeIdentity();
+        int   r = intDegree() / d,  i = 0,
+              // maxPasses ensures the method doesn't hang if this polynomial can't be factored into d-degree polynomials
+              maxPasses = 5 * (int) Math.ceil((32 - Integer.numberOfLeadingZeros(r)) * 2.5);
+
+        while (res.size() < r  &&  i++ < maxPasses) {
+            h = getRandomMonicPolynomial(intDegree() - 1);
+            g = gcd(h);
+
+            if (g.equals(one)) {
+                //g = h.scale(ONE.getOrder().pow(d).subtract(BigInteger.ONE).divide(valueOf(3))).subtract(one).divideAndRemainder(this)[1];
+                g = h.scaleMod(ONE.getOrder().pow(d).subtract(BigInteger.ONE).divide(valueOf(3)), this)
+                        .subtract(one.divideAndRemainder(this)[1]);
+            }
+
+            for (PolynomialRing2<T> u : res) {
+                if (u.intDegree() == d)  continue;
+                h = g.gcd(u);
+                if (!h.equals(one)  &&  !h.equals(u)) {
+                    res.remove(u);     res.add(h);     res.add(u.divide(h));
+                }
+            }
+
+        }
+        if (i == maxPasses + 1)  {
+            return  Collections.emptySet();
+        }
+        return  res;
     }
 
     @Override

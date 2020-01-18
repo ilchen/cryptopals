@@ -454,6 +454,7 @@ the one-time-MAC &mdash; GMAC
 3. Implementing a polynomial ring over GF(2<sup>128</sup>)
 4. Solving the problem of factoring polynomials
 5. Realising the actual attack of recovering the authentication key of GMAC provided a nonce was repeated
+6. Asking yourself a question of what you can do with the recovered authentication key
 
 All in all it is a fairly laborious challenge that took me quite some time to complete. The effort is commensurate
 to a university coursework. On the other hand it helped me consolidate my understanding of finite fields
@@ -544,6 +545,7 @@ This entailed working out:
 * Distinct-degree factorization of polynomials: https://en.wikipedia.org/wiki/Factorization_of_polynomials_over_finite_fields#Distinct-degree_factorization
 * Equal-degree factorization of polynomials: https://en.wikipedia.org/wiki/Factorization_of_polynomials_over_finite_fields#Equal-degree_factorization
 
+##### Distinct-degree factorization
 Of these problems I spent the most time getting distinct-degree factorization to work. The first obstacle I faced was my earlier
 decision to represent polynomials as [arrays of coefficients](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/PolynomialRing.java#L14-L22).
 This algorithm requires dealing with polynomials whose degree is the order of the field and higher, which turns out
@@ -554,3 +556,161 @@ To tackle it I switched to representing polynomials in [a way that stores only t
 The second obstacle was the awful running time of [the Distinct-degree factorization algorithm from Wikipedia](https://en.wikipedia.org/wiki/Factorization_of_polynomials_over_finite_fields#Distinct-degree_factorization).
 It has a running time of O(q) where q is the order of GF(2<sup>128</sup>), which takes forever. I tackled it by
 adopting [a Distinct-degree factorization algorithm that uses repeated squaring](https://www.cmi.ac.in/~ramprasad/lecturenotes/comp_numb_theory/lecture10.pdf).
+
+##### Equal-degree factorization
+Equal-degree factorization, while fairly well delineated by @spdevlin, presented a couple of difficulties too. To start
+with, calculating
+```g := h^((q^d - 1)/3) - 1 mod f```
+as specified in the problem description will take forever for the very same reason as I indicated above &mdash;
+the order (q<sup>d</sup>-1)/3 will be too large. You need to raise to this high a power by constantly taking modulus
+of f in your exponentiation routine. I solved it by implementing a sacleMod method on my Polynomial Ring class.
+
+The other difficulty is that the square-free polynomial without distinct-degree factors that you pass to your edf implementation 
+might not have factors of the degree you specify. This would lead to the algorithm running ad infinitum...
+For example in my approach I always call edf with a desired degree of factors being 1. While the setting guarantees
+the presence of at least one factor of degree 1 for the original polynomial, there's no guarantee that each polynomial
+spewed out by distinct-degree factorization can be factoed in one-degee polynomials. I dealt with this predicament
+by setting a heuristic limit on the maximum number of passes through the loop in my edf implementation. When the polynomial
+passed to edf  has factors of requested degree, this heuristic limit will not halt the loop without finding the factors
+with a probability close to 1.
+```java
+// maxPasses ensures the method doesn't hang if this polynomial can't be factored into d-degree polynomials
+int   maxPasses = 5 * (int) Math.ceil((32 - Integer.numberOfLeadingZeros(r)) * 2.5);
+```
+
+#### Realising the actual attack of recovering the authentication key
+All the hard work on implementing square-free factorization, distinct-degree factorization, end equal-degree factorization
+can finally be brought to bear:
+```java
+KeyGenerator aesKeyGen = KeyGenerator.getInstance("AES");
+SecretKey key = aesKeyGen.generateKey();
+GCM   gcm = new GCM(key);
+byte[]   nonce = new byte[12],  plnText = "crazy flamboyant for the rap enjoyment".getBytes(),
+                               plnText2 = "dummy text to try".getBytes(),
+         cTxt1,  cTxt2,  assocData = "valid assoc.Data".getBytes();
+new SecureRandom().nextBytes(nonce);
+// a0 || a1 || c0 || c1 || c2 || (len(AD) || len(C)) || t
+cTxt1 = gcm.cipher(plnText, assocData, nonce);
+// Reusing the same nonce, thereby making ourselves vulnerable to the attack.
+cTxt2 = gcm.cipher(plnText2, assocData, nonce);
+
+
+PolynomialRing2<PolynomialGaloisFieldOverGF2.FieldElement>   poly1 = GCM.toPolynomialRing2(cTxt1, assocData),
+                                                             poly2 = GCM.toPolynomialRing2(cTxt2, assocData),
+                                                             equation = poly1.add(poly2).toMonicPolynomial();
+System.out.println("cTxt1 polynomial: " + poly1);
+System.out.println("cTxt2 polynomial: " + poly2);
+System.out.println("Equation: " + equation);
+
+List<PolynomialRing2<PolynomialGaloisFieldOverGF2.FieldElement>>
+        allFactors = equation.squareFreeFactorization().stream().map(PolynomialRing2.PolynomialAndPower::getFactor)
+                .flatMap(x -> x.distinctDegreeFactorization().stream()).collect(Collectors.toList()),
+
+        oneDegreeFactors = allFactors.stream().filter(x -> x.intDegree() == 1).collect(Collectors.toList()),
+
+        oneDegreeFactorsThroughEdf = allFactors.stream().filter(x -> x.intDegree() > 1)
+            .flatMap(x -> x.equalDegreeFactorization(1).stream()).collect(Collectors.toList());
+
+System.out.println("Actual authentication key: " + gcm.getAuthenticationKey());
+System.out.println("Candidates found after distinct-degree factorization: " + oneDegreeFactors);
+System.out.println("Additional candidates found after equal-degree factorization: " + oneDegreeFactorsThroughEdf);
+
+oneDegreeFactors.addAll(oneDegreeFactorsThroughEdf);
+List<PolynomialGaloisFieldOverGF2.FieldElement>   candidateAuthenticationKeys =
+        oneDegreeFactors.stream().map(x -> x.getCoef(0)).collect(Collectors.toList());
+assertTrue(candidateAuthenticationKeys.contains(gcm.getAuthenticationKey()));
+```
+
+Running it produces the following output:
+```
+cTxt1 polynomial: 862e862274c6f6cece8604269636866ex^5 + a2c92e99dba07ce117b3bb3665fedff9x^4 + f4551f6d035a339b2e5b061ca2830ce4x^3 + 320f10f267edx^2 + c800000000000000100000000000000x + 5aafa98bf7b25cfe22f5e630f97d59e9
+cTxt2 polynomial: 862e862274c6f6cece8604269636866ex^4 + c291acf103e2e47987fbbb368dce3f19x^3 + 7ex^2 + 11000000000000000100000000000000x + b3180499d9b2e60566ac9c204aad7ff
+Equation: x^5 + 597419e85ea532a59c4d0eed034a9044x^4 + 812f7801991ead15d455a70fcb83086fx^3 + 87c24da8d5f25ea3e9f92b8c9b319712x^2 + 10ec19974d245b5f16890e6a1effeec8x + e4cb0203ef19430f3c13947f6f6d17a7
+Actual authentication key: 67cf01239432c85151d9f7c021bfd121
+Candidates found after distinct-degree factorization: []
+Additional candidates found after equal-degree factorization: [x + 67cf01239432c85151d9f7c021bfd121, x + e8cde43205a09d05379422572e11dfb5]
+```
+
+#### Asking yourself a question of what you can do with the recovered authentication key
+Having gone to the lengths of completing this Herculean labour of recovering the GMAC authentication key from a victim
+who naively encrypted two different plain texts with the same nonce, you might wonder what you can do with it. Well,
+you can forge a piece of distinct cipher text that the cryptosystem you attack will authenticate. In other words you can
+mount an _existential forgery_ attack.
+
+Imagine that `t0` is the last block of the first cipher text you have `cTxt1`. Looking at the way it was calculated
+
+```t0 = a0*h^5 + c0*h^4 + c1*h^3 + c2*h^2 + l0*h + s```
+
+and noting that you have both `a0` and `h`, you can go far. Say `a'0` is a block of your bogus associated data you want to swap for
+the legitimate block `a0`. What you do is first subtract `a0*h^5` from `t0` and then replace it with a block of bogus
+associated data by adding `a'0*h^5` to `t0`. Here's how it looks in my code:
+```java
+/**
+ * Forges valid cipher text from legit cipher text and associated data coupled with a recovered authentication key.
+ * @param additionalBogusAssocData  blocksize-long buffer, must be the same size as padded {@code legitAssocData}
+ */
+public static byte[]  forgeCipherText(byte[] legitCipherText, byte[] legitAssocData, byte[] additionalBogusAssocData,
+                                      PolynomialGaloisFieldOverGF2.FieldElement authenticationKey) {
+    int    plainTextLen = legitCipherText.length - BLOCK_SIZE,
+           assocDataPaddedLen = (legitAssocData.length / BLOCK_SIZE + (legitAssocData.length % BLOCK_SIZE != 0  ?  1 : 0)) * BLOCK_SIZE,
+           plainTextPaddedLen = (plainTextLen / BLOCK_SIZE + (plainTextLen % BLOCK_SIZE != 0  ?  1 : 0)) * BLOCK_SIZE,
+           lastPower = plainTextPaddedLen / BLOCK_SIZE + 1,
+           last = additionalBogusAssocData.length / BLOCK_SIZE;
+
+    if (additionalBogusAssocData.length != assocDataPaddedLen) {
+        throw new IllegalArgumentException("additionalBogusAssocData must be of same length as padded legit associated data and not "
+                                           + additionalBogusAssocData.length);
+    }
+
+    // We start with the original legit tag...
+    PolynomialGaloisFieldOverGF2.FieldElement   forgedTag = toFE(Arrays.copyOfRange(
+            legitCipherText, legitCipherText.length - BLOCK_SIZE, legitCipherText.length));
+
+    byte[]   buf = new byte[assocDataPaddedLen];
+    System.arraycopy(legitAssocData, 0, buf, 0, legitAssocData.length);
+
+    // ... and then subtract from it the legit associated data and
+    //     add to it bogus associated data.
+    for (int i=last; i > 0; i-=1) {
+        lastPower++;
+
+        // Remove the summand of the legit associated data
+        forgedTag = forgedTag.subtract(
+                toFE( Arrays.copyOfRange(legitAssocData, (last - 1) * BLOCK_SIZE, last * BLOCK_SIZE))
+                        .multiply(authenticationKey.scale(valueOf(lastPower))) );
+
+        // And then add the summand of the bogus associate data
+        forgedTag = forgedTag.add(
+                toFE( Arrays.copyOfRange(additionalBogusAssocData, (last - 1) * BLOCK_SIZE, last * BLOCK_SIZE))
+                    .multiply(authenticationKey.scale(valueOf(lastPower))) );
+    }
+    byte[]  res = legitCipherText.clone();
+    System.arraycopy(forgedTag.asArray(), 0, res, legitCipherText.length - BLOCK_SIZE, BLOCK_SIZE);
+    return  res;
+}
+```
+
+Giving it a spin:
+```
+cTxt1 polynomial: 862e862274c6f6cece8604269636866ex^5 + a2c92e99dba07ce117b3bb3665fedff9x^4 + f4551f6d035a339b2e5b061ca2830ce4x^3 + 320f10f267edx^2 + c800000000000000100000000000000x + 5aafa98bf7b25cfe22f5e630f97d59e9
+cTxt2 polynomial: 862e862274c6f6cece8604269636866ex^4 + c291acf103e2e47987fbbb368dce3f19x^3 + 7ex^2 + 11000000000000000100000000000000x + b3180499d9b2e60566ac9c204aad7ff
+Equation: x^5 + 597419e85ea532a59c4d0eed034a9044x^4 + 812f7801991ead15d455a70fcb83086fx^3 + 87c24da8d5f25ea3e9f92b8c9b319712x^2 + 10ec19974d245b5f16890e6a1effeec8x + e4cb0203ef19430f3c13947f6f6d17a7
+Actual authentication key: 67cf01239432c85151d9f7c021bfd121
+Candidates found after distinct-degree factorization: []
+Additional candidates found after equal-degree factorization: [x + 67cf01239432c85151d9f7c021bfd121, x + e8cde43205a09d05379422572e11dfb5]
+
+Recovered authentication key: 67cf01239432c85151d9f7c021bfd121
+Legit associated data: valid assoc.Data
+Bogus associated data: bogus assoc.Data
+Legit  cipher text: 9FFB7FA66CDDCDE8873E05DB997493452730C1453860DA74D9CC5AC0B6F8AA2FB7E64F08F04C979ABE9F0C67AF447F3A4DEFD195F55A
+Forged cipher text: 9FFB7FA66CDDCDE8873E05DB997493452730C1453860DA74D9CC5AC0B6F8AA2FB7E64F08F04CDE9E643787D35A6765241FEC4324627A
+Decrypted by the crypto system under attack into: crazy flamboyant for the rap enjoyment
+
+Recovered authentication key: e8cde43205a09d05379422572e11dfb5
+Legit associated data: valid assoc.Data
+Bogus associated data: bogus assoc.Data
+Legit  cipher text: 9FFB7FA66CDDCDE8873E05DB997493452730C1453860DA74D9CC5AC0B6F8AA2FB7E64F08F04C979ABE9F0C67AF447F3A4DEFD195F55A
+Forged cipher text: 9FFB7FA66CDDCDE8873E05DB997493452730C1453860DA74D9CC5AC0B6F8AA2FB7E64F08F04CD3355D1A58A0B6E730F4356A7027481F
+Decrypted by the crypto system under attack into: ⊥
+```
+I am able to commit an existential forgery attack!
