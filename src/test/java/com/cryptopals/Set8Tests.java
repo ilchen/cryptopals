@@ -360,7 +360,7 @@ class Set8Tests {
                     .flatMap(x -> x.equalDegreeFactorization(1).stream()).collect(Collectors.toList());
 
         System.out.println("Actual authentication key: " + gcm.getAuthenticationKey());
-        System.out.println("Candidates found after distinct-degree factorization: " + oneDegreeFactors);
+        System.out.println("Candidates found after square-free and distinct-degree factorization: " + oneDegreeFactors);
         System.out.println("Additional candidates found after equal-degree factorization: " + oneDegreeFactorsThroughEdf);
 
         oneDegreeFactors.addAll(oneDegreeFactorsThroughEdf);

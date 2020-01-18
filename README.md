@@ -627,7 +627,7 @@ cTxt1 polynomial: 862e862274c6f6cece8604269636866ex^5 + a2c92e99dba07ce117b3bb36
 cTxt2 polynomial: 862e862274c6f6cece8604269636866ex^4 + c291acf103e2e47987fbbb368dce3f19x^3 + 7ex^2 + 11000000000000000100000000000000x + b3180499d9b2e60566ac9c204aad7ff
 Equation: x^5 + 597419e85ea532a59c4d0eed034a9044x^4 + 812f7801991ead15d455a70fcb83086fx^3 + 87c24da8d5f25ea3e9f92b8c9b319712x^2 + 10ec19974d245b5f16890e6a1effeec8x + e4cb0203ef19430f3c13947f6f6d17a7
 Actual authentication key: 67cf01239432c85151d9f7c021bfd121
-Candidates found after distinct-degree factorization: []
+Candidates found after square-free and distinct-degree factorization: []
 Additional candidates found after equal-degree factorization: [x + 67cf01239432c85151d9f7c021bfd121, x + e8cde43205a09d05379422572e11dfb5]
 ```
 
@@ -696,7 +696,7 @@ cTxt1 polynomial: 862e862274c6f6cece8604269636866ex^5 + a2c92e99dba07ce117b3bb36
 cTxt2 polynomial: 862e862274c6f6cece8604269636866ex^4 + c291acf103e2e47987fbbb368dce3f19x^3 + 7ex^2 + 11000000000000000100000000000000x + b3180499d9b2e60566ac9c204aad7ff
 Equation: x^5 + 597419e85ea532a59c4d0eed034a9044x^4 + 812f7801991ead15d455a70fcb83086fx^3 + 87c24da8d5f25ea3e9f92b8c9b319712x^2 + 10ec19974d245b5f16890e6a1effeec8x + e4cb0203ef19430f3c13947f6f6d17a7
 Actual authentication key: 67cf01239432c85151d9f7c021bfd121
-Candidates found after distinct-degree factorization: []
+Candidates found after square-free and distinct-degree factorization: []
 Additional candidates found after equal-degree factorization: [x + 67cf01239432c85151d9f7c021bfd121, x + e8cde43205a09d05379422572e11dfb5]
 
 Recovered authentication key: 67cf01239432c85151d9f7c021bfd121
