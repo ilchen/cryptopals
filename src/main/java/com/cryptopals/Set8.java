@@ -692,9 +692,9 @@ public class Set8 {
             System.out.printf("Recovered dlog of %d:%n %d%n", y, b);
             assert  dh.getGenerator().modPow(b, dh.getModulus()).equals(y);
 
-            b = breakChallenge58("rmi://localhost/DiffieHellmanBobService");
-            assert  bob.isValidPrivateKey(b) : "Bob's key not correct";
-            System.out.printf("Recovered Bob's secret key: %x%n", b);
+//            b = breakChallenge58("rmi://localhost/DiffieHellmanBobService");
+//            assert  bob.isValidPrivateKey(b) : "Bob's key not correct";
+//            System.out.printf("Recovered Bob's secret key: %x%n", b);
 
             System.out.println("\nChallenge 59");
             WeierstrassECGroup group = new WeierstrassECGroup(new BigInteger("233970423115425145524320034830162017933"),
@@ -734,9 +734,9 @@ public class Set8 {
             System.out.println("base^q-2 = " + mbase.scale(q.subtract(TWO)));
             System.out.println("base^q+1 = " + mbase.scale(q.add(ONE)));
 
-//            for (BigInteger bb : breakChallenge60(mbase, q, bobUrl)) {
-//                System.out.printf("Recovered Bob's secret key: %d? %b%n", bb, ecBob.isValidPrivateKey(b));
-//            }
+            for (BigInteger bb : breakChallenge60(mbase, q, bobUrl)) {
+                System.out.printf("Recovered Bob's secret key: %d? %b%n", bb, ecBob.isValidPrivateKey(b));
+            }
 
             System.out.println("\nChallenge 61");
             // Curve 25519

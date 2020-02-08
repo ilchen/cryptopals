@@ -48,6 +48,21 @@ public class PolynomialGaloisFieldOverGF2 {
         return  new FieldElement(new BigInteger(modulus.bitLength(), new Random())).mod();
     }
 
+    public FieldElement matrixMultiply(FieldElement[] m, FieldElement e) {
+        if (degree(modulus) != m.length)  throw  new IllegalArgumentException("Dimensions don't match");
+        BigInteger   res = ZERO;
+        for (int i=0; i < m.length; i++) {
+            boolean   r = false;
+            for (int j=0; j < m.length; j++) {
+                r ^= m[j].polynomial.testBit(i) & e.polynomial.testBit(j);
+            }
+            if (r) {
+                res = res.setBit(i);
+            }
+        }
+        return  new FieldElement(res).mod();
+    }
+
     /**
      * Represents an element of a Polynomial Galois field over GF(2).
      */
@@ -180,11 +195,12 @@ public class PolynomialGaloisFieldOverGF2 {
         }
 
         @Override
-//        public String toString() {
-//            return  printAsPolynomial(polynomial) + " / " + group();
-//        }
         public String toString() {
             return  polynomial.toString(16);
+        }
+
+        public String toPolynomialString() {
+            return  printAsPolynomial(polynomial) + " / " + group();
         }
 
         @Override

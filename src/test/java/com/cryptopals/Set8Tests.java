@@ -385,4 +385,23 @@ class Set8Tests {
         }
 
     }
+
+    @DisplayName("https://toadstyle.org/cryptopals/64.txt")
+    @Test
+    void  linearAlgebraForChallenge64() {
+        BigInteger   modulus = ONE.shiftLeft(128).or(valueOf(135));
+        PolynomialGaloisFieldOverGF2   gf = new PolynomialGaloisFieldOverGF2(modulus);
+        PolynomialGaloisFieldOverGF2.FieldElement   c = gf.createElement(valueOf(3)),  y = gf.createElement(valueOf(15)),
+                o = gf.createElement(valueOf(1));
+        PolynomialGaloisFieldOverGF2.FieldElement[]   mc = new PolynomialGaloisFieldOverGF2.FieldElement[128],
+                                                      ms = new PolynomialGaloisFieldOverGF2.FieldElement[128];
+        for (int i=0; i < 128; i++) {
+            PolynomialGaloisFieldOverGF2.FieldElement   x2ith = gf.createElement(ONE.shiftLeft(i));
+            mc[i] = c.multiply(x2ith);
+            ms[i] = x2ith.multiply(x2ith);
+        }
+
+        assertEquals(c.multiply(y), gf.matrixMultiply(mc, y));
+        assertEquals(y.multiply(y), gf.matrixMultiply(ms, y));
+    }
 }
