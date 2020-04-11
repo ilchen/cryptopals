@@ -20,6 +20,7 @@ import java.rmi.RemoteException;
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -654,6 +655,35 @@ public class Set8 {
 
         System.out.println("Suitable primes found: " + Arrays.toString(primeAndFactors));
         return  breakChallenge61RSA(msg, rsaSignature, primeAndFactors, bitLength);
+    }
+
+    /**
+     * Generates a piece of plain text composed of repeating the pattern captured in {@code str} so that the resultant
+     * piece of text is 2<sup>exp</sup> characters long.
+     */
+    public static byte[]  getPlainText(String str, int exp) {
+        StringBuilder   res = new StringBuilder();
+        int  i = 0,  n = 1 << exp;
+        while (i < n) {
+            int   len = Math.min(n - i, str.length());
+            res.append(str, 0, len);
+            i += len;
+        }
+        return  res.toString().getBytes();
+    }
+
+    /**
+     * Generates a piece of plain text composed of random ASCII characters so that the resultant
+     * piece of text is 2<sup>exp</sup> characters long.
+     */
+    public static byte[]  getPlainText(int exp) {
+        Random   rnd = new SecureRandom();
+        StringBuilder   res = new StringBuilder();
+        int  i = 0,  n = 1 << exp;
+        while (i++ < n) {
+            res.append((char) (32 + rnd.nextInt(94)));
+        }
+        return  res.toString().getBytes();
     }
 
     public static void main(String[] args) {

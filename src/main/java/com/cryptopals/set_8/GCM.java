@@ -76,7 +76,7 @@ public class GCM extends Set3 {
     public byte[]  decipher(byte[] cipherText, byte[] assocData, byte[] nonce) throws BadPaddingException, IllegalBlockSizeException {
         if (nonce.length != 12)  throw  new IllegalArgumentException("Nonce is not 12 bytes but " + nonce.length);
         int    bSize = cipher.getBlockSize(),  plainTextLen = cipherText.length - bSize;
-        byte[]   buf = prepareBuffer(cipherText, assocData, false),  res,  s;
+        byte[]   buf = prepareBuffer(cipherText, assocData, false),  res;
 
         ByteBuffer nonceBuf = ByteBuffer.allocate(bSize).order(ByteOrder.BIG_ENDIAN).put(nonce).order(ByteOrder.BIG_ENDIAN).putInt(1);
 
@@ -84,14 +84,35 @@ public class GCM extends Set3 {
         res = cipherCTR(Arrays.copyOf(cipherText, plainTextLen), new BigInteger(nonceBuf.array()).add(ONE).toByteArray());
 
         // Check the MAC
-        s = cipher.doFinal(nonceBuf.array());
         PolynomialGaloisFieldOverGF2.FieldElement   ss = toFE(cipher.doFinal(nonceBuf.array())),
                 g = IntStream.range(0, buf.length / bSize)
                         .mapToObj(i -> toFE( Arrays.copyOfRange(buf, i * bSize, (i+1) * bSize)) )
-                        .reduce(GF.getAdditiveIdentity(), (accu, elem) -> accu.add(elem).multiply(h));
+                        .reduce(GF.getAdditiveIdentity(), (accu, elem) -> accu.add(elem).multiply(h)),  g2;
+
+        g2 = GF.getAdditiveIdentity();
+        for (int i=0; i < buf.length / bSize; i++) {
+            g2 = g2.add(toFE( Arrays.copyOfRange(buf, i * bSize, (i+1) * bSize)));
+            g2 = g2.multiply(h);
+        }
 
         return  Arrays.equals(Arrays.copyOfRange(cipherText, plainTextLen, cipherText.length), ss.add(g).asArray())
                     ? res : null;
+    }
+
+    public PolynomialGaloisFieldOverGF2.FieldElement  ghashPower2Blocks(
+            PolynomialGaloisFieldOverGF2.FieldElement[] coeffs,
+            PolynomialGaloisFieldOverGF2.FieldElement[] forgedCoeffs)  {
+
+        PolynomialGaloisFieldOverGF2.FieldElement   d,  g = GF.getAdditiveIdentity();
+
+        for (int i=0; i < coeffs.length; i++) {
+            d = coeffs[i].subtract(forgedCoeffs[i]);
+            d = d.multiply(h.scale(ONE.shiftLeft(i+1)));
+            g = g.add(d);
+        }
+        System.out.println("Error polynomial:\n" + g + '\n' + g.toPolynomialString());
+
+        return  g;
     }
 
     /**
@@ -158,6 +179,40 @@ public class GCM extends Set3 {
         PolynomialGaloisFieldOverGF2.FieldElement   r = GF.createElement((buf2[0] & 0x80) != 0  ?  res.add(TWO_POW_128) : res);
         assert  Arrays.equals(buf, r.asArray());
         return  r;
+    }
+
+    /**
+     * Extracts all blocks of the ciphertext that are the coefficients of x<sup>2^i</sup> (where i = 1, 2, ..., n)
+     * in the polynomial in the indeterminate x over GF(2<sup>128</sup>).
+     * @return the coefficients of x<sup>2</sup>, x<sup>4</sup>, x<sup>8</sup>, etc. The coefficient of x is not
+     * returned since it represents the length of the plain text and associated data and is not practical for the
+     * purposes of the attack outlined in the
+     * <a href="https://csrc.nist.gov/csrc/media/projects/block-cipher-techniques/documents/bcm/comments/cwc-gcm/ferguson2.pdf">
+     *     Authentication weaknesses in GCM</a> paper. The first coefficient returned by this method is that of x<sup>2</sup>.
+     */
+    public static PolynomialGaloisFieldOverGF2.FieldElement[]  extractPowerOf2Blocks(byte[] cipherText, int plnTextLen) {
+        assert plnTextLen < cipherText.length;
+        System.out.printf("Length: %d,  # blocks: %d%n", plnTextLen, 32 - Integer.numberOfLeadingZeros(plnTextLen >> 4));
+        return  IntStream.range(1, 32 - Integer.numberOfLeadingZeros(plnTextLen >> 4))
+                .mapToObj(i -> {
+                    int  low = plnTextLen - (1 << i) * BLOCK_SIZE;
+                    System.out.printf("[%d, %d]", low, low+BLOCK_SIZE);
+                    return  toFE( Arrays.copyOfRange(cipherText, low, low + BLOCK_SIZE));
+                }).toArray(PolynomialGaloisFieldOverGF2.FieldElement[]::new);
+    }
+
+    public static byte[]  replacePowerOf2Blocks(byte[] cipherText, int plnTextLen,
+                                                PolynomialGaloisFieldOverGF2.FieldElement[] coeffs) {
+        assert plnTextLen < cipherText.length;
+        int   n = 32 - Integer.numberOfLeadingZeros(plnTextLen >> 4),  low;
+        byte[]  ret = cipherText.clone();
+        System.out.printf("Length: %d,  # blocks: %d%n", plnTextLen, 32 - Integer.numberOfLeadingZeros(plnTextLen >> 4));
+        for (int i=1; i < n; i++) {
+            low = plnTextLen - (1 << i) * BLOCK_SIZE;
+            System.out.printf("[%d, %d]", low, low+BLOCK_SIZE);
+            System.arraycopy(coeffs[i-1].asArray(), 0, ret, low, BLOCK_SIZE);
+        }
+        return  ret;
     }
 
     /**

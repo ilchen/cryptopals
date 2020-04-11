@@ -11,7 +11,7 @@ import java.util.Random;
 import static java.math.BigInteger.*;
 
 /**
- * Represents a Polynomial Galois field over GF(2).
+ * Represents a Polynomial Galois field over GF(2) aka GF(2<sup>128</sup>).
  */
 @EqualsAndHashCode
 public class PolynomialGaloisFieldOverGF2 {
@@ -44,24 +44,41 @@ public class PolynomialGaloisFieldOverGF2 {
         return  new FieldElement(polynomial).mod();
     }
 
-    public FieldElement  createRandomElement() {
-        return  new FieldElement(new BigInteger(modulus.bitLength(), new Random())).mod();
-    }
-
-    public FieldElement matrixMultiply(FieldElement[] m, FieldElement e) {
-        if (degree(modulus) != m.length)  throw  new IllegalArgumentException("Dimensions don't match");
+    /**
+     * @param polynomial  the i<sup>th</sup> element of the array is the coefficient of x<sup>i</sup>, and so on.
+     */
+    public FieldElement  createElement(boolean[] polynomial) {
         BigInteger   res = ZERO;
-        for (int i=0; i < m.length; i++) {
-            boolean   r = false;
-            for (int j=0; j < m.length; j++) {
-                r ^= m[j].polynomial.testBit(i) & e.polynomial.testBit(j);
-            }
-            if (r) {
+        for (int i=0; i < polynomial.length; i++) {
+            if (polynomial[i]) {
                 res = res.setBit(i);
             }
         }
         return  new FieldElement(res).mod();
     }
+
+    public FieldElement  createRandomElement() {
+        return  new FieldElement(new BigInteger(modulus.bitLength(), new Random())).mod();
+    }
+
+    /**
+     * Returns a matrix that can be used to implement squaring operations on the elements of this field represented
+     * in a vector form.
+     * <br/>
+     * Squaring in GF(2<sup>128</sup>) is linear. This is because (a + b)<sup>2</sup> = a<sup>2</sup> + b<sup>2</sup> in
+     * GF(2<sup>128</sup>).
+     */
+    public boolean[][]  getSquaringMatrix() {
+        int   n = degree(modulus);
+        boolean[][]  ms = new boolean[n][];
+        for (int i=0; i < n; i++) {
+            FieldElement   x2ith = createElement(ONE.shiftLeft(i));
+            ms[i] = x2ith.multiply(x2ith).asVector();
+        }
+        BooleanMatrixOperations.transposeInPlace(ms);
+        return  ms;
+    }
+
 
     /**
      * Represents an element of a Polynomial Galois field over GF(2).
@@ -115,6 +132,7 @@ public class PolynomialGaloisFieldOverGF2 {
             return  res;
         }
 
+        /** Converts to a byte array in such a way that the leftmost bit is the coefficient of x^0, and so on. */
         byte[]  asArray() {
             int   byteSize = degree(modulus) >> 3;
             byte[]   res = polynomial.toByteArray();
@@ -127,6 +145,38 @@ public class PolynomialGaloisFieldOverGF2 {
                 res = r;
             }
             return  GCM.reverseBits(res);
+        }
+
+        /** Converts to a boolean array in such a way that the i<sup>th</sup> element of the array is the coefficient
+         * of x<sup>i</sup>, and so on. */
+        public boolean[]  asVector() {
+            boolean[]   res = new boolean[degree(modulus)];
+            for (int i=0; i < res.length; i++) {
+                res[i] = polynomial.testBit(i);
+            }
+            return  res;
+        }
+
+        /**
+         * Converts this element to a matrix representation.
+         * @return  a [128x128] boolean matrix that can be used for multiplication by a constant.
+         */
+        public boolean[][]  asMatrix() {
+            int   n = degree(modulus);
+            boolean[][]   mc = new boolean[n][];
+            for (int i=0; i < n; i++) {
+                PolynomialGaloisFieldOverGF2.FieldElement   x2ith = createElement(ONE.shiftLeft(i));
+                mc[i] = multiply(x2ith).asVector();
+            }
+            BooleanMatrixOperations.transposeInPlace(mc);
+            return  mc;
+        }
+
+        /**
+         * Returns the coefficient of x<sup>pow</sup>.
+         */
+        public boolean  getCoefficient(int pow) {
+            return  polynomial.testBit(pow);
         }
 
         public FieldElement  multiply(FiniteFieldElement t) {
@@ -208,6 +258,7 @@ public class PolynomialGaloisFieldOverGF2 {
             FieldElement   that = (FieldElement) o;
             return polynomial.compareTo(that.polynomial);
         }
+
     }
 
     private static int  degree(BigInteger polynomial) {
