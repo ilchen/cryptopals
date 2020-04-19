@@ -757,8 +757,8 @@ and [PolynomialGaloisFieldOverGF2::getSquaringMatrix](https://github.com/ilchen/
 
 ##### Implementing basic operations for matrices in GF(2)
 I felt it would be an overkill to create a whole new class to represent matrices in GF(2), instead I went for
-a simple representation as `boolean[][]` and the [BooleanMatrixOperations class](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/BooleanMatrixOperations.java) with static methods whose methods
-accept matrices and vectors in GF(2).
+a simple representation as `boolean[][]` and the [BooleanMatrixOperations class](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/BooleanMatrixOperations.java)
+with static methods that accept matrices and vectors in GF(2).
 
 Time for some tests to validate that everything works correctly:
 ```java
