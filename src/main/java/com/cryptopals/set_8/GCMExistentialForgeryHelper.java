@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Random;
 
 import static com.cryptopals.set_8.BooleanMatrixOperations.*;
+import static java.math.BigInteger.valueOf;
 
 public final class GCMExistentialForgeryHelper {
     private final PolynomialGaloisFieldOverGF2   group;
@@ -77,9 +78,9 @@ public final class GCMExistentialForgeryHelper {
 
     /**
      * Calculates AD based on just one modified 2<sup>i</sup>th block of ciphertext differences
-     * @param i  indicate which of d<sub>i</sub> blocks to use,  i==0 represents d<sub>1</sub>.
+     * @param i  indicate which of d<sub>i</sub> blocks to use, {@code i==0} represents d<sub>1</sub>.
      */
-    public boolean[][]  calculateAd(int i, PolynomialGaloisFieldOverGF2.FieldElement forgedCoeff) {
+    private boolean[][]  calculateAd(int i, PolynomialGaloisFieldOverGF2.FieldElement forgedCoeff) {
         assert coeffs.length > i;
         return  multiply(coeffs[i].subtract(forgedCoeff).asMatrix(), ms[i]);
     }
@@ -138,19 +139,17 @@ public final class GCMExistentialForgeryHelper {
     }
 
     private boolean[][]  produceDependencyMatrix() {
-        boolean[][]  res = new boolean[coeffs.length - 1 << 7][coeffs.length << 7],  ad;
-        PolynomialGaloisFieldOverGF2.FieldElement[]   forgedCoeffs = coeffs.clone();
+        boolean[][]  res = new boolean[coeffs.length - 1 << 7][(coeffs.length << 7)],  ad;
 
         for (int column=0; column < coeffs.length; column++) {
             for (int b=0; b < 128; b++) {
-                forgedCoeffs[column] = forgedCoeffs[column].add(group.createElement(BigInteger.ONE.shiftLeft(b)));
 
                 // Since other di's are zero matrices, we can calculate ad based on just one di
-                ad = calculateAd(column, forgedCoeffs[column]);
-                for (int i=0; i < coeffs.length - 1 << 7; i++) {
+                ad = calculateAd(column, coeffs[column].add(group.createElement(BigInteger.ONE.shiftLeft(b))) );
+                for (int i=0; i < res.length; i++) {
                     res[i][column*128 + b] = ad[i / 128][i % 128];
                 }
-                forgedCoeffs[column] = forgedCoeffs[column].add(group.createElement(BigInteger.ONE.shiftLeft(b)));
+
             }
         }
         return  res;

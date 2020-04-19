@@ -99,7 +99,11 @@ public class GCM extends Set3 {
                     ? res : null;
     }
 
-    public PolynomialGaloisFieldOverGF2.FieldElement  ghashPower2Blocks(
+    /**
+     * Calculates the summand of the GHASH that corresponds to the power of 2 ciphertext block differences between
+     * the original ciphertext blocks and the forged ones.
+     */
+    public PolynomialGaloisFieldOverGF2.FieldElement  ghashPower2BlocksDifferences(
             PolynomialGaloisFieldOverGF2.FieldElement[] coeffs,
             PolynomialGaloisFieldOverGF2.FieldElement[] forgedCoeffs)  {
 

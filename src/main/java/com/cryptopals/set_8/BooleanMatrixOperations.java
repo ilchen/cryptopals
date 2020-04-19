@@ -39,15 +39,16 @@ public class BooleanMatrixOperations {
     }
 
     /**
-     * Computes a reduced row echelon form of {@code mat} by Gaussian elimination. The algorithm is an adaptation
+     * Computes a row echelon form of {@code mat} by Gaussian elimination. The algorithm is an adaptation
      * of <a href="https://en.wikipedia.org/wiki/Gaussian_elimination#Pseudocode">this algorithm</a> for GF(2).
      * Simular algorithm albeit with a small omission can be found in
      * <a href="http://www.hyperelliptic.org/tanja/SHARCS/talks06/smith_revised.pdf">this paper</a>.
      *
      * @param mat  a matrix that will modified in place
      * @param n  the number of columns to use when applying Gaussian elimination
+     * @return  the rank of the first {@code n} columns
      */
-    public static void  gaussianElimination(boolean[][] mat, int n) {
+    public static int  gaussianElimination(boolean[][] mat, int n) {
         assert  n <= mat[0].length;
         int   m = mat.length,  nFull = mat[0].length,  h = 0,  k = 0,  iMax;
         boolean[]   tmp;
@@ -60,10 +61,10 @@ public class BooleanMatrixOperations {
                 k++;
             } else {
                 tmp = mat[h];     mat[h] = mat[iMax];     mat[iMax] = tmp;
-                /* Do for all rows except for pivot to produce a reduced low echelon form */
-                for (int i=0; i < m; i++) {
+                /* Do for all rows below pivot: */
+                for (int i=h+1; i < m; i++) {
                     /* Do for all remaining elements in current row: */
-                    if (i != h  &&  mat[i][k]) {
+                    if (mat[i][k]) {
                         for (int j=k; j < nFull; j++) {
                             mat[i][j] ^= mat[h][j];
                         }
@@ -73,6 +74,51 @@ public class BooleanMatrixOperations {
                 h++;     k++;
             }
         }
+
+        return  h;
+    }
+
+    /**
+     * Computes <a href="https://en.wikipedia.org/wiki/Kernel_(linear_algebra)#Computation_by_Gaussian_elimination">
+     *     the kernel</a> of matrix {@code mat}, i.e. the set of all vectors x such that Mat * x = 0
+     * @param mat
+     * @return  the elements of the returned two dimensional matrix form the basis of {@code mat}
+     */
+    public static boolean[][]  kernel(boolean[][] mat) {
+        int   m = mat.length,  n = mat[0].length;
+
+        boolean[][]   M = transpose(mat);
+        int r = gaussianElimination(M, m);
+
+        boolean[][]   X = new boolean[n-r][n];
+
+        int   i,  j,  k,  D[] = new int[m];
+        for (j = 0; j < m; j++) D[j] = -1;
+
+        j = -1;
+        for (i = 0; i < r; i++) {
+            do {
+                j++;
+            } while (!M[i][j]);
+            D[j] = i;
+        }
+
+        for (k = 0; k < m-r; k++) {
+            boolean[] v = X[k];
+            int pos = 0;
+            for (j = m-1; j >= 0; j--) {
+                if (D[j] == -1) {
+                    if (pos == k) {
+                        v[j] = true;
+                    }
+                    pos++;
+                } else {
+                    v[j] = innerProduct(v, M[D[j]]);
+                }
+            }
+        }
+        return  X;
+
     }
 
 
@@ -196,6 +242,39 @@ public class BooleanMatrixOperations {
         return  res.toArray(ret);
     }
 
+    public static boolean[][]  appendZeroColumn(boolean[][] mat) {
+        int   m = mat.length,  n = mat[0].length;
+        boolean[][]   res = new boolean[m][n + 1];
+        for (int i=0; i < m; i++) {
+            System.arraycopy(mat[i], 0, res[i], 0, n);
+        }
+        return  res;
+    }
+
+    /**
+     * @param col  the index of the column to extract.
+     * @return
+     */
+    public static boolean[]  extractColumn(boolean[][] mat, int col) {
+        assert col < mat[0].length;
+        int   m = mat.length;
+        boolean[]   res = new boolean[mat.length];
+
+        for (int i=0; i < m; i++) {
+            res[i] = mat[i][col];
+        }
+        return res;
+    }
+
+    public static boolean  innerProduct(boolean[] m, boolean[] n) {
+        assert  m.length == n.length;
+        boolean   r = false;
+        for (int i=0; i < m.length; i++) {
+            r ^= m[i] & n[i];
+
+        }
+        return  r;
+    }
     public static boolean[]  multiply(boolean[][] m, boolean[] e) {
         assert  m[0].length == e.length;
         boolean[]  res = new boolean[m.length];

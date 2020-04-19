@@ -399,7 +399,6 @@ class Set8Tests {
         assertEquals(y.multiply(y), gf.createElement(multiply(gf.getSquaringMatrix(), y.asVector())) );
 
         assertEquals(c, gf.createElement(multiply(c.asMatrix(), gf.getMultiplicativeIdentity().asVector())) );
-
         assertEquals(y, gf.createElement(y.asVector()));
 
         boolean[][][]   mss = new boolean[18][][];
@@ -570,25 +569,6 @@ class Set8Tests {
         for (int i=0; i < T.length; i++) {
             assertTrue(ad[i / 128][i % 128] == adPrime[i / 128][i % 128]);
         }
-
-        // 128 x 256 -> 256 x 128 -> 256 x 384
-        boolean[][]   tmp = appendIdentityMatrix(Tt),  basis;
-
-        // If the basis was calculated correctly, for each element d of the basis, the product T * d = 0.
-        boolean[]     expectedProduct = new boolean[T.length],  product;
-        List<boolean[]>   verifiedBasis = new ArrayList<>();
-        gaussianElimination(tmp, T.length);
-        basis = extractBasisMatrix(tmp);
-        System.out.println("\nBasis:");
-        for (int i=0; i < basis.length; i++) {
-            product = multiply(T, basis[i]);
-            if (Arrays.equals(product, expectedProduct)) {
-                verifiedBasis.add(basis[i]);
-            }
-            System.out.println(Arrays.toString(product));
-        }
-
-        System.out.printf("Basis size == %d, Verified basis size == %d%n", basis.length, verifiedBasis.size());
 
 
         byte[]   assocData = {};

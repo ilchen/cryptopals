@@ -447,7 +447,7 @@ used ones: { 3, 5, 17, 65537 }.
 
 
 ### Challenge 63
-[Challenge 63](https://toadstyle.org/cryptopals/63.txt) consists of five parts:
+[Challenge 63](https://toadstyle.org/cryptopals/63.txt) consists of six parts:
 1. Implementing GF(2<sup>128</sup>) &mdash; Polynomial Galois field over GF(2)
 2. Implementing Galois Counter Mode (GCM) where the earlier devised GF(2<sup>128</sup>) is used to calculate 
 the one-time-MAC &mdash; GMAC
@@ -714,3 +714,89 @@ Forged cipher text: 9FFB7FA66CDDCDE8873E05DB997493452730C1453860DA74D9CC5AC0B6F8
 Decrypted by the crypto system under attack into: ⊥
 ```
 I am able to commit an existential forgery attack!
+
+### Challenge 64
+[Challenge 64](https://toadstyle.org/cryptopals/64.txt) implements an attack first outlined by Niels Ferguson in his 
+[Authentication weaknesses in GCM](https://csrc.nist.gov/csrc/media/projects/block-cipher-techniques/documents/bcm/comments/cwc-gcm/ferguson2.pdf)
+paper. GCM is the most popular standard for authenticated encryption and is used in TLS 1.2 and higher. Niels's paper
+shows that the actual authentication security of GCM will be less than the number of bits in its tag because of 
+peculiarities of the GHASH one-time hash function that GCM uses. Given the maximum legth tag size of 128 bits, the actual
+authentication security of GCM is `n - k` bits where k is  &lfloor;log<sub>2</sub>(number-of-blocks-encrypted)&rfloor;.
+
+Like Challenge 63, this challenge shows how to succeed at an existential forgery attack on GCM. This time without your
+adversary having made any mistakes in using GCM apart for choosing a small tag size. 
+
+To tackle this challenge you will need to implement the following parts.
+
+1. Linear algebra routines for GF(2) and GF(2<sup>128</sup>):
+   * Implementing a vector representation for elements of GF(2<sup>128</sup>);
+   * Implementing a matrix representation for multiplication by a constant in GF(2<sup>128</sup>) and for squaring in GF(2<sup>128</sup>);
+   * Implementing basic operations for matrices in GF(2): addition, multiplication, scaling, transposition,
+   Gaussian elimination, finding a kernel. 
+2. Extraction and replacement of 2<sup>i-th</sup> blocks of ciphertext counting from the end, i.e. all blocks of
+   the ciphertext that are the coefficients of x<sup>2^i</sup> (where i = 1, 2, ..., n) in the GHASH polynomial
+   in the indeterminate x over GF(2<sup>128</sup>).
+3. Calculation of matrix A<sub>d</sub> = &sum;M<sub>Di</sub>(M<sub>S</sub>)<sup>i</sup>, where M<sub>Di</sub> are 
+   matrix representations of the differences between the 2<sup>i-th</sup> element of ciphertext and its forged counterpart.
+   Along with the calculation of the dependency matrix T, as explained in the challenge.
+4. Finding the kernel of the matrix T, whose elements represent all the possible manipulations to the 2<sup>i-th</sup>
+   blocks of ciphertext that don't change the most significant 16 bits of GHASH.
+5. Attempting an existential forgery attack on the smallest allowed GHASH tag sice in GCM &mdash; 32 bits.
+6. Recovering the authentication key.
+
+#### Linear algebra
+##### Implementing a vector representation for elements of GF(2<sup>128</sup>)
+I added two new methods to my class for representing GF(2<sup>128</sup>) elements:
+[PolynomialGaloisFieldOverGF2::FieldElement::asVector](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/PolynomialGaloisFieldOverGF2.java#L150-L158)
+and [PolynomialGaloisFieldOverGF2::createElement](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/PolynomialGaloisFieldOverGF2.java#L47-L58)
+
+##### Implementing a matrix representation for multiplication by a constant and for squaring
+Analogously to vector representation, I wrote these as methods of my class for GF(2<sup>128</sup>):
+[PolynomialGaloisFieldOverGF2::FieldElement::asMatrix](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/PolynomialGaloisFieldOverGF2.java#L160-L173)
+and [PolynomialGaloisFieldOverGF2::getSquaringMatrix](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/PolynomialGaloisFieldOverGF2.java#L64-L80)
+
+##### Implementing basic operations for matrices in GF(2)
+I felt it would be an overkill to create a whole new class to represent matrices in GF(2), instead I went for
+a simple representation as `boolean[][]` and the [BooleanMatrixOperations class](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/BooleanMatrixOperations.java) with static methods whose methods
+accept matrices and vectors in GF(2).
+
+Time for some tests to validate that everything works correctly:
+```java
+@DisplayName("Linear algebra over GF(2)") @Test
+void  linearAlgebraForChallenge64()  {
+    BigInteger   modulus = ONE.shiftLeft(128).or(valueOf(135));
+    PolynomialGaloisFieldOverGF2   gf = new PolynomialGaloisFieldOverGF2(modulus);
+    PolynomialGaloisFieldOverGF2.FieldElement   c = gf.createElement(valueOf(3)),  y = gf.createElement(valueOf(15));
+
+    assertEquals(c.multiply(y), gf.createElement(multiply(c.asMatrix(), y.asVector())) );
+    assertEquals(y.multiply(y), gf.createElement(multiply(gf.getSquaringMatrix(), y.asVector())) );
+
+    assertEquals(c, gf.createElement(multiply(c.asMatrix(), gf.getMultiplicativeIdentity().asVector())) );
+    assertEquals(y, gf.createElement(y.asVector()));
+
+    boolean[][][]   mss = new boolean[18][][];
+    mss[0] = gf.getSquaringMatrix();
+    for (int i=1; i < 18; i++) {
+        mss[i] = multiply(mss[i-1], mss[0]);
+    }
+    assertEquals(y.scale(valueOf(2)), gf.createElement(multiply(mss[0],  y.asVector()) ));
+    assertEquals(y.scale(valueOf(4)), gf.createElement(multiply(mss[1],  y.asVector()) ));
+    assertEquals(y.scale(valueOf(8)), gf.createElement(multiply(mss[2],  y.asVector()) ));
+    assertEquals(y.scale(valueOf(16)), gf.createElement(multiply(mss[3],  y.asVector()) ));
+
+    // Mc * Ms^i * y) = c * y^4
+    assertEquals(c.multiply(y.scale(valueOf(16))),
+            gf.createElement(multiply(multiply(c.asMatrix(), mss[3]), y.asVector())) );
+
+    // Confirm matrix representation of GHASH works correctly
+    PolynomialGaloisFieldOverGF2.FieldElement    c1 = gf.createRandomElement(),  c2 = gf.createRandomElement(),
+            c4 = gf.createRandomElement(),  c8 = gf.createRandomElement(),  h = gf.createRandomElement(),  tag1,  tag2;
+    // t = c1*h + c2*h^2 + c4*h^4 + c8*h^8
+
+    // First calculate the tag using plain GF(2^128)
+    tag1 = c1.multiply(h).add(c2.multiply(h.scale(valueOf(2)))).add(c4.multiply(h.scale(valueOf(4)))).add(c8.multiply(h.scale(valueOf(8))));
+    // Then do the same using a matrix-based representation of GF(2^128) operations
+    tag2 = gf.createElement(multiply(add(add(add(c1.asMatrix(), multiply(c2.asMatrix(), mss[0])), multiply(c4.asMatrix(), mss[1])), multiply(c8.asMatrix(), mss[2])), h.asVector()));
+    assertEquals(tag1, tag2);
+}
+```
