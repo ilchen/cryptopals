@@ -38,10 +38,14 @@ public class BooleanMatrixOperations {
         return  res;
     }
 
+    public static int  gaussianElimination(boolean[][] mat) {
+        return  gaussianElimination(mat, mat[0].length);
+    }
+
     /**
      * Computes a row echelon form of {@code mat} by Gaussian elimination. The algorithm is an adaptation
      * of <a href="https://en.wikipedia.org/wiki/Gaussian_elimination#Pseudocode">this algorithm</a> for GF(2).
-     * Simular algorithm albeit with a small omission can be found in
+     * A similar algorithm albeit with a small omission can be found in
      * <a href="http://www.hyperelliptic.org/tanja/SHARCS/talks06/smith_revised.pdf">this paper</a>.
      *
      * @param mat  a matrix that will modified in place
@@ -64,7 +68,7 @@ public class BooleanMatrixOperations {
                 /* Do for all rows below pivot: */
                 for (int i=h+1; i < m; i++) {
                     /* Do for all remaining elements in current row: */
-                    if (mat[i][k]) {
+                    if (/*i != h  &&  */mat[i][k]) {
                         for (int j=k; j < nFull; j++) {
                             mat[i][j] ^= mat[h][j];
                         }
@@ -81,46 +85,27 @@ public class BooleanMatrixOperations {
     /**
      * Computes <a href="https://en.wikipedia.org/wiki/Kernel_(linear_algebra)#Computation_by_Gaussian_elimination">
      *     the kernel</a> of matrix {@code mat}, i.e. the set of all vectors x such that Mat * x = 0
-     * @param mat
+     * @param m
      * @return  the elements of the returned two dimensional matrix form the basis of {@code mat}
      */
-    public static boolean[][]  kernel(boolean[][] mat) {
-        int   m = mat.length,  n = mat[0].length;
+    public static boolean[][]  kernel(boolean[][] m) {
+        if (m.length >= m[0].length)  throw  new IllegalArgumentException("Not enough free variables");
 
-        boolean[][]   M = transpose(mat);
-        int r = gaussianElimination(M, m);
+        // Calculate a basis of N(T)
+        // mTransposed [2176x2048],  tmp [2176x(2048+2176)] = [2176x4224]
+        // What you want to do is transpose T (i.e. flip it across its diagonal)
+        boolean[][]  mTransposed = transpose(m);
 
-        boolean[][]   X = new boolean[n-r][n];
+        // ... and find the reduced row echelon form using Gaussian elimination. Now perform the
+        // same operations on an identity matrix of size n*128.
 
-        int   i,  j,  k,  D[] = new int[m];
-        for (j = 0; j < m; j++) D[j] = -1;
+        // Doing it in one go by using only the columns of T transposed during Gaussian elimination
+        boolean[][]  tmp = appendIdentityMatrix(mTransposed);
+        gaussianElimination(tmp, m.length);
+        tmp = extractBasisMatrix(tmp);
 
-        j = -1;
-        for (i = 0; i < r; i++) {
-            do {
-                j++;
-            } while (!M[i][j]);
-            D[j] = i;
-        }
-
-        for (k = 0; k < m-r; k++) {
-            boolean[] v = X[k];
-            int pos = 0;
-            for (j = m-1; j >= 0; j--) {
-                if (D[j] == -1) {
-                    if (pos == k) {
-                        v[j] = true;
-                    }
-                    pos++;
-                } else {
-                    v[j] = innerProduct(v, M[D[j]]);
-                }
-            }
-        }
-        return  X;
-
+        return  tmp;
     }
-
 
     /**
      * Computes a column echelon form of {@code mat} by Gaussian elimination. The algorithm is taken from
@@ -188,23 +173,19 @@ public class BooleanMatrixOperations {
      */
     public static boolean[][]  extractBasisMatrix(boolean[][] mat) {
         int   m = mat.length,  n = mat[0].length - m,  i,  j;
-        List<boolean[]>   res = new ArrayList<>();
         boolean[]  row;
 
         NEXT_ROW:
         for (i=0; i < m; i++) {
-            for (j=0; j < n; j++) {
-                if (mat[i][j])  continue  NEXT_ROW;
+            for (j = 0; j < n; j++) {
+                if (mat[i][j]) continue NEXT_ROW;
             }
-            row = Arrays.copyOfRange(mat[i], n, n+m);
-            // We need to exclude rows that are all zeros
-            for (j=0; j < m  &&  !row[j]; j++);
-            if (j < m) {
-                res.add(Arrays.copyOfRange(mat[i], n, n + m));
-            }
-
+            // Since the matrix is in a row echelon form, all the rows below will also have zeros as their first n elements
+            break  NEXT_ROW;
         }
-        return res.toArray(new boolean[res.size()][]);
+        boolean[][]   res = new boolean[m-i][];
+        for (j=i; j < m; j++)  res[j-i] = Arrays.copyOfRange(mat[j], n, n + m);
+        return  res;
     }
 
     /**
