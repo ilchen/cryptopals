@@ -993,7 +993,7 @@ length of the authentication tag in those modes that use GCM such as TLS_ECDHE_R
 restricts the length of its packets to 16 KB. Using this attack it will only let assuredly forge 9 bits. Trial and error
 to recover more bits will not work as TLS will terminate the session after receiving the first wrongly forged ciphertext.
 
-Can this attack be extended over multiple TLS paclets? That is, can one forge a new set of short ciphertexts up to 2<sup>10<blocks>
+Can this attack be extended over multiple TLS paclets? That is, can one forge a new set of short ciphertexts up to 2<sup>10</sup> blocks
 long, i.e. seeing many?
 ```
 t1 = s1 + c1_1*h + c1_2*h^2 + c1_3*h^3 + ... + c1_10*h^10
