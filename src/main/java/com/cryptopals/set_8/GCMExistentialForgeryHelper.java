@@ -7,14 +7,14 @@ import java.util.List;
 import java.util.Random;
 
 import static com.cryptopals.set_8.BooleanMatrixOperations.*;
-import static java.math.BigInteger.valueOf;
 
 public final class GCMExistentialForgeryHelper {
     private final PolynomialGaloisFieldOverGF2   group;
     private final PolynomialGaloisFieldOverGF2.FieldElement[]   coeffs;
+    private PolynomialGaloisFieldOverGF2.FieldElement[]   forgedCoeffs;
     private final byte[]   cipherTxt;
-    private final int   len;
-    private final boolean[][]   T,  basis;
+    private final int     len;
+    private boolean[][]   kernel;
     private final boolean[][][]   ms;
 
     public GCMExistentialForgeryHelper(byte[] cipherText, int plainTextLen) {
@@ -31,37 +31,29 @@ public final class GCMExistentialForgeryHelper {
             ms[i] = multiply(ms[i-1], ms[0]);
         }
 
-        // Calculate a dependency matrix T [2048x2176]
-        T = produceDependencyMatrix();
+        replaceBasis();
+    }
 
-        // Calculate a basis of N(T)
-        // Tt [2176x2048],  tmp [2176x(2048+2176)] = [2176x4224]
-        // What you want to do is transpose T (i.e. flip it across its diagonal)
-        boolean[][]  Tt = transpose(T);
-
-        // ... and find the reduced row echelon form using Gaussian elimination. Now perform the
-        // same operations on an identity matrix of size n*128.
-
-        // Doing it in one go by using only the columns of T transposed during Gaussian elimination
-        boolean[][]  tmp = appendIdentityMatrix(Tt);
-        gaussianElimination(tmp, T.length);
-
-        // If the basis was calculated correctly, for each element d of the basis, the product T * d = 0.
-        boolean[]         expectedProduct = new boolean[T.length],  product;
+    /**
+     * Calculates new random 2<sup>i</sup>th blocks of ciphertext, derives a dependency matrix and its kernel.
+     */
+    public void  replaceBasis() {
         List<boolean[]>   verifiedBasis = new ArrayList<>();
-        tmp = extractBasisMatrix(tmp);
 
-        System.out.println("\n\nExtracted basis length: " + tmp.length);
+        forgedCoeffs = getRandomPowerOf2Blocks();
+        boolean[][]   tTransposed = produceDependencyMatrixTransposed();
 
-        for (boolean[] d : tmp) {
-            product = multiply(T, d);
-            if (Arrays.equals(product, expectedProduct)) {
-                verifiedBasis.add(d);
-            }
-        }
+        kernel = kernelOfTransposed(tTransposed);
 
-        basis = verifiedBasis.toArray(new boolean[verifiedBasis.size()][]);
-        assert  basis.length > 0;
+        // If the kernel was calculated correctly, for each element d of the kernel the product d * tTransposed = 0.
+        // boolean[] expectedProduct = new boolean[tTransposed[0].length], product;
+
+        System.out.println("Extracted kernel length: " + kernel.length);
+//        for (boolean[] d : kernel) {
+//            product = multiply(d, tTransposed);
+//            assert  Arrays.equals(product, expectedProduct)
+//        }
+
     }
 
     /**
@@ -88,6 +80,9 @@ public final class GCMExistentialForgeryHelper {
     public PolynomialGaloisFieldOverGF2.FieldElement[] getPowerOf2Blocks() {
         return  coeffs;
     }
+    public PolynomialGaloisFieldOverGF2.FieldElement[] getForgedPowerOf2Blocks() {
+        return  forgedCoeffs;
+    }
 
     public PolynomialGaloisFieldOverGF2.FieldElement[] getRandomPowerOf2Blocks() {
         PolynomialGaloisFieldOverGF2.FieldElement[]   coeffsPrime = new PolynomialGaloisFieldOverGF2.FieldElement[coeffs.length];
@@ -108,38 +103,39 @@ public final class GCMExistentialForgeryHelper {
     }
 
     /**
-     * Produces forged power of 2 blocks of the ciphertext using a random element of the basis of N(T).
+     * Produces forged power of 2 blocks of the ciphertext using a random element of the kernel of N(tTransposed).
      */
     public PolynomialGaloisFieldOverGF2.FieldElement[]  forgePowerOf2Blocks() {
-        PolynomialGaloisFieldOverGF2.FieldElement[]   forgedCoeffs = coeffs.clone();
-
         // A simple linear congruential pseudo random number generator is good enough here.
         Random rnd = new Random();
-            boolean[]   d = basis[rnd.nextInt(basis.length)];
+        return  forgePowerOf2Blocks(rnd.nextInt(kernel.length));
+    }
 
-        System.out.println("\nTaking vector:\n" + Arrays.toString(d));
+
+    /**
+     * Produces forged power of 2 blocks of the ciphertext using the {@code kernelElem} element of the kernel of N(tTransposed).
+     */
+    public PolynomialGaloisFieldOverGF2.FieldElement[]  forgePowerOf2Blocks(int kernelElem) {
+        PolynomialGaloisFieldOverGF2.FieldElement[]   adjustedForgedCoeffs = forgedCoeffs./*coeffs.*/clone();
+
+//        System.out.println("\nTaking vector:\n" + Arrays.toString(kernel[kernelElem]));
 
         for (int column=0; column < coeffs.length; column++) {
             PolynomialGaloisFieldOverGF2.FieldElement   el =
-                    group.createElement(Arrays.copyOfRange(d, column << 7, column + 1 << 7));
-            System.out.printf("%s%n^%n%s%n=%n", forgedCoeffs[column], el);
-            forgedCoeffs[column] = forgedCoeffs[column].add(el);  /* Flipping the right bits */
-            System.out.println(forgedCoeffs[column] + "\n");
+                    group.createElement(Arrays.copyOfRange(kernel[kernelElem], column << 7, column + 1 << 7));
+//            System.out.printf("%s%n^%n%s%n=%n", adjustedForgedCoeffs[column], el);
+            adjustedForgedCoeffs[column] = adjustedForgedCoeffs[column].add(el);  /* Flipping the right bits */
+//            System.out.println(adjustedForgedCoeffs[column] + "\n");
         }
-        return  forgedCoeffs;
+        return  adjustedForgedCoeffs;
     }
 
-    public boolean[][]  getDependencyMatrix() {
-        //return  copy(T);
-        return  T;
-    }
-
-    public boolean[][]  getBasis() {
-        return  basis;
+    public boolean[][] getKernel() {
+        return kernel;
     }
 
     private boolean[][]  produceDependencyMatrix() {
-        boolean[][]  res = new boolean[coeffs.length - 1 << 7][(coeffs.length << 7)],  ad;
+        boolean[][]  res = new boolean[coeffs.length - 1 << 7][coeffs.length << 7],  ad;
 
         for (int column=0; column < coeffs.length; column++) {
             for (int b=0; b < 128; b++) {
@@ -150,6 +146,54 @@ public final class GCMExistentialForgeryHelper {
                     res[i][column*128 + b] = ad[i / 128][i % 128];
                 }
 
+            }
+        }
+        return  res;
+    }
+
+    private boolean[][]  produceDependencyMatrix2() {
+        boolean[][]  res = new boolean[coeffs.length - 1 << 7][coeffs.length << 7],  ad,  adOrig;
+        PolynomialGaloisFieldOverGF2.FieldElement[]   newCoeffs = forgedCoeffs.clone();
+
+        for (int column=0; column < coeffs.length; column++) {
+
+            adOrig = calculateAd(forgedCoeffs); // Calculate Ad without D[column]
+            adOrig = add(adOrig, calculateAd(column, forgedCoeffs[column]));
+
+            for (int b=0; b < 128; b++) {
+                newCoeffs[column] = newCoeffs[column].add(group.createElement(BigInteger.ONE.shiftLeft(b)));
+
+                ad = add(adOrig, calculateAd(column, newCoeffs[column]));
+
+                for (int i=0; i < res.length; i++) {
+                    res[i][column*128 + b] = ad[i / 128][i % 128];
+                }
+
+                newCoeffs[column] = newCoeffs[column].add(group.createElement(BigInteger.ONE.shiftLeft(b)));
+            }
+        }
+        return  res;
+    }
+
+    private boolean[][]  produceDependencyMatrixTransposed() {
+        boolean[][]  res = new boolean[coeffs.length << 7][coeffs.length - 1 << 7],  ad,  adOrig;
+        PolynomialGaloisFieldOverGF2.FieldElement[]   newCoeffs = forgedCoeffs.clone();
+
+        for (int column=0; column < coeffs.length; column++) {
+
+            adOrig = calculateAd(forgedCoeffs); // Calculate Ad without D[column]
+            adOrig = add(adOrig, calculateAd(column, forgedCoeffs[column]));
+
+            for (int b=0; b < 128; b++) {
+                newCoeffs[column] = newCoeffs[column].add(group.createElement(BigInteger.ONE.shiftLeft(b)));
+
+                ad = add(adOrig, calculateAd(column, newCoeffs[column]));
+
+                for (int i=0; i < coeffs.length - 1; i++) {
+                    System.arraycopy(ad[i], 0, res[column*128 + b], i << 7, 128);
+                }
+
+                newCoeffs[column] = newCoeffs[column].add(group.createElement(BigInteger.ONE.shiftLeft(b)));
             }
         }
         return  res;

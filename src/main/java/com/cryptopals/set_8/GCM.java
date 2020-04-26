@@ -22,12 +22,24 @@ public class GCM extends Set3 {
     private static final BigInteger   TWO_POW_128 = BigInteger.ONE.shiftLeft(128);
     private static final PolynomialGaloisFieldOverGF2   GF = new PolynomialGaloisFieldOverGF2(ONE.shiftLeft(128).or(valueOf(135)));
     private final PolynomialGaloisFieldOverGF2.FieldElement   h;
+    private final int   tagLen;
 
     public GCM(SecretKey key) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
-        super(Cipher.ENCRYPT_MODE, key);
-        byte[]   tmp = cipher.doFinal(new byte[16]);
-        h = toFE(/*new BigInteger(*/cipher.doFinal(new byte[16]));
+        this(key, 128);
     }
+
+    /**
+     * @param key  the key to use for the counter mode encryption and for the derivation of the authentication key
+     * @param tLen  the authentication tag length in bits
+     */
+    public GCM(SecretKey key, int tLen) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
+        super(Cipher.ENCRYPT_MODE, key);
+        if (tLen < 32  ||  tLen > 128  ||  (tLen & 0x07) != 0)
+            throw  new IllegalArgumentException("Tag length not correct: " + tLen);
+        tagLen = tLen;
+        h = toFE(cipher.doFinal(new byte[16]));
+    }
+
 
     /**
      * Encrypts {@code plainText} in the GCM mode using {@code nonce} as the counter.
@@ -52,7 +64,7 @@ public class GCM extends Set3 {
 
         // Encrypt-
         res = Arrays.copyOf(cipherCTR(plainText, new BigInteger(nonceBuf.array()).add(ONE).toByteArray()),
-                plainText.length + bSize );
+                plainText.length + (tagLen >> 3));
         System.arraycopy(res, 0, buf, assocDataPaddedLen, plainText.length);
 
         // -then-MAC
@@ -62,7 +74,7 @@ public class GCM extends Set3 {
                     .mapToObj(i -> toFE( Arrays.copyOfRange(buf, i * bSize, (i+1) * bSize)) )
                     .reduce(GF.getAdditiveIdentity(), (accu, elem) -> accu.add(elem).multiply(h));
 
-        System.arraycopy(ss.add(g).asArray(), 0, res, plainText.length, bSize);
+        System.arraycopy(ss.add(g).asArray(), 0, res, plainText.length, tagLen >> 3);
         return  res;
     }
 
@@ -75,8 +87,8 @@ public class GCM extends Set3 {
      */
     public byte[]  decipher(byte[] cipherText, byte[] assocData, byte[] nonce) throws BadPaddingException, IllegalBlockSizeException {
         if (nonce.length != 12)  throw  new IllegalArgumentException("Nonce is not 12 bytes but " + nonce.length);
-        int    bSize = cipher.getBlockSize(),  plainTextLen = cipherText.length - bSize;
-        byte[]   buf = prepareBuffer(cipherText, assocData, false),  res;
+        int    bSize = cipher.getBlockSize(),  plainTextLen = cipherText.length - (tagLen >> 3);
+        byte[]   buf = prepareBuffer(cipherText, assocData, false, tagLen),  res,  tag;
 
         ByteBuffer nonceBuf = ByteBuffer.allocate(bSize).order(ByteOrder.BIG_ENDIAN).put(nonce).order(ByteOrder.BIG_ENDIAN).putInt(1);
 
@@ -87,16 +99,17 @@ public class GCM extends Set3 {
         PolynomialGaloisFieldOverGF2.FieldElement   ss = toFE(cipher.doFinal(nonceBuf.array())),
                 g = IntStream.range(0, buf.length / bSize)
                         .mapToObj(i -> toFE( Arrays.copyOfRange(buf, i * bSize, (i+1) * bSize)) )
-                        .reduce(GF.getAdditiveIdentity(), (accu, elem) -> accu.add(elem).multiply(h)),  g2;
+                        .reduce(GF.getAdditiveIdentity(), (accu, elem) -> accu.add(elem).multiply(h));
 
-        g2 = GF.getAdditiveIdentity();
-        for (int i=0; i < buf.length / bSize; i++) {
-            g2 = g2.add(toFE( Arrays.copyOfRange(buf, i * bSize, (i+1) * bSize)));
-            g2 = g2.multiply(h);
-        }
+//        g2 = GF.getAdditiveIdentity();
+//        for (int i=0; i < buf.length / bSize; i++) {
+//            g2 = g2.add(toFE( Arrays.copyOfRange(buf, i * bSize, (i+1) * bSize)));
+//            g2 = g2.multiply(h);
+//        }
 
-        return  Arrays.equals(Arrays.copyOfRange(cipherText, plainTextLen, cipherText.length), ss.add(g).asArray())
-                    ? res : null;
+        tag = ss.add(g).asArray();
+        return  Arrays.equals(Arrays.copyOfRange(cipherText, plainTextLen, cipherText.length),
+                              tagLen >> 3 == bSize  ?  tag : Arrays.copyOf(tag, tagLen >> 3))  ?  res : null;
     }
 
     /**
@@ -114,7 +127,7 @@ public class GCM extends Set3 {
             d = d.multiply(h.scale(ONE.shiftLeft(i+1)));
             g = g.add(d);
         }
-        System.out.println("Error polynomial:\n" + g + '\n' + g.toPolynomialString());
+        System.out.printf("Error polynomial: %s. ", g /*+ '\n' + g.toPolynomialString()*/);
 
         return  g;
     }
@@ -133,9 +146,10 @@ public class GCM extends Set3 {
      * @param assocData  byte array representing associated data
      * @param includeTag  indicates whether the last block of cipher text, which represents a GHASH tag, must be
      *                    copied as the last block of the array returned
+     * @param tLen  GHASH tag length in bits
      */
-    private static byte[]  prepareBuffer(byte[] cipherText, byte[] assocData, boolean includeTag) {
-        int    plainTextLen = cipherText.length - BLOCK_SIZE,
+    private static byte[]  prepareBuffer(byte[] cipherText, byte[] assocData, boolean includeTag, int tLen) {
+        int    plainTextLen = cipherText.length - (tLen >> 3),
                 assocDataPaddedLen = (assocData.length / BLOCK_SIZE + (assocData.length % BLOCK_SIZE != 0  ?  1 : 0)) * BLOCK_SIZE,
                 plainTextPaddedLen = (plainTextLen / BLOCK_SIZE + (plainTextLen % BLOCK_SIZE != 0  ?  1 : 0)) * BLOCK_SIZE;
         byte[]   buf = new byte[assocDataPaddedLen + plainTextPaddedLen + BLOCK_SIZE + (includeTag ? BLOCK_SIZE : 0)],  res,  s;
@@ -196,26 +210,30 @@ public class GCM extends Set3 {
      */
     public static PolynomialGaloisFieldOverGF2.FieldElement[]  extractPowerOf2Blocks(byte[] cipherText, int plnTextLen) {
         assert plnTextLen < cipherText.length;
-        System.out.printf("Length: %d,  # blocks: %d%n", plnTextLen, 32 - Integer.numberOfLeadingZeros(plnTextLen >> 4));
-        return  IntStream.range(1, 32 - Integer.numberOfLeadingZeros(plnTextLen >> 4))
+        int   n = 31 - Integer.numberOfLeadingZeros(plnTextLen >> 4);
+        System.out.printf("Length: %d,  # blocks: %d,  # power 2 blocks: %d%n", plnTextLen, plnTextLen >> 4, n);
+        PolynomialGaloisFieldOverGF2.FieldElement[]   ret = IntStream.range(1, n+1)
                 .mapToObj(i -> {
-                    int  low = plnTextLen - (1 << i) * BLOCK_SIZE;
+                    int  low = plnTextLen - ((1 << i) - 1) * BLOCK_SIZE;
                     System.out.printf("[%d, %d]", low, low+BLOCK_SIZE);
                     return  toFE( Arrays.copyOfRange(cipherText, low, low + BLOCK_SIZE));
                 }).toArray(PolynomialGaloisFieldOverGF2.FieldElement[]::new);
+        System.out.println();
+        return  ret;
     }
 
     public static byte[]  replacePowerOf2Blocks(byte[] cipherText, int plnTextLen,
                                                 PolynomialGaloisFieldOverGF2.FieldElement[] coeffs) {
         assert plnTextLen < cipherText.length;
-        int   n = 32 - Integer.numberOfLeadingZeros(plnTextLen >> 4),  low;
+        int   n = 31 - Integer.numberOfLeadingZeros(plnTextLen >> 4),  low;
         byte[]  ret = cipherText.clone();
-        System.out.printf("Length: %d,  # blocks: %d%n", plnTextLen, 32 - Integer.numberOfLeadingZeros(plnTextLen >> 4));
-        for (int i=1; i < n; i++) {
-            low = plnTextLen - (1 << i) * BLOCK_SIZE;
+        System.out.printf("Length: %d,  # blocks: %d,  # power 2 blocks: %d%n", plnTextLen, plnTextLen >> 4, n);
+        for (int i=1; i <= n; i++) {
+            low = plnTextLen - ((1 << i) - 1) * BLOCK_SIZE;
             System.out.printf("[%d, %d]", low, low+BLOCK_SIZE);
             System.arraycopy(coeffs[i-1].asArray(), 0, ret, low, BLOCK_SIZE);
         }
+        System.out.println();
         return  ret;
     }
 
@@ -225,7 +243,7 @@ public class GCM extends Set3 {
      *          term coefficient is the first.
      */
     public static PolynomialRing2<PolynomialGaloisFieldOverGF2.FieldElement>  toPolynomialRing2(byte[] cipherText, byte[] assocData) {
-        byte[]   buf = prepareBuffer(cipherText, assocData, true);
+        byte[]   buf = prepareBuffer(cipherText, assocData, true, 16 * 8);
         int      last = buf.length / BLOCK_SIZE;
         return  new PolynomialRing2<>(IntStream.range(0, last)
                 .mapToObj(i -> toFE( Arrays.copyOfRange(buf, (last - i - 1) * BLOCK_SIZE, (last - i) * BLOCK_SIZE)) )

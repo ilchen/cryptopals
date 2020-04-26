@@ -231,7 +231,8 @@ class Set8Tests {
         SecretKey key = aesKeyGen.generateKey();
         GCM   gcm = new GCM(key);
         byte[]   nonce = new byte[12],  plnText = CHALLENGE56_MSG.getBytes(),  cTxt1,  cTxt2,  assocData = new byte[0];
-        new SecureRandom().nextBytes(nonce);
+        Random   rnd = new SecureRandom();
+        rnd.nextBytes(nonce);
         cTxt1 = gcm.cipher(plnText, assocData, nonce);
 
         // Confirm that we get the same ciphertext as that obtained from a reference implementation.
@@ -246,6 +247,19 @@ class Set8Tests {
         assertArrayEquals(plnText, gcm.decipher(cTxt1, assocData, nonce));
 
         // Confirm that garbling a single byte of cipher text will result in the bottom symbol
+        cTxt1[0] ^= 0x03;
+        assertArrayEquals(null, gcm.decipher(cTxt1, assocData, nonce));
+
+        // The same but with a smaller authentication tag size
+        rnd.nextBytes(nonce);
+        gcmParameterSpec = new GCMParameterSpec(12 * 8, nonce);
+        gcm = new GCM(key, 12 * 8);
+        cTxt1 = gcm.cipher(plnText, assocData, nonce);
+        cipher.init(Cipher.ENCRYPT_MODE, key, gcmParameterSpec);
+        cTxt2 = cipher.doFinal(plnText);
+        assertArrayEquals(cTxt2, cTxt1);
+
+        assertArrayEquals(plnText, gcm.decipher(cTxt1, assocData, nonce));
         cTxt1[0] ^= 0x03;
         assertArrayEquals(null, gcm.decipher(cTxt1, assocData, nonce));
     }
@@ -436,22 +450,13 @@ class Set8Tests {
                             { true, true, false, true, false, false },
                             { false, true, true, true, false, false  },
                             { false, false, true, false, false, false },
-                            { false, false, false, true, true, false } },  mt = transpose(m),  t,  t2;
+                            { false, false, false, true, true, false } },  mTransposed = transpose(m),  t,  t2;
 
         // Confirm that transposition works correctly
-        assertTrue(BooleanMatrixOperations.equals(m, transpose(mt)));
-
-        t = appendIdentityMatrix(mt);
-        // Confirm that appending identity matrices to the right and to the bottom works correctly
-        assertTrue(BooleanMatrixOperations.equals(t, transpose(appendIdentityMatrixBottom(m))));
-
-        gaussianElimination(t, m.length);
-
-        t2 = appendIdentityMatrixBottom(m);
-        gaussianEliminationColumnEchelonForm(t2);
+        assertTrue(BooleanMatrixOperations.equals(m, transpose(mTransposed)));
 
         // Confirm that row echelon form and column echelon form Gaussian elimination works correctly
-        boolean   basis[][] = extractBasisMatrix(t),  basis2[][] = extractBasisMatrixBottom(t2),
+        boolean   basis[][] = kernel(m),  basis2[][] = kernelOfTransposed(mTransposed),
                   expectedBasis[] = { false, true, false, true, true, false },
                   expectedProduct[] = new boolean[m.length];
         assertEquals(1, basis.length);
@@ -463,38 +468,37 @@ class Set8Tests {
         }
 
         // Confirm that basis extraction works correctly for random-filled 2048x2176 GF(2) matrices
-        m = new boolean[16 << 7][17 << 7];
+        mTransposed = new boolean[17 << 7][16 << 7];
         Random rnd = new Random();
-        expectedProduct = new boolean[m.length];
+        expectedProduct = new boolean[mTransposed[0].length];
 
-        // 10 tries should be enough to ascertain correctness
+        // 3 tries should be enough to ascertain correctness
         int   numValid = 0;
-        for (int cnt=0; cnt < 10; cnt++) {
+        for (int cnt=0; cnt < 3; cnt++) {
 
             for (int i = 0; i < m.length; i++) {
                 for (int j = 0; j < m[0].length; j++) {
-                    m[i][j] = rnd.nextBoolean();
+                    mTransposed[i][j] = rnd.nextBoolean();
                 }
             }
 
-            mt = transpose(m);
-            t = appendIdentityMatrix(mt);
-            gaussianElimination(t, m.length);
-            basis = extractBasisMatrix(t);
+            basis = kernelOfTransposed(mTransposed);
             System.out.println("Basis size: " + basis.length);
             int   len = 0;
 
             for (boolean[] bs : basis) {
                 // m x bs should be a null column vector
-                if (Arrays.equals(expectedProduct, multiply(m, bs))) {
+                if (Arrays.equals(expectedProduct, multiply(bs, mTransposed))) {
                     len++;
                 }
             }
+
             // Confirm that m x bs == 0 for every element of the basis
             System.out.println("Actual size: " + len);
+            assertEquals(basis.length, len);
+
             // assertEquals(basis.length, len);
             if (len > 0)  numValid++;
-
         }
 
         // Not every random-filled matrix will have a basis, however the probability that all ten tries lead to no
@@ -505,24 +509,21 @@ class Set8Tests {
     @DisplayName("https://toadstyle.org/cryptopals/64.txt")
     @Test
     void  challenge64() throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidAlgorithmParameterException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
+        int   tLen = 32;   /* The minimum allowed authentication tag length for GCM */
         KeyGenerator aesKeyGen = KeyGenerator.getInstance("AES");
         SecretKey key = aesKeyGen.generateKey();
 
-        // Going for 2^8 bytes of plain text => 2^4 blocks
-        byte[]   nonce = new byte[12],  plainText = Set8.getPlainText("plain", 21),  pTxt2,  cTxt1,  cTxt2;
+        // Going for 2^21 bytes of plain text => 2^17 blocks
+        // How long should be the plain text to mount an existential forgery on GHASH? Ideally it should be
+        // 2^(tLen+1) blocks long. This will however be too much: 64 GB. So we will need to go for
+        // 2^17 blocks, which is 2 MB, and then expect to zero out another 16 bits by trial and error.
+        byte[]   nonce = new byte[12],  plainText = Set8.getPlainText("plain", (tLen >> 1) + 5),  pTxt2,
+                 cTxt1,  cTxt2,  assocData = {};
         new SecureRandom().nextBytes(nonce);
 
-        // Confirm that we get the same ciphertext as that obtained from a reference implementation.
-        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-        // Create GCMParameterSpec
-        // Going for a 32-bit tag is forbidden by the JRE
-        // java.security.InvalidAlgorithmParameterException: Unsupported TLen value; must be one of {128, 120, 112, 104, 96}
-
-        GCMParameterSpec   gcmParameterSpec = new GCMParameterSpec(16 * 8 /*12 * 8*/, nonce);
-        cipher.init(Cipher.ENCRYPT_MODE, key, gcmParameterSpec);
-        cTxt1 = cipher.doFinal(plainText);
-        cipher.init(Cipher.DECRYPT_MODE, key, gcmParameterSpec);
-        assertArrayEquals(plainText, cipher.doFinal(cTxt1));
+        GCM   gcm = new GCM(key, tLen);
+        cTxt1 = gcm.cipher(plainText, assocData, nonce);
+        assertArrayEquals(plainText, gcm.decipher(cTxt1, assocData, nonce));
 
         // Confirm that the extraction and replacement of the coefficients of x^i works for i being a power of 2.
         PolynomialGaloisFieldOverGF2.FieldElement[]  coeffs = GCM.extractPowerOf2Blocks(cTxt1, plainText.length),
@@ -530,72 +531,56 @@ class Set8Tests {
         cTxt2 = GCM.replacePowerOf2Blocks(cTxt1, plainText.length, coeffs);
         assertArrayEquals(cTxt1, cTxt2);
 
-        coeffsPrime[0] = coeffsPrime[0].getMultiplicativeIdentity();
+        coeffsPrime[0] = coeffsPrime[0].getRandomElement();
+        coeffsPrime[coeffsPrime.length - 1] = coeffsPrime[0].getRandomElement();
         cTxt2 = GCM.replacePowerOf2Blocks(cTxt1, plainText.length, coeffsPrime);
         assertFalse(Arrays.equals(cTxt1, cTxt2));
 
-        GCM   gcm = new GCM(key);
-        GCMExistentialForgeryHelper   h = new GCMExistentialForgeryHelper(cTxt1, plainText.length);
+        cTxt2 = GCM.replacePowerOf2Blocks(cTxt2, plainText.length, coeffs);
+        assertArrayEquals(cTxt1, cTxt2);
 
-        boolean[][]   T = h.getDependencyMatrix(),  Tt = transpose(T),  ad,  adPrime = new boolean[128][128];
-        assertTrue(BooleanMatrixOperations.equals(T, transpose(Tt)));
+        GCMExistentialForgeryHelper   h = new GCMExistentialForgeryHelper(cTxt1, plainText.length);
 
         coeffs = h.getPowerOf2Blocks();
         coeffsPrime = h.getRandomPowerOf2Blocks();
 
         // Confirm that ad is calculated correctly
-        ad = h.calculateAd(coeffsPrime);
+        boolean[][]   ad = h.calculateAd(coeffsPrime);
         PolynomialGaloisFieldOverGF2.FieldElement   hash1 = gcm.ghashPower2BlocksDifferences(h.getPowerOf2Blocks(), coeffsPrime),
                     hash2 = coeffs[0].group().createElement(multiply(ad, gcm.getAuthenticationKey().asVector()));
         assertEquals(hash1, hash2);
 
-        // Validate whether the dependency matrix is calculated correctly by calculating the first (n-1)*128 rows of ad
-        // indirectly using the dependency matrix, the result is in adPrime. Then compare the first (n-1)*128 rows
-        // of adPrime with the corresponding rows of ad
-        for (int i=0; i < coeffs.length; i++) {
-            PolynomialGaloisFieldOverGF2.FieldElement   di = coeffs[i].subtract(coeffsPrime[i]);
-            for (int b=0; b < 128; b++) {
-                if (di.getCoefficient(b)) {
-                    for (int j=0; j < T.length; j++) {
-                        if (T[j][i * 128 + b]) {
-                            adPrime[j / 128][j % 128] ^= true;
-                        }
-                    }
-                }
-            }
-        }
-
-        // The first (n-1)*128 rows of ad and adPrime must be the same
-        for (int i=0; i < T.length; i++) {
-            assertTrue(ad[i / 128][i % 128] == adPrime[i / 128][i % 128]);
-        }
-
-
-        byte[]   assocData = {};
         // Attempt at an existential forgery
+        boolean[]  expectedBits = new boolean[tLen/2],   requiredBits = new boolean[tLen],  tag;
+        int   count = 0;
+        EXIST_FORGERY_FOUND:
         while (true) {
-            coeffsPrime = h.forgePowerOf2Blocks();
-            if (!gcm.ghashPower2BlocksDifferences(coeffs, coeffsPrime).equals(coeffs[0].getAdditiveIdentity()))  continue;
+            for (int i=0; i < h.getKernel().length; i++) {
+                coeffsPrime = h.forgePowerOf2Blocks(i);
 
-            cTxt2 = GCM.replacePowerOf2Blocks(cTxt1, plainText.length, coeffsPrime);
-            System.out.println(new String(gcm.decipher(cTxt1, assocData, nonce)));
-            pTxt2 = gcm.decipher(cTxt2, assocData, nonce);
-            System.out.println(pTxt2 == null  ?  "" : new String(gcm.decipher(cTxt2, assocData, nonce)));
+                // The majority of d's that we extract from the kernel will zero out the tLen/2 low-order
+                // bits of GHASH, however we need to rely on trial and error to get all tLen low-order bits
+                // to be zero.
+                tag = gcm.ghashPower2BlocksDifferences(coeffs, coeffsPrime).asVector();
 
+                if (Arrays.equals(Arrays.copyOf(tag, expectedBits.length), expectedBits)) {
+                    // Only counting as attempts when we correctly zeroed out the leftmost tLen/2 bits.
+                    System.out.printf(" Attempt %4d%n", ++count);
+                }  else  {
+                    System.out.println();
+                    continue;
+                }
+                if (!Arrays.equals(Arrays.copyOf(tag, requiredBits.length), requiredBits))  continue;
 
-            cipher.init(Cipher.DECRYPT_MODE, key, gcmParameterSpec);
-            try {
-                pTxt2 = cipher.doFinal(cTxt2);
-                break;
-            } catch (AEADBadTagException e) {
-                // ignore
+                cTxt2 = GCM.replacePowerOf2Blocks(cTxt1, plainText.length, coeffsPrime);
+                pTxt2 = gcm.decipher(cTxt2, assocData, nonce);
+                count++;
+                System.out.printf("Trying an existential forgery: %s%n", pTxt2 == null ? "\u22A5" : new String(gcm.decipher(cTxt2, assocData, nonce), 0, 1024));
+                if (pTxt2 != null)  break EXIST_FORGERY_FOUND;
             }
+            h.replaceBasis();
         }
 
-        cipher.init(Cipher.DECRYPT_MODE, key, gcmParameterSpec);
-        final byte[]   cTxt = cTxt2;
-        assertDoesNotThrow(() -> cipher.doFinal(cTxt));
-        System.out.println("Success with an existential forgery against GCM:\n" + new String(pTxt2));
-
+        assertFalse(Arrays.equals(plainText, pTxt2));
     }
 }

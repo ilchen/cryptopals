@@ -1,8 +1,6 @@
 package com.cryptopals.set_8;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 /**
  * Implements  matrix operations over GF(2).
@@ -38,8 +36,8 @@ public class BooleanMatrixOperations {
         return  res;
     }
 
-    public static int  gaussianElimination(boolean[][] mat) {
-        return  gaussianElimination(mat, mat[0].length);
+    public static int  gaussianElimination(boolean[][] mat, boolean[][] identMat) {
+        return  gaussianElimination(mat, mat[0].length, identMat);
     }
 
     /**
@@ -50,10 +48,15 @@ public class BooleanMatrixOperations {
      *
      * @param mat  a matrix that will modified in place
      * @param n  the number of columns to use when applying Gaussian elimination
-     * @return  the rank of the first {@code n} columns
+     * @oaram identMat  an optional identity matrix, can be {@code null}. If provided, it will be modified in place
+     *                  as though its rows were appended to the right of {@code mat}
+     * @return  the rank of {@code mat}
      */
-    public static int  gaussianElimination(boolean[][] mat, int n) {
-        assert  n <= mat[0].length;
+    public static int  gaussianElimination(boolean[][] mat, int n, boolean[][] identMat) {
+        if (n > mat[0].length)  throw  new IllegalArgumentException("n is too high: " + n);
+        if (identMat != null  &&  mat.length != identMat.length)
+            throw  new IllegalArgumentException(
+                    String.format("Dimentions of mat and identity matrix don't match: %d vs %d", mat.length, identMat.length));
         int   m = mat.length,  nFull = mat[0].length,  h = 0,  k = 0,  iMax;
         boolean[]   tmp;
         while (h < m  &&  k < n) {
@@ -65,12 +68,20 @@ public class BooleanMatrixOperations {
                 k++;
             } else {
                 tmp = mat[h];     mat[h] = mat[iMax];     mat[iMax] = tmp;
+                if (identMat != null) {
+                    tmp = identMat[h];     identMat[h] = identMat[iMax];     identMat[iMax] = tmp;
+                }
                 /* Do for all rows below pivot: */
                 for (int i=h+1; i < m; i++) {
                     /* Do for all remaining elements in current row: */
-                    if (/*i != h  &&  */mat[i][k]) {
+                    if (mat[i][k]) {
                         for (int j=k; j < nFull; j++) {
                             mat[i][j] ^= mat[h][j];
+                        }
+                        if (identMat != null) {
+                            for (int j = 0; j < identMat.length; j++) {
+                                identMat[i][j] ^= identMat[h][j];
+                            }
                         }
                     }
                 }
@@ -85,26 +96,34 @@ public class BooleanMatrixOperations {
     /**
      * Computes <a href="https://en.wikipedia.org/wiki/Kernel_(linear_algebra)#Computation_by_Gaussian_elimination">
      *     the kernel</a> of matrix {@code mat}, i.e. the set of all vectors x such that Mat * x = 0
-     * @param m
+     * @param m  a matrix over GF(2) whose kernel (aka basis) needs to be found
      * @return  the elements of the returned two dimensional matrix form the basis of {@code mat}
      */
     public static boolean[][]  kernel(boolean[][] m) {
-        if (m.length >= m[0].length)  throw  new IllegalArgumentException("Not enough free variables");
+        return  kernelOfTransposed(transpose(m));
+    }
+
+    /**
+     * Computes <a href="https://en.wikipedia.org/wiki/Kernel_(linear_algebra)#Computation_by_Gaussian_elimination">
+     *     the kernel</a> of matrix {@code mat}<sup>T</sup>, i.e. the set of all vectors x such that Mat<sup>T</sup> * x = 0
+     * @param mTransposed  a matrix over GF(2) the kernel (aka basis) of whose transposed counterpart needs to be found
+     * @return  the elements of the returned two dimensional matrix form the basis of {@code mat}
+     */
+    public static boolean[][]  kernelOfTransposed(boolean[][] mTransposed) {
+        int   n = mTransposed[0].length;
+        if (mTransposed.length <= n)  throw  new IllegalArgumentException("Not enough free variables");
 
         // Calculate a basis of N(T)
         // mTransposed [2176x2048],  tmp [2176x(2048+2176)] = [2176x4224]
-        // What you want to do is transpose T (i.e. flip it across its diagonal)
-        boolean[][]  mTransposed = transpose(m);
 
         // ... and find the reduced row echelon form using Gaussian elimination. Now perform the
         // same operations on an identity matrix of size n*128.
 
         // Doing it in one go by using only the columns of T transposed during Gaussian elimination
-        boolean[][]  tmp = appendIdentityMatrix(mTransposed);
-        gaussianElimination(tmp, m.length);
-        tmp = extractBasisMatrix(tmp);
+        boolean[][]  tmp = identityMatrix(mTransposed.length);
+        int   rank = gaussianElimination(mTransposed, n, tmp);
 
-        return  tmp;
+        return  Arrays.copyOfRange(tmp, rank, tmp.length);
     }
 
     /**
@@ -151,84 +170,26 @@ public class BooleanMatrixOperations {
     }
 
     /**
-     * Appends the columns of an identity matrix to the bottom of {@code mat}
-     * @return  {@code mat} concatenated with an identity matrix.
+     * Generates a square identity matrix of dimension {@code n}.
      */
-    public static boolean[][]  appendIdentityMatrixBottom(boolean[][] mat) {
-        int   m = mat.length,  n = mat[0].length;
-        boolean[][]   res = new boolean[m+n][n];
-
-        for (int i=0; i < m; i++) {
-            System.arraycopy(mat[i], 0, res[i], 0, n);
-        }
+    public static boolean[][]  identityMatrix(int n) {
+        boolean[][]   res = new boolean[n][];
         for (int i=0; i < n; i++) {
-            res[i+m][i] = true;
+            res[i] = new boolean[n];
+            res[i][i] = true;
         }
-        return res;
+        return  res;
     }
 
     /**
      * Extracts the rows that correspond to the zero rows in the reduced row echelon form of T
      * transpose. They form a basis for N(T).
      */
-    public static boolean[][]  extractBasisMatrix(boolean[][] mat) {
-        int   m = mat.length,  n = mat[0].length - m,  i,  j;
-        boolean[]  row;
+    public static boolean[][]  extractBasisMatrix(boolean[][] mat, int rank) {
+        int   m = mat.length,  n = mat[0].length - m,  i;
 
-        NEXT_ROW:
-        for (i=0; i < m; i++) {
-            for (j = 0; j < n; j++) {
-                if (mat[i][j]) continue NEXT_ROW;
-            }
-            // Since the matrix is in a row echelon form, all the rows below will also have zeros as their first n elements
-            break  NEXT_ROW;
-        }
-        boolean[][]   res = new boolean[m-i][];
-        for (j=i; j < m; j++)  res[j-i] = Arrays.copyOfRange(mat[j], n, n + m);
-        return  res;
-    }
-
-    /**
-     * Extracts a basis from {@code mat}.
-     * @param mat  represents a GF(2) matrix in a column echelon form computed in accordance with
-     *             <a href="https://en.wikipedia.org/wiki/Kernel_(linear_algebra)#Computation_by_Gaussian_elimination">
-     *             this algorithm</a>
-     * @return
-     */
-    public static boolean[][]  extractBasisMatrixBottom(boolean[][] mat) {
-        int   m = mat.length,  n = mat[0].length,  bm = m - n;
-        assert  m > n;
-        List<boolean[]>   res = new ArrayList<>();
-
-        NEXT_ROW:
-        for (int j=0; j < n; j++) {
-            // Check whether the jth column of B is a zero column
-            for (int i=0; i < bm; i++) {
-                if (mat[i][j])  continue  NEXT_ROW;
-            }
-
-            // Copy the jth column of C if it is not a zero column
-            boolean   col[] = new boolean[n],  retain = false;
-            for (int i=bm; i < m; i++) {
-                if (mat[i][j])  retain = true;
-                col[i-bm] = mat[i][j];
-            }
-            if (retain) {
-                res.add(col);
-            }
-        }
-
-        boolean[][]  ret = new boolean[res.size()][];
-
-        return  res.toArray(ret);
-    }
-
-    public static boolean[][]  appendZeroColumn(boolean[][] mat) {
-        int   m = mat.length,  n = mat[0].length;
-        boolean[][]   res = new boolean[m][n + 1];
-        for (int i=0; i < m; i++) {
-            System.arraycopy(mat[i], 0, res[i], 0, n);
-        }
+        boolean[][]   res = new boolean[m-rank][];
+        for (i=rank; i < m; i++)  res[i-rank] = Arrays.copyOfRange(mat[i], n, n + m);
         return  res;
     }
 
@@ -256,6 +217,7 @@ public class BooleanMatrixOperations {
         }
         return  r;
     }
+
     public static boolean[]  multiply(boolean[][] m, boolean[] e) {
         assert  m[0].length == e.length;
         boolean[]  res = new boolean[m.length];
@@ -263,6 +225,20 @@ public class BooleanMatrixOperations {
             boolean   r = false;
             for (int k=0; k < m.length; k++) {
                 r ^= m[i][k] & e[k];
+            }
+            res[i] = r;
+        }
+        return  res;
+    }
+
+    public static boolean[]  multiply(boolean[] e, boolean[][] m) {
+        assert  e.length == m.length;
+        int   n = m[0].length;
+        boolean[]  res = new boolean[n];
+        for (int i=0; i < n; i++) {
+            boolean   r = false;
+            for (int k=0; k < m.length; k++) {
+                r ^= e[k] & m[k][i];
             }
             res[i] = r;
         }
