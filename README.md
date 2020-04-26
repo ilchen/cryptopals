@@ -957,11 +957,29 @@ assertFalse(Arrays.equals(plainText, pTxt2));
 Every iteration of the outer loop starts with a new set of forged coefficients, calculating a dependency matrix out of them,
 and finding the kernel. This is taken care of in [the replaceBasis method](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/GCMExistentialForgeryHelper.java#L37-L57).
 Every kernel has 128 vectors about half
-of which zero out the first 16 bits of the tag (or, in otherw words, the first 16 rows of  A<sub>d</sub>). Why only half
-I haven't yet figured out. I iterate over these vectors in the inner loop waiting for the lucky kernel vector that will
+of which zero out the first 16 bits of the tag (or, in other words, the first 16 rows of A<sub>d</sub>). Why only half
+I haven't yet figured out.
+
+A typical run. About half the elements of the found kernel don't zero out the 16 bits:
+```
+Error polynomial: 0c50e985bf0496fa4b7d843cf3f8407a. 
+Error polynomial: e81255791d5718456439cddc5a1e407a. 
+Error polynomial: d23ffcf49d4d85207d1dba661e110000.  Attempt 46105
+Error polynomial: 4f86c542cffd1189df6dec1d1a210000.  Attempt 46106
+Error polynomial: 2c77b3f79aa73b8670a9a24a14fe0000.  Attempt 46107
+Error polynomial: 85aea94dcdcae604a962219dc9060000.  Attempt 46108
+Error polynomial: d0b29d6fa700375103a4488e76680000.  Attempt 46109
+Error polynomial: 890f1ddb74cc4ab314c837a0204d0000.  Attempt 46110
+Error polynomial: 48bac9b76fed7ea955d5e2c190b10000.  Attempt 46111
+Error polynomial: 870053f914b9442cf2686bc7cebd0000.  Attempt 46112
+Error polynomial: 3ae3bf4f9892e18062308c1d20990000.  Attempt 46113
+Error polynomial: 75a571b8df4e31e237a10065a92c0000.  Attempt 46114
+Error polynomial: 387e2267270e75fe6b41ed348516407a. 
+```
+I iterate over these vectors in the inner loop waiting for the lucky kernel vector that will
 zero out not just the first 16 but the first 32 bits. After some waiting I get the reward:
 ```
-Error polynomial: 356117bdb2f64fe06c913f5700000000.  Attempt 45524
+Error polynomial: 356117bdb2f64fe06c913f5700000000.  Attempt 65524
 ```
 
 The relevant code [is here](https://github.com/ilchen/cryptopals/blob/master/src/test/java/com/cryptopals/Set8Tests.java#L553-L584).
