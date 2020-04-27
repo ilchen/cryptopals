@@ -727,7 +727,7 @@ peculiarities of the GHASH one-time hash function that GCM uses. Given the maxim
 authentication security of GCM is `n - k` bits where k is  &lfloor;log<sub>2</sub>(number-of-blocks-encrypted)&rfloor;.
 
 Like Challenge 63, this challenge shows how to succeed at an existential forgery attack on GCM. This time without your
-adversary having made any mistakes in using GCM apart for choosing a small authentication tag size. 
+adversary having made any mistakes in using GCM apart from choosing a small authentication tag size. 
 
 To tackle this challenge you will need to implement the following parts.
 
@@ -843,17 +843,17 @@ PolynomialGaloisFieldOverGF2.FieldElement   hash1 = gcm.ghashPower2BlocksDiffere
             hash2 = coeffs[0].group().createElement(multiply(ad, gcm.getAuthenticationKey().asVector()));
 assertEquals(hash1, hash2);
 ```
-As you can see, I calculate the hash1 over d<sub>i</sub> differences using standard GHASH arithmetic in GF(2<sup>128</sup)
+As you can see, I calculate the hash1 over d<sub>i</sub> differences using standard GHASH arithmetic in GF(2<sup>128</sup>)
 and then hash2 by A<sub>d</sub>*h. TThe two must be the same.
 
-The dependency matrix is more involved. Before setting out on a path to calculate, it helps to understand what purpose it
+The dependency matrix is more involved. Before setting out on a path to calculate it, it helps to understand what purpose it
 serves and how it comes about. In his original description of the attack Niels Ferguson writes:
 > It is now easy to force bits of the error polynomial to zero. Write equations setting each of the bits in a single row
-  of AD to zero. Each equation imposes a single linear constraint on the choice we have for the bits of the Di values.
-  To force a single result bit to zero we have to create 128 linear constraints. If we have n different Di coefficients
+  of A<sub>D</sub> to zero. Each equation imposes a single linear constraint on the choice we have for the bits of the D<sub>i</sub> values.
+  To force a single result bit to zero we have to create 128 linear constraints. If we have n different D<sub>i</sub> coefficients
   to choose, we have 128 · n free variables and we can force n − 1 bits of the result to zero.
  
-The depdendency matrix is the coefficients of these equations. Here's how the dependency matrix looks:
+The depdendency matrix is the A<sub>i,j</sub> coefficients of these equations. Here's how the dependency matrix looks:
 ![alt text](https://raw.githubusercontent.com/ilchen/cryptopals/master/src/docs/challenge64_equations.png)
 
 To calculate it you first need to generate arbitrary coefficients of h<sup>2^i</sup> (i=1..17). They are the starting
@@ -877,7 +877,11 @@ With the dependency matrix generated we can now start looking for what flips to 
 are required so that the first 16 rows of A<sub>d</sub> are zeros. This is trivial to do with the kernel function
 that I outlined in an earlier section. For the sake of efficiency I implemented an optimized version called
 [kernelOfTransposed](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/BooleanMatrixOperations.java#L106-L127)
-that finds the kernel from a transposed dependency matrix.
+that finds the kernel from a transposed dependency matrix. **NB:** In contrast to the problem description:
+> Finding a basis for the null space is not too hard. What you want to do is transpose T (i.e. flip it across
+  its diagonal) and find the reduced row echelon form using Gaussian elimination.
+   
+it is sufficient to bring the transpose of T to a row echelon form, there's no need to bring it to _reduced_ row echelon form.
 
 If everything has been implemented correctly, the equality d * T<sup>T</sup> = 0 will hold for all elements of the kernel
 found:
@@ -901,10 +905,16 @@ for (boolean[] d : kernel) {
 This is by far the most interesting and gratifying part of the exercise where all the earlier building blocks come together.
 I start with generating random bytes of plaintext. How long should the plaintext be to mount an existential forgery on GHASH with a 32 bit tag?
 Ideally it should be 2<sup>33</sup> blocks long. This will however be too much, namely 128 GB. So we will need to go for
-2<sup>17</sup> blocks, which is 2 MB, and then expect to zero out another 16 bits by trial and error. As Niels puts it:
+2<sup>17</sup> blocks, which is 2 MB, this will let us assuredly zero out 16 bits of ciphertext differnces. We then expect
+to zero out another 16 bits by trial and error. As Niels puts it:
 > This, in turn, ensures us that the first 16 bits of the authentication tag will not change if we apply the differences
-  Di to the ciphertext. With only 16 effective authentication bits left, we have a 2<sup>−16</sup> chance of a successful
+  D<sub>i</sub> to the ciphertext. With only 16 effective authentication bits left, we have a 2<sup>−16</sup> chance of a successful
   forgery. This is a much higher chance than one would reasonably expect from a 32-bit authentication code.
+
+How many tries will be required? Since we will try only those ciphertexts whose GHASH doesn't differ from the original
+in 16 bits, the probability that a singly try will result in 32 bits of GHASH being the same as in the GHASH of the original
+legit ciphertext is: 2<sup>96</sup>/2<sup>112</sup>=2<sup>-16</sup>. We will then on average require 65536 tries. **NB:** The birthday
+paradox is of no application here as we are not looking for a GHASH match between two arbitrary ciphertext messages!
 
 Having generated 2<sup>17</sup> blocks of plaintext, I generate a new 128 bit key and a new 96 bit nonce. Then I go ahead
 to encrypt with GCM. Initially I wanted to use the standard GCM implementation available in the JRE (the default SunJCE provider).
@@ -962,42 +972,42 @@ I haven't yet figured out.
 
 A typical run. About half the elements of the found kernel don't zero out the 16 bits:
 ```
-Error polynomial: 0c50e985bf0496fa4b7d843cf3f8407a. 
-Error polynomial: e81255791d5718456439cddc5a1e407a. 
-Error polynomial: d23ffcf49d4d85207d1dba661e110000.  Attempt 46105
-Error polynomial: 4f86c542cffd1189df6dec1d1a210000.  Attempt 46106
-Error polynomial: 2c77b3f79aa73b8670a9a24a14fe0000.  Attempt 46107
-Error polynomial: 85aea94dcdcae604a962219dc9060000.  Attempt 46108
-Error polynomial: d0b29d6fa700375103a4488e76680000.  Attempt 46109
-Error polynomial: 890f1ddb74cc4ab314c837a0204d0000.  Attempt 46110
-Error polynomial: 48bac9b76fed7ea955d5e2c190b10000.  Attempt 46111
-Error polynomial: 870053f914b9442cf2686bc7cebd0000.  Attempt 46112
-Error polynomial: 3ae3bf4f9892e18062308c1d20990000.  Attempt 46113
-Error polynomial: 75a571b8df4e31e237a10065a92c0000.  Attempt 46114
-Error polynomial: 387e2267270e75fe6b41ed348516407a. 
+Error polynomial: feb42cec84ce141fbe7f1fdcdff01e53. 
+Error polynomial: fa6bb27bfbebf0d86940b28fe6801e53. 
+Error polynomial: a83bef2a2213589ad38e6b9d9ce50000.  Attempt 23505
+Error polynomial: 52ec1f1cf3e01b12040879cd2d040000.  Attempt 23506
+Error polynomial: c6a96c7813ac59a3f8d0c6b3c1811e53. 
+Error polynomial: ed73f0efaf893510db8ae87be1bd1e53. 
+Error polynomial: 1cbea88092831224a04654f1a2780000.  Attempt 23507
 ```
 I iterate over these vectors in the inner loop waiting for the lucky kernel vector that will
-zero out not just the first 16 but the first 32 bits. After some waiting I get the reward:
+zero out not just the first 16 but the first 32 bits. After 1 hour and 30 minutes of waiting on my MacBook Pro, I get the reward:
 ```
-Error polynomial: 356117bdb2f64fe06c913f5700000000.  Attempt 65524
+Error polynomial: c3579192582b50d19bbb377900000000.  Attempt 23529
+Trying an existential forgery: plainplainplainp�NH��mP^�8��.� �ainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplai
 ```
+The garbled second block of ciphertext is quite visible in the above output. And I got this outcome with about the expected amount
+of tries &mdash; 65536.
 
 The relevant code [is here](https://github.com/ilchen/cryptopals/blob/master/src/test/java/com/cryptopals/Set8Tests.java#L553-L584).
        
-Incredible, by getting hold of one 2MB long ciphertext we are able to forge a new one that differs from the
+Incredible, by getting hold of one 2MB-long ciphertext we are able to forge a new one that differs from the
 original in 17 blocks and that passes the authentication check during decryption. This is a total failure at CCA security
 that GCM is supposed to provide.
 
 How bad is this when it comes to real crypto systems at large? Well, TLS (the most active user of GCM) uses the maximum 
 length of the authentication tag in those modes that use GCM such as TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256. Moreover TLS
-restricts the length of its packets to 16 KB. Using this attack it will only let assuredly forge 9 bits. Trial and error
-to recover more bits will not work as TLS will terminate the session after receiving the first wrongly forged ciphertext.
+restricts the length of its records to 16 KB. Using this attack it will only let assuredly forge 9 bits per TLS record.
+Trial and error to recover more bits will not work as TLS will terminate the session after receiving the first wrongly forged ciphertext.
 
-Can this attack be extended over multiple TLS paclets? That is, can one forge a new set of short ciphertexts up to 2<sup>10</sup> blocks
-long, i.e. seeing many?
+Can this attack be hypothetically extended over multiple TLS packets? That is, can one forge a new set of short
+ciphertexts up to 2<sup>10</sup> blocks long, i.e. seeing many such records when the total size of data transmitted over
+a TLS session is large?
 ```
 t1 = s1 + c1_1*h + c1_2*h^2 + c1_3*h^3 + ... + c1_10*h^10
 t2 = s2 + c2_1*h + c2_2*h^2 + c2_3*h^3 + ... + c2_10*h^10
 ....
 tm = sm + cm_1*h + cm_2*h^2 + cm_3*h^3 + ... + cm_10*h^10
 ```
+Unfortunately also no. Even though individual records of one session share the same authentication key h, they each 
+have their unique authentication tag.
