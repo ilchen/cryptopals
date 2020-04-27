@@ -966,9 +966,12 @@ assertFalse(Arrays.equals(plainText, pTxt2));
 
 Every iteration of the outer loop starts with a new set of forged coefficients, calculating a dependency matrix out of them,
 and finding the kernel. This is taken care of in [the replaceBasis method](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/GCMExistentialForgeryHelper.java#L37-L57).
-Every kernel has 128 vectors about half
-of which zero out the first 16 bits of the tag (or, in other words, the first 16 rows of A<sub>d</sub>). Why only half
-I haven't yet figured out.
+Every kernel has 128 vectors. Each vector represents bit flips in the forged coefficients that should make the resulting
+A<sub>d</sub> to have zeros in its first 16 rows (and therefore the 16 first bits of the error polynomial will be zero
+as well). To remind, the error polynomial is e = ∑MD<sub>i</sub>·(MS)<sup>i</sup>·h=A<sub>d</sub>·h, where h is the authentication key.
+About half the vectors in the kernel, when applied to the prototype forged coefficients, indeed zero out the first 16 rows of A<sub>d</sub> 
+(and thus guarantee that the first 16 bits of the error polynomial are zeros).
+Why only half I haven't yet figured out. Probably because not all equations captured in the dependency matrix T are linearly independent.
 
 A typical run. About half the elements of the found kernel don't zero out the 16 bits:
 ```
@@ -981,12 +984,12 @@ Error polynomial: ed73f0efaf893510db8ae87be1bd1e53.
 Error polynomial: 1cbea88092831224a04654f1a2780000.  Attempt 23507
 ```
 I iterate over these vectors in the inner loop waiting for the lucky kernel vector that will
-zero out not just the first 16 but the first 32 bits. After 1 hour and 30 minutes of waiting on my MacBook Pro, I get the reward:
+zero out not just the first 16 but the first 32 bits of the error polynomial. After 1 hour and 30 minutes of waiting on my MacBook Pro, I get the reward:
 ```
 Error polynomial: c3579192582b50d19bbb377900000000.  Attempt 23529
 Trying an existential forgery: plainplainplainp�NH��mP^�8��.� �ainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplai
 ```
-The garbled second block of ciphertext is quite visible in the above output. And I got this outcome with about the expected amount
+The garbled second block of ciphertext is quite visible in the above output. And I got this outcome with a bit less than the expected amount
 of tries &mdash; 65536.
 
 The relevant code [is here](https://github.com/ilchen/cryptopals/blob/master/src/test/java/com/cryptopals/Set8Tests.java#L553-L584).
@@ -995,6 +998,30 @@ Incredible, by getting hold of one 2MB-long ciphertext we are able to forge a ne
 original in 17 blocks and that passes the authentication check during decryption. This is a total failure at CCA security
 that GCM is supposed to provide.
 
+
+#### Recovering the authentication key
+In the previous step I was generating different forged coefficients whose A<sub>d</sub> matrix had the first 16 rows as zeros
+and was waiting that eventually one modification to the coefficients would zero out not just the first 16 bits of the error
+polynomial, which was guaranteed by virtue of the first 16 rows of A<sub>d</sub> being zeros, but 32 bits. When that happened
+rows 16 through 31 of A<sub>d</sub> (zero-based counting) were unlikely all zeros and yet the following equality held:
+
+A<sub>d</sub>·h=(column-vector-whose-first-32-elements-are-zeros)
+
+Of these 32 zeroes the first 16 were zeros by virtue of the first 16 rows of A<sub>d</sub> being zeroes. However the next 16
+were zeroes because of a linear relationship between them and 16 bits of the authentication key h. Quoting Niels:
+> We already knew the first 16 bits were zero, but the fact that the other 16 bits are zero gives us 16 linear equations on the bits of H.
+
+If we copy these these non-zero rows 16 through 31 of A<sub>d</sub> into a new matrix K, we have the following equation:
+```
+    K     ·    h     =   0 
+[16x128]   [128, 1]   [16x1]
+```
+Solving this equation for h delivers up 16 bits of h. The crux of this last part of the attack is in finding more 
+forged coefficients that zero out the first 32 bits of the error polynomial while their zero-out only the first 16 rows
+of the A<sub>d</sub> matrix. Every time we come by such a lucky group of forged coefficients, we add rows 16 through 31
+of their A<sub>d</sub> matrix to K, whereby increasing our knowledge about h by up-to another 16 bits.
+
+#### Conclusions
 How bad is this when it comes to real crypto systems at large? Well, TLS (the most active user of GCM) uses the maximum 
 length of the authentication tag in those modes that use GCM such as TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256. Moreover TLS
 restricts the length of its records to 16 KB. Using this attack it will only let assuredly forge 9 bits per TLS record.
@@ -1011,3 +1038,11 @@ tm = sm + cm_1*h + cm_2*h^2 + cm_3*h^3 + ... + cm_10*h^10
 ```
 Unfortunately also no. Even though individual records of one session share the same authentication key h, they each 
 have their unique authentication tag.
+
+Why is this attack possible in the first place? The reason is two-fold: 1) GHASH is calculated in GF(2<sub>128</sub>),
+and multiplication by a constant and squaring are linear operations in that field, 2) GHASH makes use of multiplicatins
+by a constant and squaring. Linear relationships in cryptography are recipes for trouble. That's the reason why
+all block ciphers such as AES or even DES go to such lengths to ensure that their S-boxes exhibit non-linear behavior.
+Were AES's S-boxes linear, AES encryption would boil down to multiplying a large [128x2176] matrix over GF(2) by a column vector [2176x1]
+made up of a block of plaintext and the 16 round keys derived from the encryption key. So that the entire AES would be
+represented in this [128x2176] matrix.
