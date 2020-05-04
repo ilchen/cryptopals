@@ -1,9 +1,10 @@
 package com.cryptopals.set_8;
 
 import java.util.Arrays;
+import java.util.List;
 
 /**
- * Implements  matrix operations over GF(2).
+ * Implements matrix operations over GF(2).
  */
 public class BooleanMatrixOperations {
     public static boolean[][]  copy(boolean[][] mat) {
@@ -94,6 +95,27 @@ public class BooleanMatrixOperations {
     }
 
     /**
+     * Removes linearly dependent vectors found in {@code m}.
+     */
+    public static void  removeLinearlyDependentVectors(List<boolean[]> m) {
+        int   n = m.size();
+        boolean[][] mTransposed = transpose(m.toArray(new boolean[n][]));
+        int   rank = gaussianElimination(mTransposed, null);
+        if (rank == n)  return;
+
+        int   h = 0,  k = 0,  delta;
+        while (h < mTransposed.length  &&  k < n) {
+            if (mTransposed[h][k])  {
+                h++;     k++;
+            }  else  {
+                delta = n - m.size();
+                m.remove(k - delta);
+                k++;
+            }
+        }
+    }
+
+    /**
      * Computes <a href="https://en.wikipedia.org/wiki/Kernel_(linear_algebra)#Computation_by_Gaussian_elimination">
      *     the kernel</a> of matrix {@code mat}, i.e. the set of all vectors x such that Mat * x = 0
      * @param m  a matrix over GF(2) whose kernel (aka basis) needs to be found
@@ -127,49 +149,6 @@ public class BooleanMatrixOperations {
     }
 
     /**
-     * Computes a column echelon form of {@code mat} by Gaussian elimination. The algorithm is taken from
-     * of <a href="https://www.cs.umd.edu/%7Egasarch/TOPICS/factoring/fastgauss.pdf">this paper</a>.
-     * @param mat
-     */
-    public static void gaussianEliminationColumnEchelonForm(boolean[][] mat) {
-        int   m = mat.length,  n = mat[0].length,  iMax;
-        for (int j=0; j < n; j++) {
-            iMax = -1;
-            for (int i=0; i < m; i++)  {
-                if (mat[i][j])  {
-                    iMax = i;
-                    break;
-                }
-            }
-            if (iMax >= 0) {
-                for (int k=0; k < n; k++) {
-                    if (k == j)  continue;
-                    if (mat[iMax][k]) {
-                        for (int i=0; i < m; i++) {
-                            mat[i][k] ^= mat[i][j];
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * Appends the columns of an identity matrix to the right of the columns of {@code mat}
-     * @return  {@code mat} concatenated with an identity matrix.
-     */
-    public static boolean[][]  appendIdentityMatrix(boolean[][] mat) {
-        int   m = mat.length,  n = mat[0].length;
-        boolean[][]   res = new boolean[m][m + n];
-
-        for (int i=0; i < m; i++) {
-            System.arraycopy(mat[i], 0, res[i], 0, n);
-            res[i][i+n] = true;
-        }
-        return res;
-    }
-
-    /**
      * Generates a square identity matrix of dimension {@code n}.
      */
     public static boolean[][]  identityMatrix(int n) {
@@ -178,18 +157,6 @@ public class BooleanMatrixOperations {
             res[i] = new boolean[n];
             res[i][i] = true;
         }
-        return  res;
-    }
-
-    /**
-     * Extracts the rows that correspond to the zero rows in the reduced row echelon form of T
-     * transpose. They form a basis for N(T).
-     */
-    public static boolean[][]  extractBasisMatrix(boolean[][] mat, int rank) {
-        int   m = mat.length,  n = mat[0].length - m,  i;
-
-        boolean[][]   res = new boolean[m-rank][];
-        for (i=rank; i < m; i++)  res[i-rank] = Arrays.copyOfRange(mat[i], n, n + m);
         return  res;
     }
 

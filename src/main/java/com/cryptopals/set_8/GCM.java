@@ -127,7 +127,6 @@ public class GCM extends Set3 {
             d = d.multiply(h.scale(ONE.shiftLeft(i+1)));
             g = g.add(d);
         }
-        System.out.printf("Error polynomial: %s. ", g /*+ '\n' + g.toPolynomialString()*/);
 
         return  g;
     }
@@ -211,14 +210,14 @@ public class GCM extends Set3 {
     public static PolynomialGaloisFieldOverGF2.FieldElement[]  extractPowerOf2Blocks(byte[] cipherText, int plnTextLen) {
         assert plnTextLen < cipherText.length;
         int   n = 31 - Integer.numberOfLeadingZeros(plnTextLen >> 4);
-        System.out.printf("Length: %d,  # blocks: %d,  # power 2 blocks: %d%n", plnTextLen, plnTextLen >> 4, n);
+        //System.out.printf("Length: %d,  # blocks: %d,  # power 2 blocks: %d%n", plnTextLen, plnTextLen >> 4, n);
         PolynomialGaloisFieldOverGF2.FieldElement[]   ret = IntStream.range(1, n+1)
                 .mapToObj(i -> {
                     int  low = plnTextLen - ((1 << i) - 1) * BLOCK_SIZE;
-                    System.out.printf("[%d, %d]", low, low+BLOCK_SIZE);
+                    //System.out.printf("[%d, %d]", low, low+BLOCK_SIZE);
                     return  toFE( Arrays.copyOfRange(cipherText, low, low + BLOCK_SIZE));
                 }).toArray(PolynomialGaloisFieldOverGF2.FieldElement[]::new);
-        System.out.println();
+        //System.out.println();
         return  ret;
     }
 
@@ -227,13 +226,13 @@ public class GCM extends Set3 {
         assert plnTextLen < cipherText.length;
         int   n = 31 - Integer.numberOfLeadingZeros(plnTextLen >> 4),  low;
         byte[]  ret = cipherText.clone();
-        System.out.printf("Length: %d,  # blocks: %d,  # power 2 blocks: %d%n", plnTextLen, plnTextLen >> 4, n);
+        //System.out.printf("Length: %d,  # blocks: %d,  # power 2 blocks: %d%n", plnTextLen, plnTextLen >> 4, n);
         for (int i=1; i <= n; i++) {
             low = plnTextLen - ((1 << i) - 1) * BLOCK_SIZE;
-            System.out.printf("[%d, %d]", low, low+BLOCK_SIZE);
+            //System.out.printf("[%d, %d]", low, low+BLOCK_SIZE);
             System.arraycopy(coeffs[i-1].asArray(), 0, ret, low, BLOCK_SIZE);
         }
-        System.out.println();
+        //System.out.println();
         return  ret;
     }
 

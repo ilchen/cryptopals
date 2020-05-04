@@ -26,6 +26,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.function.BiFunction;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -522,6 +524,19 @@ class Set8Tests {
         new SecureRandom().nextBytes(nonce);
 
         GCM   gcm = new GCM(key, tLen);
+
+        // Oracle that will be used to verify if forged messages authenticate
+        UnaryOperator<byte[]>   gcmFixedKeyAndNonceDecipherOracle = x -> {
+            try {
+               return gcm.decipher(x, assocData, nonce);
+            } catch (BadPaddingException | IllegalBlockSizeException e) {
+                return  null;
+            }
+        };
+        // Oracle that will be used to calculate the error polynomial, not needed for the attack per see
+        // but makes it run faster as calculating the error polynomial is faster than deciphering the entire ciphertext
+        BiFunction<PolynomialGaloisFieldOverGF2.FieldElement[], PolynomialGaloisFieldOverGF2.FieldElement[], PolynomialGaloisFieldOverGF2.FieldElement>
+                gcmFixedKeyAndNonceErrorPolynomialOracle = gcm::ghashPower2BlocksDifferences;
         cTxt1 = gcm.cipher(plainText, assocData, nonce);
         assertArrayEquals(plainText, gcm.decipher(cTxt1, assocData, nonce));
 
@@ -539,7 +554,8 @@ class Set8Tests {
         cTxt2 = GCM.replacePowerOf2Blocks(cTxt2, plainText.length, coeffs);
         assertArrayEquals(cTxt1, cTxt2);
 
-        GCMExistentialForgeryHelper   h = new GCMExistentialForgeryHelper(cTxt1, plainText.length);
+        GCMExistentialForgeryHelper   h = new GCMExistentialForgeryHelper(cTxt1, plainText.length, tLen,
+                gcmFixedKeyAndNonceDecipherOracle, gcmFixedKeyAndNonceErrorPolynomialOracle);
 
         coeffs = h.getPowerOf2Blocks();
         coeffsPrime = h.getRandomPowerOf2Blocks();
@@ -550,37 +566,22 @@ class Set8Tests {
                     hash2 = coeffs[0].group().createElement(multiply(ad, gcm.getAuthenticationKey().asVector()));
         assertEquals(hash1, hash2);
 
-        // Attempt at an existential forgery
-        boolean[]  expectedBits = new boolean[tLen/2],   requiredBits = new boolean[tLen],  tag;
-        int   count = 0;
-        EXIST_FORGERY_FOUND:
-        while (true) {
-            for (int i=0; i < h.getKernel().length; i++) {
-                coeffsPrime = h.forgePowerOf2Blocks(i);
+        // Attempt at an existential forgery and authentication key recovery
+        h.recoverAuthenticationKey();
 
-                // The majority of d's that we extract from the kernel will zero out the tLen/2 low-order
-                // bits of GHASH, however we need to rely on trial and error to get all tLen low-order bits
-                // to be zero.
-                tag = gcm.ghashPower2BlocksDifferences(coeffs, coeffsPrime).asVector();
+        pTxt2 = gcm.decipher(h.getForgedCiphertext(), assocData, nonce);
 
-                if (Arrays.equals(Arrays.copyOf(tag, expectedBits.length), expectedBits)) {
-                    // Only counting as attempts when we correctly zeroed out the leftmost tLen/2 bits.
-                    System.out.printf(" Attempt %4d%n", ++count);
-                }  else  {
-                    System.out.println();
-                    continue;
-                }
-                if (!Arrays.equals(Arrays.copyOf(tag, requiredBits.length), requiredBits))  continue;
+        // Confirm that the existential forgery succeeds and that we don't get the bottom (represented as null)
+        assertNotNull(pTxt2);
 
-                cTxt2 = GCM.replacePowerOf2Blocks(cTxt1, plainText.length, coeffsPrime);
-                pTxt2 = gcm.decipher(cTxt2, assocData, nonce);
-                count++;
-                System.out.printf("Trying an existential forgery: %s%n", pTxt2 == null ? "\u22A5" : new String(gcm.decipher(cTxt2, assocData, nonce), 0, 1024));
-                if (pTxt2 != null)  break EXIST_FORGERY_FOUND;
-            }
-            h.replaceBasis();
-        }
-
+        // Confirm that the forged ciphertext decrypts into something else than the original plaintext
         assertFalse(Arrays.equals(plainText, pTxt2));
+
+        System.out.printf("Recovered authentication key: %s%nActual authentication key: %s%n",
+                h.getRecoveredAuthenticationKey(), gcm.getAuthenticationKey());
+
+        // Confirm that the recovered authentication key matches the actual one
+        assertEquals(gcm.getAuthenticationKey(), h.getRecoveredAuthenticationKey(),
+                "Authentication key not recovered correctly");
     }
 }
