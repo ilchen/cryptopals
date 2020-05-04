@@ -715,6 +715,7 @@ Decrypted by the crypto system under attack into: ⊥
 ```
 I am able to commit an existential forgery attack!
 
+
 ### Challenge 64
 [Challenge 64](https://toadstyle.org/cryptopals/64.txt) implements an attack first outlined by Niels Ferguson in his 
 [Authentication weaknesses in GCM](https://csrc.nist.gov/csrc/media/projects/block-cipher-techniques/documents/bcm/comments/cwc-gcm/ferguson2.pdf)
@@ -722,12 +723,14 @@ paper. GCM is the most popular standard for authenticated encryption and is used
 fast implementations of GCM Intel even added [a special new instruction PCLMULQDQ](https://software.intel.com/sites/default/files/managed/72/cc/clmul-wp-rev-2.02-2014-04-20.pdf),
 which makes it easy to implement GCM's GHASH hash function. 
 
-Niels's paper shows that the actual authentication security of GCM will be less than the number of bits in its authentication tag because of 
-peculiarities of the GHASH one-time hash function that GCM uses. Given the maximum length tag size of 128 bits, the actual
-authentication security of GCM is `n - k` bits where k is  &lfloor;log<sub>2</sub>(number-of-blocks-encrypted)&rfloor;.
+Niels's paper shows that the actual authentication security of GCM will be less than the number of bits in its authentication tag.
+Given the maximum tag size of 128 bits, the best possible authentication security of GCM can be `128 - k` bits where k
+is  &lfloor;log<sub>2</sub>(number-of-blocks-encrypted)&rfloor;. Niels's paper shows that for smaller authentication tag
+sizes, it will be worse than `n - k` bits because of some peculiarities of the GHASH one-time hash function that GCM uses
 
 Like Challenge 63, this challenge shows how to succeed at an existential forgery attack on GCM. This time without your
-adversary having made any mistakes in using GCM apart from choosing a small authentication tag size. 
+adversary having made any mistakes in using GCM apart from choosing a small authentication tag size. Namely the minimum
+size allowed for GCM's authentication tag by NIST of 32 bits.
 
 To tackle this challenge you will need to implement the following parts.
 
@@ -806,7 +809,7 @@ void  linearAlgebraForChallenge64()  {
 
 Gaussian elimination is a little trickier. I started with [an algorithm on Wikipedia](https://en.wikipedia.org/wiki/Gaussian_elimination#Pseudocode)
 and adapted it for GF(2). A similar algorithm, albeit with a small omission, can be found in [this paper](http://www.hyperelliptic.org/tanja/SHARCS/talks06/smith_revised.pdf").
-The result is [this static method](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/BooleanMatrixOperations.java#L43-L94).
+The result is [this static method](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/BooleanMatrixOperations.java#L44-L95).
 
 The hardest part is finding the kernel of a matrix. I made use of [this algorithm from Wikipedia](https://en.wikipedia.org/wiki/Kernel_(linear_algebra)#Computation_by_Gaussian_elimination),
 which is essentially the same as given by @spdevlin in the problem description:
@@ -817,7 +820,7 @@ which is essentially the same as given by @spdevlin in the problem description:
   correspond to the zero rows in the reduced row echelon form of T
   transpose form a basis for N(T).
 
-My implementation is captured in [this method](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/BooleanMatrixOperations.java#L96-L127).
+My implementation is captured in [this method](https://github.com/ilchen/cryptopals/blob/788dbe6e75a9d97bcac32a45295e3592c47258ec/src/main/java/com/cryptopals/set_8/BooleanMatrixOperations.java#L96-L127).
 
 
 #### Extraction and replacement of the 2<sup>i-th</sup> blocks of ciphertext
@@ -827,8 +830,8 @@ t = s + c1\*h + c2\*h<sup>2</sup> + c3\*h<sup>3</sup> + ... + cn*h<sup>n</sup>. 
 before the tag, and cn is the first (assuming that the plain text was 2<sup>n</sup> blocks long).
 
 For efficiency's sake I convert the extracted coefficients into elements of GF(2<sup>128</sup>). The relevant code is here:
-[extraction of coefficients](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/GCM.java#L202-L223),
-[replacement of coefficients](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/GCM.java#L225-L238).
+[extraction of coefficients](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/GCM.java#L201-L222),
+[replacement of coefficients](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/GCM.java#L224-L237).
 
 
 #### Calculation of matrix A<sub>d</sub> = &sum;M<sub>Di</sub>(M<sub>S</sub>)<sup>i</sup> and a dependency matrix
@@ -876,7 +879,7 @@ of its kernel faster.
 With the dependency matrix generated we can now start looking for what flips to the different bits of these prototype coefficients
 are required so that the first 16 rows of A<sub>d</sub> are zeros. This is trivial to do with the kernel function
 that I outlined in an earlier section. For the sake of efficiency I implemented an optimized version called
-[kernelOfTransposed](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/BooleanMatrixOperations.java#L106-L127)
+[kernelOfTransposed](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/BooleanMatrixOperations.java#L128-L149)
 that finds the kernel from a transposed dependency matrix. **NB:** In contrast to the problem description:
 > Finding a basis for the null space is not too hard. What you want to do is transpose T (i.e. flip it across
   its diagonal) and find the reduced row echelon form using Gaussian elimination.
@@ -965,7 +968,7 @@ assertFalse(Arrays.equals(plainText, pTxt2));
 ```
 
 Every iteration of the outer loop starts with a new set of forged coefficients, calculating a dependency matrix out of them,
-and finding the kernel. This is taken care of in [the replaceBasis method](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/GCMExistentialForgeryHelper.java#L37-L57).
+and finding the kernel. This is taken care of in [the replaceBasis method](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/GCMExistentialForgeryHelper.java#L64-L83).
 Every kernel has 128 vectors. Each vector represents bit flips in the forged coefficients that should make the resulting
 A<sub>d</sub> to have zeros in its first 16 rows (and therefore the 16 first bits of the error polynomial will be zero
 as well). To remind, the error polynomial is e = ∑MD<sub>i</sub>·(MS)<sup>i</sup>·h=A<sub>d</sub>·h, where h is the authentication key.
@@ -992,12 +995,11 @@ Trying an existential forgery: plainplainplainp�NH��mP^�8��.� �a
 The garbled second block of ciphertext is quite visible in the above output. And I got this outcome with a bit less than the expected amount
 of tries &mdash; 65536.
 
-The relevant code [is here](https://github.com/ilchen/cryptopals/blob/master/src/test/java/com/cryptopals/Set8Tests.java#L553-L584).
+The relevant code [is here](https://github.com/ilchen/cryptopals/blob/788dbe6e75a9d97bcac32a45295e3592c47258ec/src/test/java/com/cryptopals/Set8Tests.java#L553-L582).
        
 Incredible, by getting hold of one 2MB-long ciphertext we are able to forge a new one that differs from the
 original in 17 blocks and that passes the authentication check during decryption. This is a total failure at CCA security
 that GCM is supposed to provide.
-
 
 #### Recovering the authentication key
 In the previous step I was generating different forged coefficients whose A<sub>d</sub> matrix had the first 16 rows as zeros
@@ -1005,24 +1007,124 @@ and was waiting that eventually one modification to the coefficients would zero 
 polynomial, which was guaranteed by virtue of the first 16 rows of A<sub>d</sub> being zeros, but 32 bits. When that happened
 rows 16 through 31 of A<sub>d</sub> (zero-based counting) were unlikely all zeros and yet the following equality held:
 
-A<sub>d</sub>·h=(column-vector-whose-first-32-elements-are-zeros)
+A<sub>d</sub>·h = e,  where `e` is a column vector whose first 32 elements are zeros, it represents the error polynomial.
 
-Of these 32 zeroes the first 16 were zeros by virtue of the first 16 rows of A<sub>d</sub> being zeroes. However the next 16
-were zeroes because of a linear relationship between them and 16 bits of the authentication key h. Quoting Niels:
+Of these 32 zeroes in `e` the first 16 were zeros because the first 16 rows of A<sub>d</sub> were zeroes. However the next 16
+were zeroes because of a linear relationship between rows 16 through 31 of A<sub>d</sub> and 16 bits of the authentication key h.
+Quoting Niels:
 > We already knew the first 16 bits were zero, but the fact that the other 16 bits are zero gives us 16 linear equations on the bits of H.
 
-If we copy these these non-zero rows 16 through 31 of A<sub>d</sub> into a new matrix K, we have the following equation:
+If we copy these non-zero rows 16 through 31 of A<sub>d</sub> into a new matrix called K, we have the following equation:
 ```
-    K     ·    h     =   0 
-[16x128]   [128, 1]   [16x1]
+    K     ·    h     =   0       (1)
+[16x128]    [128x1]    [16x1]
 ```
 Solving this equation for h delivers up 16 bits of h. The crux of this last part of the attack is in finding more 
 forged coefficients that zero out the first 32 bits of the error polynomial while their zero-out only the first 16 rows
 of the A<sub>d</sub> matrix. Every time we come by such a lucky group of forged coefficients, we add rows 16 through 31
 of their A<sub>d</sub> matrix to K, whereby increasing our knowledge about h by up-to another 16 bits.
 
+Interestingly, there turns out to be a faster way of recovering the next 16 bits of knowledge about the authentication key. 
+Looking at equation (1), we notice that h is an element of the kernel (aka the nullspace) of K. If we put the vectors 
+of the kernel into a new matrix `X`, we'll get a 128x112 matrix. Why 112 columns? Because K contains only 16 elements
+of the 128-dimensional vector space. Now we take advantage of the fact that `X` contains knowledge about 16 bits of
+the authentication key:
+```
+    X     ·    h'     =   h       (2)
+[128x112]   [112x1]    [128x1]
+```
+Thus, with X known, we only need to find h', which is a smaller task than finding h. For properly forged coefficients
+A<sub>d</sub>·h = 0. We can now rewrite it as:
+```
+    Ad     ·    X     ·    h'     =   0       (3)
+[128x128]   [128x112]   [112x1]    [128x1]
+```
+
+Instead of searching for forged coefficients that zero-out the first 16 rows of A<sub>d</sub>, we will search for
+forged coefficients that zero-out the first rows of A<sub>d</sub>·X. A<sub>d</sub>·X has dimension 128x112, which
+is smaller than that of A<sub>d</sub>. We use our good old dependency matrix T of dimensions mx17·128 to accomplish that.
+However to zero out the first 16 rows of A<sub>d</sub>·X, we will fill in its columns with elements of A<sub>d</sub>·X. To tackle
+this I slightly modified my [produceDependencyMatrixTransposed method](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/GCMExistentialForgeryHelper.java#L235-L275).
+Quoting Niels on zeroing out rows in A<sub>d</sub>·X:
+> Forcing a complete row to zero only requires 112 free variables, so for the next forgery attempt we can use our
+  17 × 128 free variables in the D<sub>i</sub> values to zero 19 rows of the matrix A<sub>D</sub> · X. This improves
+  the forgery probability to 2<sup>-13</sup>.
+
+Actually the size of the first dimension m of T [m x 17·128] should be adjusted per iteration to be
+min(tLen-1, 17·128 / ncols(X)) · ncols(X). As @sp puts it:
+> The general picture is that if we have n·128 bits to play with, we can
+  zero out (n·128) / (ncols(X)) rows. Just remember to leave at least
+  one nonzero row in each attempt; otherwise you won't learn anything new.
+  
+And on we go, every new success at an existential forgery (i.e. with zeroing out the first 32 bits of the error polynomial)
+reveal new bits of the authentication key. I slightly modified [the code that carries out the existential forgery attack](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/GCMExistentialForgeryHelper.java#L107-L182)
+to calculate K, X, after each successful forgery and to keep on running until the rank of K reaches 127.
+  
+Now I let the code run and watch it happen :-)
+```
+
+```
+
+and main test of this challenge passes!
+```java
+@DisplayName("https://toadstyle.org/cryptopals/64.txt") @Test
+void  challenge64() throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidAlgorithmParameterException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
+    int   tLen = 32;   /* The minimum allowed authentication tag length for GCM */
+    KeyGenerator aesKeyGen = KeyGenerator.getInstance("AES");
+    SecretKey key = aesKeyGen.generateKey();
+
+    // Going for 2^21 bytes of plain text => 2^17 blocks
+    // How long should be the plain text to mount an existential forgery on GHASH? Ideally it should be
+    // 2^(tLen+1) blocks long. This will however be too much: 64 GB. So we will need to go for
+    // 2^17 blocks, which is 2 MB, and then expect to zero out another 16 bits by trial and error.
+    byte[]   nonce = new byte[12],  plainText = Set8.getPlainText("plain", (tLen >> 1) + 5),  pTxt2,
+             cTxt1,  cTxt2,  assocData = {};
+    new SecureRandom().nextBytes(nonce);
+
+    GCM   gcm = new GCM(key, tLen);
+    // Oracle that will be used to verify if forged messages authenticate
+    UnaryOperator<byte[]>   gcmFixedKeyAndNonceDecipherOracle = x -> {
+        try {
+           return gcm.decipher(x, assocData, nonce);
+        } catch (BadPaddingException | IllegalBlockSizeException e) {
+            return  null;
+        }
+    };
+    // Oracle that will be used to calculate the error polynomial, not needed for the attack per see
+    // but makes it run faster as calculating the error polynomial is faster than deciphering the entire ciphertext
+    BiFunction<PolynomialGaloisFieldOverGF2.FieldElement[], PolynomialGaloisFieldOverGF2.FieldElement[], PolynomialGaloisFieldOverGF2.FieldElement>
+            gcmFixedKeyAndNonceErrorPolynomialOracle = gcm::ghashPower2BlocksDifferences;
+    
+    GCMExistentialForgeryHelper   h = new GCMExistentialForgeryHelper(cTxt1, plainText.length, tLen,
+                    gcmFixedKeyAndNonceDecipherOracle, gcmFixedKeyAndNonceErrorPolynomialOracle);
+
+    // Attempt at an existential forgery and authentication key recovery
+    h.recoverAuthenticationKey();
+
+    pTxt2 = gcm.decipher(h.getForgedCiphertext(), assocData, nonce);
+
+    // Confirm that the existential forgery succeeds and that we don't get the bottom (represented as null)
+    assertNotNull(pTxt2);
+
+    // Confirm that the forged ciphertext decrypts into something else than the original plaintext
+    assertFalse(Arrays.equals(plainText, pTxt2));
+
+    System.out.printf("Recovered authentication key: %s%nActual authentication key: %s%n",
+            h.getRecoveredAuthenticationKey(), gcm.getAuthenticationKey());
+
+    // Confirm that the recovered authentication key matches the actual one
+    assertEquals(gcm.getAuthenticationKey(), h.getRecoveredAuthenticationKey(),
+            "Authentication key not recovered correctly");
+}
+```
+
+The total time of the full attack on my MacBook Pro amounted to a little more than 2 hours. Can it be sped up?
+Actually yes. The code that tries different random values for forged coefficients in my
+`GCMExistentialForgeryHelper.recoverAuthenticationKey` method can be parallelized to take advantage of the multiple
+cores, which will let the attack succeed in about a quarter of an hour.
+
 #### Conclusions
-How bad is this when it comes to real crypto systems at large? Well, TLS (the most active user of GCM) uses the maximum 
+How bad is this attack when it comes to real crypto systems at large? Well, TLS (the most active user of GCM) uses the maximum 
 length of the authentication tag in those modes that use GCM such as TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256. Moreover TLS
 restricts the length of its records to 16 KB. Using this attack it will only let assuredly forge 9 bits per TLS record.
 Trial and error to recover more bits will not work as TLS will terminate the session after receiving the first wrongly forged ciphertext.

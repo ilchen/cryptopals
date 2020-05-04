@@ -4,7 +4,6 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
 import java.util.function.BiFunction;
 import java.util.function.UnaryOperator;
 
@@ -80,7 +79,6 @@ public final class GCMExistentialForgeryHelper {
 //            product = multiply(d, tTransposed);
 //            assert  Arrays.equals(product, expectedProduct)
 //        }
-
     }
 
     /**
