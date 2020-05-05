@@ -934,7 +934,7 @@ I was immediately in for a pleasant surprise. Running the following code
 leads to `java.security.InvalidAlgorithmParameterException: Unsupported TLen value; must be one of {128, 120, 112, 104, 96}`.
 Clearly Niels's attack is not possible if one uses standard JRE's crypto libraries. Therefore to proceed I needed to adapt my implementation
 of GCM from Challenge 63 to support different GHASH tag lengths starting from 32 bits, this was trivial. You just need
-to make use of the first tLen/8 bytes of the resultant 16 byte GHASH.
+to make use of the first tLen/4 bytes of the resultant 16 byte tag calculated as `GHASH(h) ^ E(K, nonce || 1)`.
 
 The hunt for a forged ciphertext that passes the oracle then proceeded as follows:
 ```java
