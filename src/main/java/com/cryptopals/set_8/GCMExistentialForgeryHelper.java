@@ -145,7 +145,7 @@ public final class GCMExistentialForgeryHelper {
                     } else  adAdj = ad;
 
                     System.out.printf(" Attempt %4d. Success with existential forgery. Error polynomial: %s%nFirst KB of plaintext:%n%s%n",
-                            tag, count, new String(plainTxt, 0, 1024));
+                            count, group.createElement(tag), new String(plainTxt, 0, 1024));
                     // Assuming the some of the next tLen/2 rows of Ad·X are not zero, we have gained information about
                     // additional bits of the authentication key (each non-zero row reveals a new bit).
                     for (int j = expectedBits.length; j < tLen; j++) {
@@ -174,7 +174,6 @@ public final class GCMExistentialForgeryHelper {
         }
 
         boolean[][]  k = kernel(K.toArray(new boolean[K.size()][]));
-
         h = group.createElement(k[0]);
 
     }

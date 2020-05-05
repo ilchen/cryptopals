@@ -510,7 +510,7 @@ class Set8Tests {
 
     @DisplayName("https://toadstyle.org/cryptopals/64.txt")
     @Test
-    void  challenge64() throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidAlgorithmParameterException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
+    void  challenge64() throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
         int   tLen = 32;   /* The minimum allowed authentication tag length for GCM */
         KeyGenerator aesKeyGen = KeyGenerator.getInstance("AES");
         SecretKey key = aesKeyGen.generateKey();

@@ -49,7 +49,7 @@ public class BooleanMatrixOperations {
      *
      * @param mat  a matrix that will modified in place
      * @param n  the number of columns to use when applying Gaussian elimination
-     * @oaram identMat  an optional identity matrix, can be {@code null}. If provided, it will be modified in place
+     * @param identMat  an optional identity matrix, can be {@code null}. If provided, it will be modified in place
      *                  as though its rows were appended to the right of {@code mat}
      * @return  the rank of {@code mat}
      */
@@ -162,7 +162,7 @@ public class BooleanMatrixOperations {
 
     /**
      * @param col  the index of the column to extract.
-     * @return
+     * @return  the column vector identified by {@code col}
      */
     public static boolean[]  extractColumn(boolean[][] mat, int col) {
         assert col < mat[0].length;
@@ -253,7 +253,7 @@ public class BooleanMatrixOperations {
     }
 
     public static void  print(boolean[][] mat) {
-        int   m = mat.length,  n = mat[0].length;
+        int   n = mat[0].length;
         for (boolean[] booleans : mat) {
             for (int j = 0; j < n; j++) {
                 System.out.print((booleans[j] ? 1 : 0) + " ");
@@ -263,7 +263,7 @@ public class BooleanMatrixOperations {
     }
 
     public static boolean  equals(boolean[][] mat, boolean[][] mat2) {
-        int   i,  m = mat.length,  n = mat[0].length;
+        int   i,  m = mat.length;
         if (mat2.length != mat.length  ||  mat2[0].length != mat[0].length)  return  false;
         for (i=0; i < m  &&  Arrays.equals(mat[i], mat2[i]); i++);
         return  i == m;

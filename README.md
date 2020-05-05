@@ -721,12 +721,15 @@ I am able to commit an existential forgery attack!
 [Authentication weaknesses in GCM](https://csrc.nist.gov/csrc/media/projects/block-cipher-techniques/documents/bcm/comments/cwc-gcm/ferguson2.pdf)
 paper. GCM is the most popular standard for authenticated encryption and is used in TLS 1.2 and higher. To aid efficient
 fast implementations of GCM Intel even added [a special new instruction PCLMULQDQ](https://software.intel.com/sites/default/files/managed/72/cc/clmul-wp-rev-2.02-2014-04-20.pdf),
-which makes it easy to implement GCM's GHASH hash function. 
+which makes it easy to implement GCM's GHASH hash function. Of the different modes of authenticated encryption not
+encumbered by patents and certified by NIST, GCM is the fastest. It is faster than CCM and EAX. Moreover, with the help of Intel's PCLMULDQ
+instruction for GHASH, it can be implemented with less code than would otherwise be required. All of these are the main
+reasons for GCM's popularity.
 
 Niels's paper shows that the actual authentication security of GCM will be less than the number of bits in its authentication tag.
 Given the maximum tag size of 128 bits, the best possible authentication security of GCM can be `128 - k` bits where k
 is  &lfloor;log<sub>2</sub>(number-of-blocks-encrypted)&rfloor;. Niels's paper shows that for smaller authentication tag
-sizes, it will be worse than `n - k` bits because of some peculiarities of the GHASH one-time hash function that GCM uses
+sizes, it will be worse than `n - k` bits because of some peculiarities of the GHASH one-time hash function that GCM uses.
 
 Like Challenge 63, this challenge shows how to succeed at an existential forgery attack on GCM. This time without your
 adversary having made any mistakes in using GCM apart from choosing a small authentication tag size. Namely the minimum
@@ -990,7 +993,7 @@ I iterate over these vectors in the inner loop waiting for the lucky kernel vect
 zero out not just the first 16 but the first 32 bits of the error polynomial. After 1 hour and 30 minutes of waiting on my MacBook Pro, I get the reward:
 ```
 Error polynomial: c3579192582b50d19bbb377900000000.  Attempt 23529
-Trying an existential forgery: plainplainplainp�NH��mP^�8��.� �ainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplai
+Trying an existential forgery: plainplainplainp�NH��mP^�8��.� �ainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplai
 ```
 The garbled second block of ciphertext is quite visible in the above output. And I got this outcome with a bit less than the expected amount
 of tries &mdash; 65536.
@@ -1062,13 +1065,94 @@ to calculate K, X, after each successful forgery and to keep on running until th
   
 Now I let the code run and watch it happen :-)
 ```
+Search for the authentication key started
+ Attempt 2113. Success with existential forgery. Error polynomial: c2b07aea1c2836f7af2443a300000000
+First KB of plaintext:
+plainplainplainpŃ���H��h�`��Oainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainpl
+Size of K: 16, rank of K: 16
+ Attempt 8363. Success with existential forgery. Error polynomial: b015d58d06190fcdb36017fe00000000
+First KB of plaintext:
+plainplainplainp*���ۣ,go�/ainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainp
+Size of K: 29, rank of K: 29
+ Attempt 15245. Success with existential forgery. Error polynomial: 7163d8c0a76cfaa8eb3cd68500000000
+First KB of plaintext:
+plainplainplainp:�ձ�!C>�4��7a�ainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainpl
+Size of K: 40, rank of K: 40
+ Attempt 15562. Success with existential forgery. Error polynomial: eeb47bbeacdb13058eb7aea900000000
+First KB of plaintext:
+plainplainplainp�:��y@����І���dainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainpl
+Size of K: 48, rank of K: 48
+ Attempt 15605. Success with existential forgery. Error polynomial: 42cf09a3e378809ffe407b800000000
+First KB of plaintext:
+plainplainplainp���\�;p�q�m)%��ainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainp
+Size of K: 53, rank of K: 53
+ Attempt 15618. Success with existential forgery. Error polynomial: f73d29205bc9977b3c656e5a00000000
+First KB of plaintext:
+plainplainplainp"-t�'��7���B�ainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainpl
+Size of K: 56, rank of K: 56
+ Attempt 15624. Success with existential forgery. Error polynomial: 5d87389b8ff38913a36b79df00000000
+First KB of plaintext:
+plainplainplainp�����:w)p�:�%��ainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainpl
+Size of K: 56, rank of K: 56
+ Attempt 15625. Success with existential forgery. Error polynomial: 51b8daa55ef77b233f7bebc300000000
+First KB of plaintext:
+plainplainplainp�G��p�����[�Zainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainpla
+Size of K: 58, rank of K: 58
+ Attempt 15626. Success with existential forgery. Error polynomial: d33117e6b579b79eba08715a00000000
+First KB of plaintext:
+plainplainplainp�&Ծih�[�׹ainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplain
+Size of K: 59, rank of K: 59
+ Attempt 15629. Success with existential forgery. Error polynomial: 31d749d6222b943bea11115100000000
+First KB of plaintext:
+plainplainplainpQ�f�Pxm�r���1P�ainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainp
+Size of K: 60, rank of K: 60
+ Attempt 15630. Success with existential forgery. Error polynomial: a313b46c133df8d194de234a00000000
+First KB of plaintext:
+plainplainplainp����GbBf�	�����ainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplai
+Size of K: 61, rank of K: 61
+ Attempt 15631. Success with existential forgery. Error polynomial: 848037e89964799e6e3f766400000000
+First KB of plaintext:
+plainplainplainpdj<������;��rainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainpl
+Size of K: 62, rank of K: 62
+ Attempt 15641. Success with existential forgery. Error polynomial: 7296c12618a0d9d9387d75d300000000
+First KB of plaintext:
+plainplainplainp��*y�zb��2ނ]7�ainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainpl
+Size of K: 63, rank of K: 63
+ Attempt 15643. Success with existential forgery. Error polynomial: 88597d4eea708f0f8a0e275d00000000
+First KB of plaintext:
+plainplainplainp�W~�e��_�����E�ainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainp
+Size of K: 64, rank of K: 64
+ Attempt 15644. Success with existential forgery. Error polynomial: 5372438167bf6364e07cfbce00000000
+First KB of plaintext:
+plainplainplainp����4���-c
+mainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainp
+Size of K: 65, rank of K: 65
+...
+...
+ Attempt 15774. Success with existential forgery. Error polynomial: bcbc44bd96fb859a90e9d59b00000000
+First KB of plaintext:
+plainplainplainp���~^Ő�#sϕ�,eainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainpl
+Size of K: 125, rank of K: 125
+ Attempt 15780. Success with existential forgery. Error polynomial: 26873dae13c32c938f90085200000000
+First KB of plaintext:
+plainplainplainp�O�e9ωbd��x��ainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainp
+Size of K: 126, rank of K: 126
+ Attempt 15785. Success with existential forgery. Error polynomial: 135dc814a51c1baef23bd4c600000000
+First KB of plaintext:
+plainplainplainp'!o�?D�n)�M��$ainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplain
+Size of K: 127, rank of K: 127
 
+Recovered authentication key: 2e1e3d193f3ab806eb6b79a6f75e6ef6
+Actual authentication key: 2e1e3d193f3ab806eb6b79a6f75e6ef6
 ```
 
-and main test of this challenge passes!
+Thus after 15785 calls to the decryption oracle, I am able to fully recover the authentication key. Note that as we recover
+more and more bits of the authentication key, the number of oracle quiries required to obtain further bits decreases exponentially.
+
+The main test of this challenge finally passes!
 ```java
 @DisplayName("https://toadstyle.org/cryptopals/64.txt") @Test
-void  challenge64() throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidAlgorithmParameterException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
+void  challenge64() throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
     int   tLen = 32;   /* The minimum allowed authentication tag length for GCM */
     KeyGenerator aesKeyGen = KeyGenerator.getInstance("AES");
     SecretKey key = aesKeyGen.generateKey();
@@ -1118,7 +1202,7 @@ void  challenge64() throws NoSuchAlgorithmException, NoSuchPaddingException, Inv
 }
 ```
 
-The total time of the full attack on my MacBook Pro amounted to a little more than 2 hours. Can it be sped up?
+The total time of the full attack on my MacBook Pro amounted to 3 hours and 5 minutes. Can it be sped up?
 Actually yes. The code that tries different random values for forged coefficients in my
 `GCMExistentialForgeryHelper.recoverAuthenticationKey` method can be parallelized to take advantage of the multiple
 cores, which will let the attack succeed in about a quarter of an hour.
@@ -1138,13 +1222,40 @@ t2 = s2 + c2_1*h + c2_2*h^2 + c2_3*h^3 + ... + c2_10*h^10
 ....
 tm = sm + cm_1*h + cm_2*h^2 + cm_3*h^3 + ... + cm_10*h^10
 ```
-Unfortunately also no. Even though individual records of one session share the same authentication key h, they each 
+Fortunately also no. Even though individual records of one session share the same authentication key h, they each 
 have their unique authentication tag.
 
-Why is this attack possible in the first place? The reason is two-fold: 1) GHASH is calculated in GF(2<sub>128</sub>),
-and multiplication by a constant and squaring are linear operations in that field, 2) GHASH makes use of multiplicatins
-by a constant and squaring. Linear relationships in cryptography are recipes for trouble. That's the reason why
-all block ciphers such as AES or even DES go to such lengths to ensure that their S-boxes exhibit non-linear behavior.
-Were AES's S-boxes linear, AES encryption would boil down to multiplying a large [128x2176] matrix over GF(2) by a column vector [2176x1]
-made up of a block of plaintext and the 16 round keys derived from the encryption key. So that the entire AES would be
-represented in this [128x2176] matrix.
+Why is this attack possible in the first place? The reason is two-fold:
+ 
+ 1) GHASH is calculated in GF(2<sub>128</sub>). Multiplication by a constant and squaring are linear operations in that field.
+ GHASH makes use of multiplications by a constant and squaring. Linear relationships in cryptography are recipes for trouble. That's the reason why
+ all block ciphers such as AES or even DES go to such lengths to ensure that their S-boxes exhibit non-linear behavior.
+ Were AES's S-boxes linear, AES encryption would boil down to multiplying a large [128x2176] matrix over GF(2) by a column vector [2176x1]
+ made up of a block of plaintext and the 16 round keys derived from the encryption key. So that the entire AES would be
+ represented in this [128x2176] matrix. This is what makes it possible to achieve a collision in the 32 bits of GHASH,
+ which this attack exploits.
+
+ 2) GHASH is a one-time MAC, meaning that it can only be used once for the same authentication key. To turn it into
+ a many-time MAC, GCM uses the Carter-Wegman MAC construction:
+ `AuthTag((k, h), m) = E(k, r) ^ GHASH(h, m)` where:
+    * k is the encryption key that is passed to GCM by the user;
+    * h is the authentication key, which GCM derives from the encryption key passed by the user `h = E(k, 0)`
+    * r is randomness, which GCM derives from the encryption key and the nonce provided by the user `E(K, nonce || 1)`
+ The resulting MAC is many-time secure. 
+ 
+    This is all nice and backed by security theorems if the full GHASH tag size of 128 bits is used. If the user chooses
+    a short tag size of, say 32 bits, and we manage to make our forged blocks of ciphertext
+    produce the same 32 bits of GHASH as the legit ciphertext, the xor'ing with with a block of the keys stream __doesn't
+    spread the 32 bits of the GHASH__ that we managed to forge. And when truncating the resulting AuthTag to the 32 bits before
+    appending it to the ciphertext, GCM passes exactly the 32 bits that we succeeded in forging. This could've
+    been fixed by adopting a construction similar to that used by CWC `AuthTag((k, h), m) = E(k, r) ^ E(k, GHASH(h, m))`.
+    As you can see, here we encrypt the resulting GHASH before xoring it with the block of the keystream. This AES encryption
+    shuffles and diffuses the 32 bits we managed to forge, whereby rendering this attack useless. Unfortunately the 
+    designers of GCM didn't make use of this solution.
+ 
+ In conclusion I can only repeat the advice given by Niels in his paper:
+ * If you use GCM, only use it with the maximum tag size of 128 bits. SUN made the right choice in the standard SunJCE
+ cryptography provider in the JRE that flat-out refuses to accept tag lengths fewer than 96 bits.
+ * If for whatever reason you need to use smaller tags, please use another mode of authenticated encryption supported
+ by NIST such as CCM.
+    
