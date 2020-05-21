@@ -34,7 +34,7 @@ public class GCM extends Set3 {
      */
     public GCM(SecretKey key, int tLen) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
         super(Cipher.ENCRYPT_MODE, key);
-        if (tLen < 32  ||  tLen > 128  ||  (tLen & 0x07) != 0)
+        if (tLen < 16  ||  tLen > 128  ||  (tLen & 0x07) != 0)
             throw  new IllegalArgumentException("Tag length not correct: " + tLen);
         tagLen = tLen;
         h = toFE(cipher.doFinal(new byte[16]));
@@ -112,13 +112,20 @@ public class GCM extends Set3 {
                               tagLen >> 3 == bSize  ?  tag : Arrays.copyOf(tag, tagLen >> 3))  ?  res : null;
     }
 
+    public PolynomialGaloisFieldOverGF2.FieldElement  ghashPower2BlocksDifferences(
+            PolynomialGaloisFieldOverGF2.FieldElement[] coeffs,
+            PolynomialGaloisFieldOverGF2.FieldElement[] forgedCoeffs) {
+        return  ghashPower2BlocksDifferences(coeffs, forgedCoeffs, null);
+    }
+
     /**
      * Calculates the summand of the GHASH that corresponds to the power of 2 ciphertext block differences between
      * the original ciphertext blocks and the forged ones.
+     * @param  d0  a difference between the original length block and the forged one, can be {@code null}
      */
     public PolynomialGaloisFieldOverGF2.FieldElement  ghashPower2BlocksDifferences(
             PolynomialGaloisFieldOverGF2.FieldElement[] coeffs,
-            PolynomialGaloisFieldOverGF2.FieldElement[] forgedCoeffs)  {
+            PolynomialGaloisFieldOverGF2.FieldElement[] forgedCoeffs, PolynomialGaloisFieldOverGF2.FieldElement d0)  {
 
         PolynomialGaloisFieldOverGF2.FieldElement   d,  g = GF.getAdditiveIdentity();
 
@@ -127,6 +134,10 @@ public class GCM extends Set3 {
             d = d.multiply(h.scale(ONE.shiftLeft(i+1)));
             g = g.add(d);
         }
+        if (d0 != null) {
+            g = g.add(d0.multiply(h));
+        }
+        //System.out.println("Error polynomial: " + g);
 
         return  g;
     }
@@ -190,7 +201,7 @@ public class GCM extends Set3 {
     /**
      * Converts a block into an element of GF(2^128)
      */
-    private static PolynomialGaloisFieldOverGF2.FieldElement  toFE(byte[] buf) {
+    static PolynomialGaloisFieldOverGF2.FieldElement  toFE(byte[] buf) {
         byte[]   buf2 = reverseBits(buf);
         BigInteger   res = new BigInteger(buf2);
         PolynomialGaloisFieldOverGF2.FieldElement   r = GF.createElement((buf2[0] & 0x80) != 0  ?  res.add(TWO_POW_128) : res);
@@ -209,13 +220,18 @@ public class GCM extends Set3 {
      */
     public static PolynomialGaloisFieldOverGF2.FieldElement[]  extractPowerOf2Blocks(byte[] cipherText, int plnTextLen) {
         assert plnTextLen < cipherText.length;
-        int   n = 31 - Integer.numberOfLeadingZeros(plnTextLen >> 4);
-        //System.out.printf("Length: %d,  # blocks: %d,  # power 2 blocks: %d%n", plnTextLen, plnTextLen >> 4, n);
+        int   paddedPlnTextLen,  n;
+        if ((plnTextLen & BLOCK_SIZE - 1) != 0) {
+            paddedPlnTextLen = (plnTextLen | ~(plnTextLen & BLOCK_SIZE - 1) & BLOCK_SIZE - 1) + 1;
+        }  else  paddedPlnTextLen = plnTextLen;
+        n = 31 - Integer.numberOfLeadingZeros(paddedPlnTextLen >> 4);
+        //System.out.printf("Length: %d,  # blocks: %d,  # power 2 blocks: %d%n", plnTextLen, paddedPlnTextLen >> 4, n);
         PolynomialGaloisFieldOverGF2.FieldElement[]   ret = IntStream.range(1, n+1)
                 .mapToObj(i -> {
-                    int  low = plnTextLen - ((1 << i) - 1) * BLOCK_SIZE;
+                    int  low = paddedPlnTextLen - ((1 << i) - 1) * BLOCK_SIZE,  high = low + BLOCK_SIZE > plnTextLen  ?  plnTextLen : low + BLOCK_SIZE;
                     //System.out.printf("[%d, %d]", low, low+BLOCK_SIZE);
-                    return  toFE( Arrays.copyOfRange(cipherText, low, low + BLOCK_SIZE));
+                    return  toFE(low + BLOCK_SIZE > plnTextLen  ?  Arrays.copyOf(Arrays.copyOfRange(cipherText, low, plnTextLen), BLOCK_SIZE)
+                                                                :  Arrays.copyOfRange(cipherText, low, low + BLOCK_SIZE));
                 }).toArray(PolynomialGaloisFieldOverGF2.FieldElement[]::new);
         //System.out.println();
         return  ret;
@@ -223,14 +239,36 @@ public class GCM extends Set3 {
 
     public static byte[]  replacePowerOf2Blocks(byte[] cipherText, int plnTextLen,
                                                 PolynomialGaloisFieldOverGF2.FieldElement[] coeffs) {
+        return  replacePowerOf2Blocks(cipherText, plnTextLen, coeffs, false);
+    }
+
+    /**
+     * @param expand  in case {@code plnTextLen} is not a multiple of the blocksize, indicates whether the last block
+     *                of ciphertext must be expanded into a full blocksize based on the contents of {@code coeffs[0]}
+     * @return  modified ciphertext whose 2<sup>i-th</sup> blocks (counting from the end of the ciphertext before the tag)
+     *          have been replaced by the contents of {@code coeffs}. The modified ciphertext will have the same length
+     *          as {@code cipherText} unless {@code expand  &&  plnTextLen % 16 != 0}, in which case the modified
+     *          ciphertext will be up to 15 bytes longer
+     */
+    public static byte[]  replacePowerOf2Blocks(byte[] cipherText, int plnTextLen,
+                                                PolynomialGaloisFieldOverGF2.FieldElement[] coeffs, boolean expand) {
         assert plnTextLen < cipherText.length;
-        int   n = 31 - Integer.numberOfLeadingZeros(plnTextLen >> 4),  low;
-        byte[]  ret = cipherText.clone();
-        //System.out.printf("Length: %d,  # blocks: %d,  # power 2 blocks: %d%n", plnTextLen, plnTextLen >> 4, n);
+        int   paddedPlnTextLen,  n,  low;
+        if ((plnTextLen & BLOCK_SIZE - 1) != 0) {
+            paddedPlnTextLen = (plnTextLen | ~(plnTextLen & BLOCK_SIZE - 1) & BLOCK_SIZE - 1) + 1;
+        }  else  paddedPlnTextLen = plnTextLen;
+        n = 31 - Integer.numberOfLeadingZeros(paddedPlnTextLen >> 4);
+        byte[]  ret;
+        if (expand  &&  paddedPlnTextLen > plnTextLen) {
+            ret = new byte[paddedPlnTextLen + cipherText.length - plnTextLen];
+            System.arraycopy(cipherText, 0, ret, 0, plnTextLen);
+            System.arraycopy(cipherText, plnTextLen, ret, paddedPlnTextLen, cipherText.length - plnTextLen);
+        }  else  ret = cipherText.clone();
+        //System.out.printf("Length: %d,  # blocks: %d,  # power 2 blocks: %d%n", plnTextLen, paddedPlnTextLen >> 4, n);
         for (int i=1; i <= n; i++) {
-            low = plnTextLen - ((1 << i) - 1) * BLOCK_SIZE;
+            low = paddedPlnTextLen - ((1 << i) - 1) * BLOCK_SIZE;
             //System.out.printf("[%d, %d]", low, low+BLOCK_SIZE);
-            System.arraycopy(coeffs[i-1].asArray(), 0, ret, low, BLOCK_SIZE);
+            System.arraycopy(coeffs[i-1].asArray(), 0, ret, low, low + BLOCK_SIZE > plnTextLen  &&  !expand  ?  plnTextLen - low : BLOCK_SIZE);
         }
         //System.out.println();
         return  ret;

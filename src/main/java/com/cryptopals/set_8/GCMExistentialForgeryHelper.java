@@ -1,6 +1,10 @@
 package com.cryptopals.set_8;
 
+import com.cryptopals.Set8;
+
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -9,13 +13,19 @@ import java.util.function.UnaryOperator;
 
 import static com.cryptopals.set_8.BooleanMatrixOperations.*;
 
-
+/**
+ * Implements the logic for an attack on applications of GCM with a small authentication tag size as outlined
+ * in the <a href="https://csrc.nist.gov/csrc/media/projects/block-cipher-techniques/documents/bcm/comments/cwc-gcm/ferguson2.pdf">
+ * Authentication weaknesses in GCM</a> paper published by Niels Ferguson in 2005. The implementation efficiently
+ * handles the case when the ciphertext is not a multiple of blocksize, which requires manipulating the block
+ * that encodes the length of associated data and plaintext.
+ */
 public final class GCMExistentialForgeryHelper {
+    private static final int   BLOCK_SIZE = 0x10,  BLOCK_MASK = 0x0f;
     private final PolynomialGaloisFieldOverGF2   group;
     private final PolynomialGaloisFieldOverGF2.FieldElement[]   coeffs;
     private final UnaryOperator<byte[]>   gcmFixedKeyAndNonceDecipherOracle;
-    private final BiFunction<PolynomialGaloisFieldOverGF2.FieldElement[], PolynomialGaloisFieldOverGF2.FieldElement[],
-                             PolynomialGaloisFieldOverGF2.FieldElement>   gcmFixedKeyAndNonceErrorPolynomialOracle;
+    private final Set8.GcmFixedKeyAndNonceErrorPolynomialOracle   gcmFixedKeyAndNonceErrorPolynomialOracle;
     private final int   plainTextLen,  tLen;
     private PolynomialGaloisFieldOverGF2.FieldElement[]   forgedCoeffs;
     private final byte[]   cipherTxt;
@@ -24,6 +34,8 @@ public final class GCMExistentialForgeryHelper {
     private PolynomialGaloisFieldOverGF2.FieldElement   h;
     private boolean[][]   kernel;
     private boolean[][]   X;    /* Non-null if at least 16 bits of authentication key have been recovered */
+    private final PolynomialGaloisFieldOverGF2.FieldElement   d0;   /* T * d = d0, not-null if plaintext is not a multiple of the blocksize */
+    private final boolean[][]   Ad0; /* Non-null if plaintext is not a multiple of the blocksize */
     private final boolean[][][]   ms;
 
     /**
@@ -38,8 +50,7 @@ public final class GCMExistentialForgeryHelper {
      *                                is faster than deciphering the entire ciphertext
      */
     public GCMExistentialForgeryHelper(byte[] cipherText, int plnTxtLen, int tagLen, UnaryOperator<byte[]> oracle,
-                                       BiFunction<PolynomialGaloisFieldOverGF2.FieldElement[], PolynomialGaloisFieldOverGF2.FieldElement[],
-                                               PolynomialGaloisFieldOverGF2.FieldElement> errorPolynomialOracle) {
+                                       Set8.GcmFixedKeyAndNonceErrorPolynomialOracle errorPolynomialOracle) {
         cipherTxt = cipherText;
         coeffs = GCM.extractPowerOf2Blocks(cipherTxt, plnTxtLen);
         plainTextLen = plnTxtLen;
@@ -50,6 +61,20 @@ public final class GCMExistentialForgeryHelper {
 
         assert coeffs.length > 0;
         group = coeffs[0].group();
+
+        if ((plnTxtLen & BLOCK_MASK) != 0) {
+            // We are expanding the size of the ciphertext without the authentication tag to be multiple of blocksize.
+            // This will create a non-zero difference between C0 and C'0 (the blocks encoding the length of associated data and plaintext.
+            int   paddedPlnTextLen = (plnTxtLen | ~(plnTxtLen & BLOCK_MASK) & BLOCK_MASK) + 1;
+            ByteBuffer   lengthBuf = ByteBuffer.allocate(BLOCK_SIZE).order(ByteOrder.BIG_ENDIAN)
+                    .putLong(0).putLong(plnTxtLen * Byte.SIZE);
+            PolynomialGaloisFieldOverGF2.FieldElement   c0 = GCM.toFE(lengthBuf.array());
+            lengthBuf.position(Long.BYTES);
+            lengthBuf.putLong(paddedPlnTextLen * Byte.SIZE);
+            Ad0 = (d0 = c0.subtract(GCM.toFE(lengthBuf.array()))).asMatrix();
+        }  else  {
+            Ad0 = null;     d0 = null;
+        }
 
         ms = new boolean[coeffs.length][][];
         ms[0] = group.getSquaringMatrix();
@@ -65,11 +90,67 @@ public final class GCMExistentialForgeryHelper {
      */
     public void  replaceBasis() {
         boolean[][]   tTransposed;
+        // Determining dimensions of the dependency matrix
+        int   ncolsX = X == null  ?  128
+                                  :  X[0].length,
+              // If the last block of plaintext is not of a full blocksize, Ad0 != 0. In this case I need to zero out
+              // {@code coeffs.length} rows of Ad.
+              //
+              // If we have n*128 bits to play with, we can zero out (n*128) / (ncols(X)) rows of Ad.
+              // Just remember to leave at least one nonzero row in each attempt; otherwise you won'd0 learn anything new.
+              m = X == null  ?  coeffs.length - (Ad0 == null  ?  1 : 0) << 7
+                             :  Ad0 == null  ?  Math.min((coeffs.length << 7) / ncolsX, (tLen - 1)) * ncolsX : coeffs.length << 7,
+              mReduced = X == null  ?  coeffs.length - 1 << 7 : Math.min((coeffs.length << 7) / ncolsX, (tLen - 4)) * ncolsX;
 
         forgedCoeffs = getRandomPowerOf2Blocks();
-        tTransposed = produceDependencyMatrixTransposed();
+        tTransposed = produceDependencyMatrixTransposed(ncolsX, m);
 
-        kernel = kernelOfTransposed(tTransposed);
+        if (Ad0 != null) { /* We need to solve for T * d = t */
+            int   rank;
+            boolean[]   t = new boolean[m];
+            boolean   d[];
+
+            boolean[][]   T = transpose(tTransposed),  AdX = calculateAd(forgedCoeffs),  Ad0X = Ad0;
+            if (X != null) {
+                AdX = multiply(AdX, X);
+                Ad0X = multiply(Ad0, X);
+            }
+            for (int i = 0; i < m; i++) {
+                // t is the nonzero difference in the first n rows of AdX induced by our tweak to the length block.
+                t[i] = AdX[i / ncolsX][i % ncolsX] ^ Ad0X[i / ncolsX][i % ncolsX];
+            }
+
+            boolean[][]   tWithCol = appendColumn(T, t);
+            rank = gaussianElimination(tWithCol, tTransposed.length, null, true);
+            //System.out.printf("Maximum possible rank: %d%nActual rank: %d%n", T.length, rank);
+
+            d = extractColumn(tWithCol, tTransposed.length);
+            if (rank < T.length) {
+                // It is still possible for T, t to be consistent if the dependent row of T have the same values in t
+                int h = 0, k = 0;
+                while (h < tWithCol.length && k < tWithCol.length) {
+                    if (tWithCol[h][k]) {
+                        d[k] = tWithCol[h][tTransposed.length];
+                        h++;     k++;
+                    } else {
+                        d[k] = false;
+                        k++;
+                    }
+                }
+            }
+            if (mReduced < m) {
+                tTransposed = copy(tTransposed, mReduced);
+            }
+            boolean[][]   preKernel = kernelOfTransposed(tTransposed);
+            kernel = new boolean[preKernel.length + 1][];
+            kernel[0] = d;
+
+            for (int i=0; i < preKernel.length; i++) {
+                kernel[i + 1] = add(preKernel[i], d);
+            }
+
+        }  else  kernel = kernelOfTransposed(tTransposed);
+        // System.out.printf("Kernel size: %d%n", kernel.length);
 
         // If the kernel was calculated correctly, for each element d of the kernel the product d * tTransposed = 0.
         // boolean[] expectedProduct = new boolean[tTransposed[0].length], product;
@@ -117,14 +198,14 @@ public final class GCMExistentialForgeryHelper {
         System.out.println("Search for the authentication key started");
         K_COMPLETE:
         while (true) {
-            for (int i = 0; i < kernel.length; i++) {
+            for (int i=0; i < kernel.length; i++) {
                 PolynomialGaloisFieldOverGF2.FieldElement[] coeffsPrime = forgePowerOf2Blocks(i);
 
                 // The majority of d's that we extract from the kernel will zero out the tLen/2 low-order
                 // bits of GHASH, however we need to rely on trial and error to get all tLen low-order bits
                 // to be zero.
-                tag = gcmFixedKeyAndNonceErrorPolynomialOracle.apply(coeffs, coeffsPrime).asVector();
-                      //gcm.ghashPower2BlocksDifferences(coeffs, coeffsPrime).asVector();
+                tag = gcmFixedKeyAndNonceErrorPolynomialOracle.ghashPower2BlocksDifferences(coeffs, coeffsPrime, d0).asVector();
+                      //gcm.ghashPower2BlocksDifferences(coeffs, coeffsPrime, d0).asVector();
 
                 // Check if the first tLen/2 bits of the tag are indeed zero. For some reason this test passes for
                 // about half the elements of the kernel.
@@ -135,10 +216,11 @@ public final class GCMExistentialForgeryHelper {
 
                 if (!Arrays.equals(Arrays.copyOf(tag, requiredBits.length), requiredBits)) continue;
 
-                forgedCtxt = GCM.replacePowerOf2Blocks(cipherTxt, plainTextLen, coeffsPrime);
+                forgedCtxt = GCM.replacePowerOf2Blocks(cipherTxt, plainTextLen, coeffsPrime, true);
                 plainTxt = gcmFixedKeyAndNonceDecipherOracle.apply(forgedCtxt);
                 if (plainTxt != null) {
-                    boolean[][] ad = calculateAd(coeffsPrime),  adAdj;
+                    boolean[][] ad = calculateAd(coeffsPrime),  adAdj,  Xcand;
+                    if (Ad0 != null)  ad = add(ad, Ad0);
                     if (X != null) { /* We already know at least tLen/2 bits of information about h */
                         adAdj = multiply(ad, X);
                         zeroAdRow = new boolean[X[0].length];
@@ -149,7 +231,7 @@ public final class GCMExistentialForgeryHelper {
                     // Assuming the some of the next tLen/2 rows of Ad·X are not zero, we have gained information about
                     // additional bits of the authentication key (each non-zero row reveals a new bit).
                     for (int j = expectedBits.length; j < tLen; j++) {
-                        // Rows that are zero don't reveal anything about h, so ignoring them
+                        // Rows that are zero don'd0 reveal anything about h, so ignoring them
                         if (!Arrays.equals(zeroAdRow, adAdj[j]))  K.add(ad[j]);
                     }
 
@@ -158,15 +240,26 @@ public final class GCMExistentialForgeryHelper {
 
                     // It turns out not to be needed, the above check for non-zero rows in Ad·X takes care of no
                     // linearly dependent vectors ending up in K.
-                    // removeLinearlyDependentVectors(K);
+                    removeLinearlyDependentVectors(K);
 
                     // K [16x128], X [128x112]
-                    X = transpose(kernel(K.toArray(new boolean[K.size()][])));
-                    System.out.printf("Size of K: %d, rank of K: %d%n", K.size(), 128 - X[0].length);
-                    if (X[0].length == 1)  {
+                    Xcand = transpose(kernel((K.size() > 127  ?  K.subList(0, 127) : K).toArray(new boolean[Math.min(K.size(), 127)][])));
+                    if (Xcand[0].length == 1)  {
                         // K has 127 linearly independent equations
                         break K_COMPLETE;
                     }
+
+                    // Special case when plaintext is not a multiple of blocksize. We need to have enough elements in X to solve Ad*X*h = t.
+                    // This requires that the second dimension of X be as large as coeffs.length. However that will likely lead to us
+                    // zeroing out many more bits of the error polynomial than tLen. Since the Oracle only tells us whether
+                    // we correctly zeroed out he tLen ones, we cannot assuredly rely on the other bit being zeroed out, even
+                    // though it is likely the case. To combat that I refrain from shrinking the second dimension of X that is
+                    // used in constructing the dependency matrix further than thrice the number of coefficients we can play with.
+                    if (Ad0 == null  ||  Xcand[0].length >= coeffs.length * 3) {
+                        X = Xcand;
+                    }
+                    System.out.printf("Size of K: %d, rank of K: %d%n", K.size(), 128 - Xcand[0].length);
+
                     break;
                 }
             }
@@ -232,15 +325,11 @@ public final class GCMExistentialForgeryHelper {
     /**
      * Calculates a dependency matrix to zero out the first {@code tLen/2} rows of A<sub>d</sub> or
      * the first min(tLen -1, 128·{@code coeffs.length} / ncols(X)) rows of  A<sub>d</sub>·X.
+     * @param ncolsX  number of columns in Ad·X or in Ad if {@code X == null}
+     * @param m  number of rows in the not-transposed dependency matrix
      */
-    private boolean[][]  produceDependencyMatrixTransposed() {
-        // Determine the dimension m [mxn] of the dependency matrix (not transposed).
-        // The general picture is that if we have n*128 bits to play with, we can
-        // zero out (n*128) / (ncols(X)) rows. Just remember to leave at least
-        // one nonzero row in each attempt; otherwise you won't learn anything
-        // new.
-        int   ncolsX = X == null  ?  128 : X[0].length,
-              m = X == null  ?  coeffs.length - 1 << 7 : Math.min((coeffs.length << 7) / ncolsX, tLen - 1) * ncolsX;
+    private boolean[][]  produceDependencyMatrixTransposed(int ncolsX, int m) {
+        int   numAdXrowsToZeroOut = Math.min(128, m / ncolsX);
 
         // 'res' contains a transposed dependency matrix
         boolean[][]  res = new boolean[coeffs.length << 7][m],  ad,  adOrig;
@@ -259,7 +348,6 @@ public final class GCMExistentialForgeryHelper {
                     // Ad [128x128] x X [128x112]
                     ad = multiply(ad, X);
                 }
-                int   numAdXrowsToZeroOut = m / ncolsX;
 
                 for (int i=0; i < numAdXrowsToZeroOut; i++) {
                     System.arraycopy(ad[i], 0, res[column*128 + b], i * ncolsX, ncolsX);

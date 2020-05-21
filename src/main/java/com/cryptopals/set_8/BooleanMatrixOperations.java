@@ -8,10 +8,15 @@ import java.util.List;
  */
 public class BooleanMatrixOperations {
     public static boolean[][]  copy(boolean[][] mat) {
+        return  copy(mat, mat[0].length);
+    }
+
+    public static boolean[][]  copy(boolean[][] mat, int numColsToCopy) {
         int   m = mat.length,  n = mat[0].length;
+        assert  numColsToCopy <= n;
         boolean[][]   res = new boolean[m][n];
         for (int i=0; i < m; i++) {
-            System.arraycopy(mat[i], 0, res[i], 0, n);
+            System.arraycopy(mat[i], 0, res[i], 0, numColsToCopy);
         }
         return  res;
     }
@@ -38,7 +43,11 @@ public class BooleanMatrixOperations {
     }
 
     public static int  gaussianElimination(boolean[][] mat, boolean[][] identMat) {
-        return  gaussianElimination(mat, mat[0].length, identMat);
+        return  gaussianElimination(mat, mat[0].length, identMat, false);
+    }
+
+    public static int  gaussianElimination(boolean[][] mat, int n, boolean[][] identMat) {
+        return  gaussianElimination(mat, n, identMat, false);
     }
 
     /**
@@ -51,13 +60,15 @@ public class BooleanMatrixOperations {
      * @param n  the number of columns to use when applying Gaussian elimination
      * @param identMat  an optional identity matrix, can be {@code null}. If provided, it will be modified in place
      *                  as though its rows were appended to the right of {@code mat}
+     * @param toRLREF  if {@code true} perform Gaussian elimination to reduced low row echelon form, otherwise
+     *                 to low echelon form
      * @return  the rank of {@code mat}
      */
-    public static int  gaussianElimination(boolean[][] mat, int n, boolean[][] identMat) {
+    public static int  gaussianElimination(boolean[][] mat, int n, boolean[][] identMat, boolean toRLREF) {
         if (n > mat[0].length)  throw  new IllegalArgumentException("n is too high: " + n);
         if (identMat != null  &&  mat.length != identMat.length)
             throw  new IllegalArgumentException(
-                    String.format("Dimentions of mat and identity matrix don't match: %d vs %d", mat.length, identMat.length));
+                    String.format("Dimensions of mat and identity matrix don't match: %d vs %d", mat.length, identMat.length));
         int   m = mat.length,  nFull = mat[0].length,  h = 0,  k = 0,  iMax;
         boolean[]   tmp;
         while (h < m  &&  k < n) {
@@ -72,10 +83,10 @@ public class BooleanMatrixOperations {
                 if (identMat != null) {
                     tmp = identMat[h];     identMat[h] = identMat[iMax];     identMat[iMax] = tmp;
                 }
-                /* Do for all rows below pivot: */
-                for (int i=h+1; i < m; i++) {
+                /* Do for all rows below pivot (if !toRLREF) or all rows except for the pivot row (if toRLREF) */
+                for (int i=toRLREF ? 0 : h+1; i < m; i++) {
                     /* Do for all remaining elements in current row: */
-                    if (mat[i][k]) {
+                    if (i != h  &&  mat[i][k]) {
                         for (int j=k; j < nFull; j++) {
                             mat[i][j] ^= mat[h][j];
                         }
@@ -133,7 +144,7 @@ public class BooleanMatrixOperations {
      */
     public static boolean[][]  kernelOfTransposed(boolean[][] mTransposed) {
         int   n = mTransposed[0].length;
-        if (mTransposed.length <= n)  throw  new IllegalArgumentException("Not enough free variables");
+//        if (mTransposed.length <= n)  throw  new IllegalArgumentException("Not enough free variables");
 
         // Calculate a basis of N(T)
         // mTransposed [2176x2048],  tmp [2176x(2048+2176)] = [2176x4224]
@@ -175,11 +186,34 @@ public class BooleanMatrixOperations {
         return res;
     }
 
+    public static boolean[][]  appendColumn(boolean[][] mat, boolean[] column) {
+        assert column.length == mat.length;
+        int   m = mat.length,  n = mat[0].length;
+        boolean[][]   res = new boolean[mat.length][];
+
+        for (int i=0; i < m; i++) {
+            res[i] = new boolean[n+1];
+            System.arraycopy(mat[i], 0, res[i], 0, n);
+            res[i][n] = column[i];
+        }
+        return res;
+    }
+
     public static boolean  innerProduct(boolean[] m, boolean[] n) {
         assert  m.length == n.length;
         boolean   r = false;
         for (int i=0; i < m.length; i++) {
             r ^= m[i] & n[i];
+
+        }
+        return  r;
+    }
+
+    public static boolean[]  add(boolean[] m, boolean[] n) {
+        assert  m.length == n.length;
+        boolean[]   r = new boolean[m.length];
+        for (int i=0; i < m.length; i++) {
+            r[i] = m[i] ^ n[i];
 
         }
         return  r;

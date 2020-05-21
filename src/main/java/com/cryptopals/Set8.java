@@ -75,6 +75,18 @@ public class Set8 {
     }
 
     /**
+     * An oracle for Challenge 64 that returns a GHASH error polynomial calculated over differences between the coefficients
+     * of h<sup>2^i</sup> terms in legit and forged ciphertexts.
+     * <br>
+     * t = s + c<sub>1</sub>·h + c<sub>2</sub>·h<sup>2</sup> + c<sub>3</sub>·h<sup>3</sup> + ... + c<sub>n</sub>·h<sup>n</sup>
+     */
+    public interface  GcmFixedKeyAndNonceErrorPolynomialOracle {
+        PolynomialGaloisFieldOverGF2.FieldElement  ghashPower2BlocksDifferences(
+                PolynomialGaloisFieldOverGF2.FieldElement[] coeffs,
+                PolynomialGaloisFieldOverGF2.FieldElement[] forgedCoeffs, PolynomialGaloisFieldOverGF2.FieldElement d0);
+    }
+
+    /**
      * Finds &radic;n mod p using <a href="https://en.wikipedia.org/wiki/Tonelli–Shanks_algorithm">the Tonelli–Shanks algorithm</a>
      * @return  &radic;n mod p if n is a quadratic residue, {@link #NON_RESIDUE} otherwise
      */
@@ -659,11 +671,11 @@ public class Set8 {
 
     /**
      * Generates a piece of plain text composed of repeating the pattern captured in {@code str} so that the resultant
-     * piece of text is 2<sup>exp</sup> characters long.
+     * piece of text is 2<sup>exp</sup> + lengthAdj characters long.
      */
-    public static byte[]  getPlainText(String str, int exp) {
+    public static byte[]  getPlainText(String str, int exp, int lengthAdj) {
         StringBuilder   res = new StringBuilder();
-        int  i = 0,  n = 1 << exp;
+        int  i = 0,  n = (1 << exp) + lengthAdj;
         while (i < n) {
             int   len = Math.min(n - i, str.length());
             res.append(str, 0, len);

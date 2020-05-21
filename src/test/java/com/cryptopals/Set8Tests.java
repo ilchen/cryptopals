@@ -511,7 +511,7 @@ class Set8Tests {
     @DisplayName("https://toadstyle.org/cryptopals/64.txt")
     @Test
     void  challenge64() throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
-        int   tLen = 32;   /* The minimum allowed authentication tag length for GCM */
+        int   tLen = 16;   /* The minimum allowed authentication tag length for GCM */
         KeyGenerator aesKeyGen = KeyGenerator.getInstance("AES");
         SecretKey key = aesKeyGen.generateKey();
 
@@ -519,7 +519,7 @@ class Set8Tests {
         // How long should be the plain text to mount an existential forgery on GHASH? Ideally it should be
         // 2^(tLen+1) blocks long. This will however be too much: 64 GB. So we will need to go for
         // 2^17 blocks, which is 2 MB, and then expect to zero out another 16 bits by trial and error.
-        byte[]   nonce = new byte[12],  plainText = Set8.getPlainText("plain", (tLen >> 1) + 5),  pTxt2,
+        byte[]   nonce = new byte[12],  plainText = Set8.getPlainText("plain", (tLen >> 1) + 5, 0),  pTxt2,
                  cTxt1,  cTxt2,  assocData = {};
         new SecureRandom().nextBytes(nonce);
 
@@ -535,8 +535,7 @@ class Set8Tests {
         };
         // Oracle that will be used to calculate the error polynomial, not needed for the attack per see
         // but makes it run faster as calculating the error polynomial is faster than deciphering the entire ciphertext
-        BiFunction<PolynomialGaloisFieldOverGF2.FieldElement[], PolynomialGaloisFieldOverGF2.FieldElement[], PolynomialGaloisFieldOverGF2.FieldElement>
-                gcmFixedKeyAndNonceErrorPolynomialOracle = gcm::ghashPower2BlocksDifferences;
+        Set8.GcmFixedKeyAndNonceErrorPolynomialOracle   gcmFixedKeyAndNonceErrorPolynomialOracle = gcm::ghashPower2BlocksDifferences;
         cTxt1 = gcm.cipher(plainText, assocData, nonce);
         assertArrayEquals(plainText, gcm.decipher(cTxt1, assocData, nonce));
 
@@ -565,6 +564,74 @@ class Set8Tests {
         PolynomialGaloisFieldOverGF2.FieldElement   hash1 = gcm.ghashPower2BlocksDifferences(h.getPowerOf2Blocks(), coeffsPrime),
                     hash2 = coeffs[0].group().createElement(multiply(ad, gcm.getAuthenticationKey().asVector()));
         assertEquals(hash1, hash2);
+
+        // Attempt at an existential forgery and authentication key recovery
+        h.recoverAuthenticationKey();
+
+        pTxt2 = gcm.decipher(h.getForgedCiphertext(), assocData, nonce);
+
+        // Confirm that the existential forgery succeeds and that we don't get the bottom (represented as null)
+        assertNotNull(pTxt2);
+
+        // Confirm that the forged ciphertext decrypts into something else than the original plaintext
+        assertFalse(Arrays.equals(plainText, pTxt2));
+
+        System.out.printf("Recovered authentication key: %s%nActual authentication key: %s%n",
+                h.getRecoveredAuthenticationKey(), gcm.getAuthenticationKey());
+
+        // Confirm that the recovered authentication key matches the actual one
+        assertEquals(gcm.getAuthenticationKey(), h.getRecoveredAuthenticationKey(),
+                "Authentication key not recovered correctly");
+    }
+
+    @DisplayName("https://toadstyle.org/cryptopals/65.txt")
+    @Test
+    void  challenge65() throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
+        int   tLen = 16;   /* The minimum allowed authentication tag length for GCM */
+        KeyGenerator aesKeyGen = KeyGenerator.getInstance("AES");
+        SecretKey key = aesKeyGen.generateKey();
+
+        // Going for 2^21 bytes of plain text => 2^17 blocks
+        // How long should be the plain text to mount an existential forgery on GHASH? Ideally it should be
+        // 2^(tLen) blocks long if the plaintext is not a multiple of the blocksize. This will however be too much: 32 GB.
+        // So we will need to go for 2^16 blocks, which is 1 MB, and then expect to zero out another 16 bits by trial and error.
+        byte[]   nonce = new byte[12],  plainText = Set8.getPlainText("plain", (tLen >> 1) + 5, -3),  pTxt2,
+                cTxt1,  cTxt2,  assocData = {};
+        new SecureRandom().nextBytes(nonce);
+
+        GCM   gcm = new GCM(key, tLen);
+
+        // Oracle that will be used to verify if forged messages authenticate
+        UnaryOperator<byte[]>   gcmFixedKeyAndNonceDecipherOracle = x -> {
+            try {
+                return gcm.decipher(x, assocData, nonce);
+            } catch (BadPaddingException | IllegalBlockSizeException e) {
+                return  null;
+            }
+        };
+        // Oracle that will be used to calculate the error polynomial, not needed for the attack per see
+        // but makes it run faster as calculating the error polynomial is faster than deciphering the entire ciphertext
+        Set8.GcmFixedKeyAndNonceErrorPolynomialOracle   gcmFixedKeyAndNonceErrorPolynomialOracle = gcm::ghashPower2BlocksDifferences;
+        cTxt1 = gcm.cipher(plainText, assocData, nonce);
+        assertArrayEquals(plainText, gcm.decipher(cTxt1, assocData, nonce));
+
+        // Confirm that the extraction and replacement of the coefficients of x^i works for i being a power of 2
+        // and the length of plaintext is not a multiple of blocksize.
+        PolynomialGaloisFieldOverGF2.FieldElement[]  coeffs = GCM.extractPowerOf2Blocks(cTxt1, plainText.length),
+                coeffsPrime = coeffs.clone();
+        cTxt2 = GCM.replacePowerOf2Blocks(cTxt1, plainText.length, coeffs);
+        assertArrayEquals(cTxt1, cTxt2);
+
+        coeffsPrime[0] = coeffsPrime[0].getRandomElement();
+        coeffsPrime[coeffsPrime.length - 1] = coeffsPrime[0].getRandomElement();
+        cTxt2 = GCM.replacePowerOf2Blocks(cTxt1, plainText.length, coeffsPrime);
+        assertFalse(Arrays.equals(cTxt1, cTxt2));
+
+        cTxt2 = GCM.replacePowerOf2Blocks(cTxt2, plainText.length, coeffs);
+        assertArrayEquals(cTxt1, cTxt2);
+
+        GCMExistentialForgeryHelper   h = new GCMExistentialForgeryHelper(cTxt1, plainText.length, tLen,
+                gcmFixedKeyAndNonceDecipherOracle, gcmFixedKeyAndNonceErrorPolynomialOracle);
 
         // Attempt at an existential forgery and authentication key recovery
         h.recoverAuthenticationKey();
