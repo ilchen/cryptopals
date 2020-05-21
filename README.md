@@ -1399,12 +1399,13 @@ This actually turned out to be the most strenuous part of the attack. As @spdevl
 A bit of deliberation for sure :-) The two tricky bits for me were:
 
 * To ensure I find all 128 bits of `t` in the
+
 ```
       Ad    ·     X       ·    h'    =    t
   [128x128]   [128x112]     [112x1]    [128x1]
 ```
-   equation. This requires that the dimensions of the dependency matrix `T` I use to solve `T · d = t` are always
-   [128·17x128·17] while in the previous challenge it was not necessary
+equation. This requires that the dimensions of the dependency matrix `T` I use to solve `T · d = t` are always
+[128·17x128·17] while in the previous challenge it was not necessary
  
 * Not zeroing out too many bits of the error polynomial. As the number of column vectors in X shrinks, we may end up
 zeroing out many more than 16 bits of the error polynomial. We thus need to have enough elements in X to solve Ad·X·h = t.
