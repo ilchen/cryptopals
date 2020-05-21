@@ -1420,6 +1420,7 @@ methods.
 
 And here comes the final go at a forgery and an eventual recovery of the authentication key (with an authentication tag of 16 bits
 to save computing time)
+
 ```
 Search for the authentication key started
  Attempt   12. Success with existential forgery. Error polynomial: bb0ad5a9c719ef02c59ea28ae8ec0000
