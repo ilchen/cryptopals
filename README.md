@@ -756,17 +756,17 @@ To tackle this challenge you will need to implement the following parts.
 #### Linear algebra
 ##### Implementing a vector representation for elements of GF(2<sup>128</sup>)
 I added two new methods to my class for representing GF(2<sup>128</sup>) elements:
-[PolynomialGaloisFieldOverGF2::FieldElement::asVector](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/PolynomialGaloisFieldOverGF2.java#L150-L158)
-and [PolynomialGaloisFieldOverGF2::createElement](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/PolynomialGaloisFieldOverGF2.java#L47-L58)
+[PolynomialGaloisFieldOverGF2::FieldElement::asVector](https://github.com/ilchen/cryptopals/blob/e984f1f793f158570087d1c4b0e1fa70b7947253/src/main/java/com/cryptopals/set_8/PolynomialGaloisFieldOverGF2.java#L150-L158)
+and [PolynomialGaloisFieldOverGF2::createElement](https://github.com/ilchen/cryptopals/blob/e984f1f793f158570087d1c4b0e1fa70b7947253/src/main/java/com/cryptopals/set_8/PolynomialGaloisFieldOverGF2.java#L47-L58)
 
 ##### Implementing a matrix representation for multiplication by a constant and for squaring
 Analogously to vector representation, I wrote these as methods of my class for GF(2<sup>128</sup>):
-[PolynomialGaloisFieldOverGF2::FieldElement::asMatrix](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/PolynomialGaloisFieldOverGF2.java#L160-L173)
-and [PolynomialGaloisFieldOverGF2::getSquaringMatrix](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/PolynomialGaloisFieldOverGF2.java#L64-L80)
+[PolynomialGaloisFieldOverGF2::FieldElement::asMatrix](https://github.com/ilchen/cryptopals/blob/e984f1f793f158570087d1c4b0e1fa70b7947253/src/main/java/com/cryptopals/set_8/PolynomialGaloisFieldOverGF2.java#L160-L173)
+and [PolynomialGaloisFieldOverGF2::getSquaringMatrix](https://github.com/ilchen/cryptopals/blob/e984f1f793f158570087d1c4b0e1fa70b7947253/src/main/java/com/cryptopals/set_8/PolynomialGaloisFieldOverGF2.java#L64-L80)
 
 ##### Implementing basic operations for matrices in GF(2)
 I felt it would be an overkill to create a whole new class to represent matrices over GF(2), instead I went for
-a simple representation as `boolean[][]` and the [BooleanMatrixOperations class](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/BooleanMatrixOperations.java)
+a simple representation as `boolean[][]` and the [BooleanMatrixOperations class](https://github.com/ilchen/cryptopals/blob/e984f1f793f158570087d1c4b0e1fa70b7947253/src/main/java/com/cryptopals/set_8/BooleanMatrixOperations.java)
 with static methods that accept matrices and vectors in GF(2).
 
 Time for some tests to validate that everything works correctly:
@@ -812,7 +812,7 @@ void  linearAlgebraForChallenge64()  {
 
 Gaussian elimination is a little trickier. I started with [an algorithm on Wikipedia](https://en.wikipedia.org/wiki/Gaussian_elimination#Pseudocode)
 and adapted it for GF(2). A similar algorithm, albeit with a small omission, can be found in [this paper](http://www.hyperelliptic.org/tanja/SHARCS/talks06/smith_revised.pdf").
-The result is [this static method](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/BooleanMatrixOperations.java#L44-L95).
+The result is [this static method](https://github.com/ilchen/cryptopals/blob/e984f1f793f158570087d1c4b0e1fa70b7947253/src/main/java/com/cryptopals/set_8/BooleanMatrixOperations.java#L44-L95).
 
 The hardest part is finding the kernel of a matrix. I made use of [this algorithm from Wikipedia](https://en.wikipedia.org/wiki/Kernel_(linear_algebra)#Computation_by_Gaussian_elimination),
 which is essentially the same as given by @spdevlin in the problem description:
@@ -829,12 +829,12 @@ My implementation is captured in [this method](https://github.com/ilchen/cryptop
 #### Extraction and replacement of the 2<sup>i-th</sup> blocks of ciphertext
 This is the easiest part. The only thing to pay attention to is that the blocks to extract are the coefficients of
 h<sup>2^i</sup> (where i = 1, 2, ..., n) in the polynomial in the indeterminate h over GF(2<sup>128</sup>):
-t = s + c1\*h + c2\*h<sup>2</sup> + c3\*h<sup>3</sup> + ... + cn*h<sup>n</sup>. c2 is the last block of the ciphertext
-before the tag, and cn is the first (assuming that the plain text was 2<sup>n</sup> blocks long).
+t = s + c<sub>1</sub>·h + c<sub>2</sub>·h<sup>2</sup> + c<sub>3</sub>·h<sup>3</sup> + ... + c<sub>n</sub>·h<sup>n</sup>. c<sub>2</sub> is the last block of the ciphertext
+before the tag, and c<sub>n</sub> is the first (assuming that the plain text was 2<sup>n</sup> blocks long).
 
 For efficiency's sake I convert the extracted coefficients into elements of GF(2<sup>128</sup>). The relevant code is here:
-[extraction of coefficients](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/GCM.java#L201-L222),
-[replacement of coefficients](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/GCM.java#L224-L237).
+[extraction of coefficients](https://github.com/ilchen/cryptopals/blob/e984f1f793f158570087d1c4b0e1fa70b7947253/src/main/java/com/cryptopals/set_8/GCM.java#L201-L222),
+[replacement of coefficients](https://github.com/ilchen/cryptopals/blob/e984f1f793f158570087d1c4b0e1fa70b7947253/src/main/java/com/cryptopals/set_8/GCM.java#L224-L237).
 
 
 #### Calculation of matrix A<sub>d</sub> = &sum;M<sub>Di</sub>(M<sub>S</sub>)<sup>i</sup> and a dependency matrix
@@ -882,7 +882,7 @@ of its kernel faster.
 With the dependency matrix generated we can now start looking for what flips to the different bits of these prototype coefficients
 are required so that the first 16 rows of A<sub>d</sub> are zeros. This is trivial to do with the kernel function
 that I outlined in an earlier section. For the sake of efficiency I implemented an optimized version called
-[kernelOfTransposed](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/BooleanMatrixOperations.java#L128-L149)
+[kernelOfTransposed](https://github.com/ilchen/cryptopals/blob/e984f1f793f158570087d1c4b0e1fa70b7947253/src/main/java/com/cryptopals/set_8/BooleanMatrixOperations.java#L128-L149)
 that finds the kernel from a transposed dependency matrix. **NB:** In contrast to the problem description:
 > Finding a basis for the null space is not too hard. What you want to do is transpose T (i.e. flip it across
   its diagonal) and find the reduced row echelon form using Gaussian elimination.
@@ -971,7 +971,7 @@ assertFalse(Arrays.equals(plainText, pTxt2));
 ```
 
 Every iteration of the outer loop starts with a new set of forged coefficients, calculating a dependency matrix out of them,
-and finding the kernel. This is taken care of in [the replaceBasis method](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/GCMExistentialForgeryHelper.java#L64-L83).
+and finding the kernel. This is taken care of in [the replaceBasis method](https://github.com/ilchen/cryptopals/blob/e984f1f793f158570087d1c4b0e1fa70b7947253/src/main/java/com/cryptopals/set_8/GCMExistentialForgeryHelper.java#L64-L83).
 Every kernel has 128 vectors. Each vector represents bit flips in the forged coefficients that should make the resulting
 A<sub>d</sub> to have zeros in its first 16 rows (and therefore the 16 first bits of the error polynomial will be zero
 as well). To remind, the error polynomial is e = ∑MD<sub>i</sub>·(MS)<sup>i</sup>·h=A<sub>d</sub>·h, where h is the authentication key.
@@ -1047,7 +1047,7 @@ Instead of searching for forged coefficients that zero-out the first 16 rows of 
 forged coefficients that zero-out the first rows of A<sub>d</sub>·X. A<sub>d</sub>·X has dimension 128x112, which
 is smaller than that of A<sub>d</sub>. We use our good old dependency matrix T of dimensions mx17·128 to accomplish that.
 However to zero out the first 16 rows of A<sub>d</sub>·X, we will fill in its columns with elements of A<sub>d</sub>·X. To tackle
-this I slightly modified my [produceDependencyMatrixTransposed method](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/GCMExistentialForgeryHelper.java#L235-L275).
+this I slightly modified my [produceDependencyMatrixTransposed method](https://github.com/ilchen/cryptopals/blob/e984f1f793f158570087d1c4b0e1fa70b7947253/src/main/java/com/cryptopals/set_8/GCMExistentialForgeryHelper.java#L235-L275).
 Quoting Niels on zeroing out rows in A<sub>d</sub>·X:
 > Forcing a complete row to zero only requires 112 free variables, so for the next forgery attempt we can use our
   17 × 128 free variables in the D<sub>i</sub> values to zero 19 rows of the matrix A<sub>D</sub> · X. This improves
@@ -1060,7 +1060,7 @@ min(tLen-1, 17·128 / ncols(X)) · ncols(X). As @sp puts it:
   one nonzero row in each attempt; otherwise you won't learn anything new.
   
 And on we go, every new success at an existential forgery (i.e. with zeroing out the first 32 bits of the error polynomial)
-reveal new bits of the authentication key. I slightly modified [the code that carries out the existential forgery attack](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/GCMExistentialForgeryHelper.java#L107-L182)
+reveal new bits of the authentication key. I slightly modified [the code that carries out the existential forgery attack](https://github.com/ilchen/cryptopals/blob/e984f1f793f158570087d1c4b0e1fa70b7947253/src/main/java/com/cryptopals/set_8/GCMExistentialForgeryHelper.java#L107-L182)
 to calculate K, X, after each successful forgery and to keep on running until the rank of K reaches 127.
   
 Now I let the code run and watch it happen :-)
@@ -1240,7 +1240,7 @@ Why is this attack possible in the first place? The reason is two-fold:
  `AuthTag((k, h), m) = E(k, r) ^ GHASH(h, m)` where:
     * k is the encryption key that is passed to GCM by the user;
     * h is the authentication key, which GCM derives from the encryption key passed by the user `h = E(k, 0)`
-    * r is randomness, which GCM derives from the encryption key and the nonce provided by the user `E(K, nonce || 1)`
+    * r is randomness, which GCM derives from the encryption key and the nonce provided by the user `r = E(K, nonce || 1)`
  The resulting MAC is many-time secure. 
  
     This is all nice and backed by security theorems if the full GHASH tag size of 128 bits is used. If the user chooses
@@ -1258,4 +1258,199 @@ Why is this attack possible in the first place? The reason is two-fold:
  cryptography provider in the JRE that flat-out refuses to accept tag lengths fewer than 96 bits.
  * If for whatever reason you need to use smaller tags, please use another mode of authenticated encryption supported
  by NIST such as CCM.
-    
+ 
+ 
+ ### Challenge 65
+ [Challenge 65](https://toadstyle.org/cryptopals/65.txt) continues with making the attack outlined by Niels Ferguson in his 
+ [Authentication weaknesses in GCM](https://csrc.nist.gov/csrc/media/projects/block-cipher-techniques/documents/bcm/comments/cwc-gcm/ferguson2.pdf)
+ paper more generic. It's actually quite admirable that @spdevlin created such a fascinating challenge out of a small
+ paragraph in a chapter at the end of the paper:
+ > There are small improvements that can be made to this attack. The block that corresponds to D<sub>0</sub> of the error polynomial encodes
+   the message length. If the length of the message is not a multiple of 16, then the attacker can extend the message length by appending zero
+   bytes to the ciphertext. This changes only the length encoding in D<sub>0</sub>. By introducing a nonzero D<sub>0</sub>, the all-zero
+   solution is no longer possible when we solve for suitable D<sub>i</sub> values. This means that the attacker can zero out k bits of the tag
+   using only k D<sub>i</sub>’s, rather than the k + 1 we had before. As the efficiency of the attack is dominated by finding the first
+   successful forgery, this doubles the efficiency of the attack.
+   
+ Well, easier said than done. To solve the challenge in the most elegant way one needs to tackle three problems:
+ * Making the attack work when the size of ciphertext is not a multiple of blocksize. Going about it in the same
+   way we crafted the previous attack would not be efficient. The last bytes of ciphertext before the authentication
+   tag are not a multiple of blocksize, therefore the coefficient c<sub>2</sub> of c<sub>2</sub>·h<sup>2</sup> will never
+   be full 128 bits, which reduces the number of free variables we can play with. This attack manages to squeeze
+   128 free variable out of c<sub>2</sub>.
+ * Figuring out how to zero out not just 16 rows of A<sub>d</sub> in the first existential forgery attempt, but
+   17 rows with the same number of free variables we had in the previous challenge.
+ * Once the previous two are solved, how to recover further bits of the authentication key faster with partial knowledge
+   of the key captured in matrix `X`. It is a bit more involved than in the previous challenge.
+   
+   
+#### Making the attack work when plaintext is not a multiple of blocksize
+When ciphertext is not a multiple of blocksize, GCM pads it with zeros to be a multiple of blocksize before calculating
+the authentication tag. This affects the coefficient c<sub>2</sub> in the polynomial in the indeterminate h over GF(2<sup>128</sup>):
+t = s + c<sub>1</sub>·h + c<sub>2</sub>·h<sup>2</sup> + c<sub>3</sub>·h<sup>3</sup> + ... + c<sub>n</sub>·h<sup>n</sup>,
+where c<sub>2</sub> is the last block of the ciphertext before the tag, and c<sub>n</sub> is the first (assuming that the plain text was 2<sup>n</sup> blocks long).
+ 
+As a result of the padding a number of bits in c<sub>2</sub> will be zeroes. Worse, we will not be allowed to manipulate
+these zero bits during the attack because doing so implies changing the length of the plaintext/ciphertext and hence requires adjusting
+c<sub>1</sub>, which is constructed from a block encoding the length of associated data (the first 8 bytes)
+and plaintext (the next 8 bytes). c<sub>1</sub> was the only coefficient of h<sup>2^i</sup> terms that we left alone
+in the previous challenge. So what do we do? We create a new c<sub>1</sub>, which encodes the padded length of the plaintext.
+This gives us the 128 free variables from c<sub>2</sub> to play with. However there's a price to pay because we are no
+longer able to rely on the equation
+```
+T · d = 0
+```
+to zero out the first rows in A<sub>d</sub>. This is easy to see why. We calculate the dependency matrix T by flipping
+bits in coefficients c<sub>2</sub>, c<sub>4</sub>, c<sub>8</sub>, ..., c<sub>2^17</sub> &mdash; exactly as we did before.
+and we solve for d to zero out the first rows in A<sub>d</sub>. However this will not work because we also changed c<sub>2^0</sub>
+and hence the summand A<sub>d0</sub> (the matrix representation of the difference between the original c<sub>1</sub> and
+our forged c'<sub>1</sub> encoding the longer plaintext length) became a non-zero matrix (it was a zero matrix in the
+previous challenge). So we need to solve a different equation now
+```
+T · d = t
+```
+where t represents a column vector of differences induced to the cells of A<sub>d</sub> by our new non-zero matrix.
+
+Here's how this looks in code:
+```java
+if (Ad0 != null) { /* We need to solve for T * d = t */
+    boolean[]   t = new boolean[m];
+
+    // Ad is constructed over c2, c4, c2^17, Ad0 is constructed over c1
+    boolean[][]   T = transpose(tTransposed),  Ad = calculateAd(forgedCoeffs);
+    for (int i = 0; i < m; i++) {
+        // t is the nonzero difference in the first n rows of AdX induced by our tweak to the length block.
+        t[i] = Ad[i / ncolsX][i % ncolsX] ^ Ad0[i / ncolsX][i % ncolsX];
+    }
+```
+
+To solve this equation I equipped my gaussianElimination method with a new parameter indicating whether to 
+perform Gaussian elimination to reduced low row echelon form or to low echelon form. I then append column vector `t`
+to the dependency matrix `T` and bring this augmented matrix to reduced row echelon form:
+```java
+boolean[][]   tWithCol = appendColumn(T, t);
+rank = gaussianElimination(tWithCol, tTransposed.length, null, true);
+d = extractColumn(tWithCol, tTransposed.length);
+```
+
+Frequently T will not have any linearly dependent rows and the assertion
+```java
+assert  Arrays.equals(multiply(T, d), t);
+```
+will hold. However sometimes there'll be linearly dependent rows. In this case I take my chance on the resulting
+system of linear equations to be consistent:
+```java
+if (rank < T.length) {
+    // It is still possible for T, t to be consistent if the dependent row of T have the same values in t
+    int h = 0, k = 0;
+    while (h < tWithCol.length && k < tWithCol.length) {
+        if (tWithCol[h][k]) {
+            d[k] = tWithCol[h][tTransposed.length];
+            h++;     k++;
+        } else {
+            d[k] = false;
+            k++;
+        }
+    }
+}
+```
+
+So now we have one `d` vector of flips to try. How do we get more? We turn to [the following linear algebra theorem](https://en.wikipedia.org/wiki/System_of_linear_equations#Relation_to_nonhomogeneous_systems).
+I.e. we calculate the kernel of T, as we did in the previous challenge, and add our newly found `d` to each vector in
+the kernel. This is our new set of bit flips to try to arrive at an existential forgery.
+
+We are not done though. The code that calls the Oracle should also be modified as should be the code that extracts
+and replaces 2<sup>i-th</sup> blocks of ciphertext (counting from the end). This is a simple generalization of the 
+`extractPowerOf2Blocks` and `replacePowerOf2Blocks` methods I created for the previous challenge. `extractPowerOf2Blocks`
+needs to cater to cases when plaintext is not a multiple of blocksize, while [GCM.replacePowerOf2Blocks](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/GCM.java#L245-L275) should do the same
+and also get the capability to expand the last block of ciphertext to be a multiple of blocksize.
+
+
+#### Figuring out how to zero not just 16 rows of A<sub>d</sub> but 17
+Now that we solve `T · d = t` rather than `T · d = 0` (where `t` is not a zero vector), a zero-vector solution `d` is 
+not possible. So what we do is construct a larger T than in the previous challenge. Its dimension used to be [128·17x128·16],
+now we increase the second dimension to be as big as the first so the dimension of T becomes [128·17x128·17]. This
+indeed allows us to zero out 17 rows of A<sub>d</sub>. However there's an wrinkle. If we calculate the kernel
+of this large T matrix, it will frequently be empty or have one or two vectors max. In fact it will have as many
+vectors as there are linearly dependent rows in this large T. Frequently there will be none.
+
+To tackle this I do the following: I solve for `T · d = t` using the large T matrix [128·17x128·17] and get one vector
+that assuredly zero's out the first 17 rows of A<sub>d</sub>. Then I reduce the second dimension of T to shrink to [128·17x128·16]
+and find the kernel of this smaller T. This gives me a kernel with the expected number of 128 vectors. I then add d to each 
+one of them and end up with: 1) one vector `d` which assuredly zeros out the first 17 rows of A<sub>d</sub>, 2)
+ 128 `kernel[i] + d` vectors that zero out for 16 rows of A<sub>d</sub> and maybe 17. Here's how it looks like in code:
+ ```java
+if (mReduced < m) {
+    tTransposed = copy(tTransposed, mReduced);
+}
+boolean[][]   preKernel = kernelOfTransposed(tTransposed);
+kernel = new boolean[preKernel.length + 1][];
+kernel[0] = d;
+
+for (int i=0; i < preKernel.length; i++) {
+    kernel[i + 1] = add(preKernel[i], d);
+}
+```
+
+#### Recover further bits of the authentication key faster with partial knowledge of the key captured in matrix `X`
+This actually turned out to be the most strenuous part of the attack. As @spdevlin put it:
+> The dimensions of T and d will change. You should be able to work out how with a bit of deliberation.
+
+A bit of deliberation for sure :-) The two tricky bits for me were:
+
+* To ensure I find all 128 bits of `t` in the
+```
+      Ad    ·     X       ·    h'    =    t
+  [128x128]   [128x112]     [112x1]    [128x1]
+```
+   equation. This requires that the dimensions of the dependency matrix `T` I use to solve `T · d = t` are always
+   [128·17x128·17] while in the previous challenge it was not necessary
+ 
+* Not zeroing out too many bits of the error polynomial. As the number of column vectors in X shrinks, we may end up
+zeroing out many more than 16 bits of the error polynomial. We thus need to have enough elements in X to solve Ad·X·h = t.
+This requires that the second dimension of X be as large as the number of power 2 blocks we have to play around with (17 in out case).
+However that will likely lead to us zeroing out many more bits of the error polynomial than tLen. Since the Oracle only tells us whether
+we correctly zeroed out tLen ones (32), we cannot assuredly rely on the other bit being zeroed out, even
+though it is likely to be the case. To combat that I refrain from shrinking the second dimension of X that is
+used in constructing the dependency matrix further than thrice the number of coefficients we can play with (not counting c<sub>1</sub>).
+
+In code this can all be found in the [GCMExistentialForgeryHelper.replaceBasis](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/GCMExistentialForgeryHelper.java#L88-L163)
+and [GCMExistentialForgeryHelper.recoverAuthenticationKey](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/GCMExistentialForgeryHelper.java#L186-L272)
+methods.
+
+And here comes the final go at a forgery and an eventual recovery of the authentication key (with an authentication tag of 16 bits
+to save computing time)
+```
+Search for the authentication key started
+ Attempt   12. Success with existential forgery. Error polynomial: bb0ad5a9c719ef02c59ea28ae8ec0000
+First KB of plaintext:
+plainplainplainp���;e��Tq>`ݰ��ainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplai
+Size of K: 8, rank of K: 8
+Kernel size: 73
+...
+...
+...
+ Attempt  670. Success with existential forgery. Error polynomial: 8b10b67c7cbd39b4ca6e76e69a3b0000
+First KB of plaintext:
+plainplainplainp���23x��\zf�-��ainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplai
+Size of K: 116, rank of K: 116
+Kernel size: 817
+
+ Attempt  679. Success with existential forgery. Error polynomial: cfda75f9c1cdb62221c7164f3f770000
+First KB of plaintext:
+plainplainplainp��!�� &7z%���ainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplai
+Size of K: 120, rank of K: 120
+Kernel size: 817
+
+ Attempt  702. Success with existential forgery. Error polynomial: 374a436456f6ff0347793e51e1740000
+First KB of plaintext:
+plainplainplainp�-.�� '}��� �<ainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplai
+Size of K: 124, rank of K: 124
+Kernel size: 817
+
+ Attempt  771. Success with existential forgery. Error polynomial: 816fbe039b8ad09cae74819230a80000
+First KB of plaintext:
+plainplainplainp+	��l&��(����uI(ainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplainplai
+Recovered authentication key: ee3349e46e4d8a32790c11dd49b906b9
+Actual authentication key: ee3349e46e4d8a32790c11dd49b906b9
+```
