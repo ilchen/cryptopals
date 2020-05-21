@@ -1265,12 +1265,12 @@ Why is this attack possible in the first place? The reason is two-fold:
  [Authentication weaknesses in GCM](https://csrc.nist.gov/csrc/media/projects/block-cipher-techniques/documents/bcm/comments/cwc-gcm/ferguson2.pdf)
  paper more generic. It's actually quite admirable that @spdevlin created such a fascinating challenge out of a small
  paragraph in a chapter at the end of the paper:
- > There are small improvements that can be made to this attack. The block that corresponds to D<sub>0</sub> of the error polynomial encodes
-   the message length. If the length of the message is not a multiple of 16, then the attacker can extend the message length by appending zero
-   bytes to the ciphertext. This changes only the length encoding in D<sub>0</sub>. By introducing a nonzero D<sub>0</sub>, the all-zero
-   solution is no longer possible when we solve for suitable D<sub>i</sub> values. This means that the attacker can zero out k bits of the tag
-   using only k D<sub>i</sub>’s, rather than the k + 1 we had before. As the efficiency of the attack is dominated by finding the first
-   successful forgery, this doubles the efficiency of the attack.
+ > There are small improvements that can be made to this attack. The block that corresponds to D<sub>0</sub> of the error polynomial 
+encodes the message length. If the length of the message is not a multiple of 16, then the attacker can extend the message length by 
+appending zero bytes to the ciphertext. This changes only the length encoding in D<sub>0</sub>. By introducing a nonzero D<sub>0</sub>, 
+the all-zero solution is no longer possible when we solve for suitable D<sub>i</sub> values. This means that the attacker can zero out 
+k bits of the tag using only k D<sub>i</sub>’s, rather than the k + 1 we had before. As the efficiency of the attack is dominated by 
+finding the first successful forgery, this doubles the efficiency of the attack.
    
  Well, easier said than done. To solve the challenge in the most elegant way one needs to tackle three problems:
  * Making the attack work when the size of ciphertext is not a multiple of blocksize. Going about it in the same
@@ -1295,14 +1295,14 @@ these zero bits during the attack because doing so implies changing the length o
 c<sub>1</sub>, which is constructed from a block encoding the length of associated data (the first 8 bytes)
 and plaintext (the next 8 bytes). c<sub>1</sub> was the only coefficient of h<sup>2^i</sup> terms that we left alone
 in the previous challenge. So what do we do? We create a new c<sub>1</sub>, which encodes the padded length of the plaintext.
-This gives us the 128 free variables from c<sub>2</sub> to play with. However there's a price to pay because we are no
-longer able to rely on the equation
+This gives us the 128 free variables from c<sub>2</sub> to play with. However there's a price to pay because the difference d<sub>1</sub> = c<sub>1</sub> - c'<sub>1</sub> between the original and forged blocks encoding the lengths will not be zero any more.
+As a result we are novlonger able to rely on the equation
 ```
 T · d = 0
 ```
-to zero out the first rows in A<sub>d</sub>. This is easy to see why. We calculate the dependency matrix T by flipping
+to zero out the first rows in A<sub>d</sub>. It's easy to see why. We calculate the dependency matrix `T` by flipping
 bits in coefficients c<sub>2</sub>, c<sub>4</sub>, c<sub>8</sub>, ..., c<sub>2^17</sub> &mdash; exactly as we did before.
-and we solve for d to zero out the first rows in A<sub>d</sub>. However this will not work because we also changed c<sub>2^0</sub>
+and we solve for `d` to zero out the first rows in A<sub>d</sub>. However this will not work because we also changed c<sub>2^0</sub>
 and hence the summand A<sub>d0</sub> (the matrix representation of the difference between the original c<sub>1</sub> and
 our forged c'<sub>1</sub> encoding the longer plaintext length) became a non-zero matrix (it was a zero matrix in the
 previous challenge). So we need to solve a different equation now
@@ -1393,7 +1393,7 @@ for (int i=0; i < preKernel.length; i++) {
 ```
 
 #### Recover further bits of the authentication key faster with partial knowledge of the key captured in matrix `X`
-This actually turned out to be the most strenuous part of the attack. As @spdevlin put it:
+This actually turned out to be the most strenuous part of the attack. As [@spdevlin](https://twitter.com/spdevlin) put it:
 > The dimensions of T and d will change. You should be able to work out how with a bit of deliberation.
 
 A bit of deliberation for sure :-) The two tricky bits for me were:
@@ -1415,8 +1415,8 @@ we correctly zeroed out tLen ones (32), we cannot assuredly rely on the other bi
 though it is likely to be the case. To combat that I refrain from shrinking the second dimension of X that is
 used in constructing the dependency matrix further than thrice the number of coefficients we can play with (not counting c<sub>1</sub>).
 
-In code this can all be found in the [GCMExistentialForgeryHelper.replaceBasis](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/GCMExistentialForgeryHelper.java#L88-L163)
-and [GCMExistentialForgeryHelper.recoverAuthenticationKey](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/GCMExistentialForgeryHelper.java#L186-L272)
+In code this can all be found in the [GCMExistentialForgeryHelper::replaceBasis](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/GCMExistentialForgeryHelper.java#L88-L163)
+and [GCMExistentialForgeryHelper::recoverAuthenticationKey](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/GCMExistentialForgeryHelper.java#L186-L272)
 methods.
 
 And here comes the final go at a forgery and an eventual recovery of the authentication key (with an authentication tag of 16 bits
