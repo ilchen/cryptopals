@@ -1264,7 +1264,7 @@ Why is this attack possible in the first place? The reason is two-fold:
  [Challenge 65](https://toadstyle.org/cryptopals/65.txt) continues with making the attack outlined by Niels Ferguson in his 
  [Authentication weaknesses in GCM](https://csrc.nist.gov/csrc/media/projects/block-cipher-techniques/documents/bcm/comments/cwc-gcm/ferguson2.pdf)
  paper more generic. It's actually quite admirable that @spdevlin created such a fascinating challenge out of a small
- paragraph in a chapter at the end of the paper:
+ paragraph at the end of the paper:
  > There are small improvements that can be made to this attack. The block that corresponds to D<sub>0</sub> of the error polynomial 
 encodes the message length. If the length of the message is not a multiple of 16, then the attacker can extend the message length by 
 appending zero bytes to the ciphertext. This changes only the length encoding in D<sub>0</sub>. By introducing a nonzero D<sub>0</sub>, 
@@ -1296,12 +1296,12 @@ c<sub>1</sub>, which is constructed from a block encoding the length of associat
 and plaintext (the next 8 bytes). c<sub>1</sub> was the only coefficient of h<sup>2^i</sup> terms that we left alone
 in the previous challenge. So what do we do? We create a new c<sub>1</sub>, which encodes the padded length of the plaintext.
 This gives us the 128 free variables from c<sub>2</sub> to play with. However there's a price to pay because the difference d<sub>1</sub> = c<sub>1</sub> - c'<sub>1</sub> between the original and forged blocks encoding the lengths will not be zero any more.
-As a result we are novlonger able to rely on the equation
+As a result we are no longer able to rely on the equation
 ```
 T · d = 0
 ```
 to zero out the first rows in A<sub>d</sub>. It's easy to see why. We calculate the dependency matrix `T` by flipping
-bits in coefficients c<sub>2</sub>, c<sub>4</sub>, c<sub>8</sub>, ..., c<sub>2^17</sub> &mdash; exactly as we did before.
+bits in the coefficients c<sub>2</sub>, c<sub>4</sub>, c<sub>8</sub>, ..., c<sub>2^17</sub> &mdash; exactly as we did before.
 and we solve for `d` to zero out the first rows in A<sub>d</sub>. However this will not work because we also changed c<sub>2^0</sub>
 and hence the summand A<sub>d0</sub> (the matrix representation of the difference between the original c<sub>1</sub> and
 our forged c'<sub>1</sub> encoding the longer plaintext length) became a non-zero matrix (it was a zero matrix in the
@@ -1309,14 +1309,14 @@ previous challenge). So we need to solve a different equation now
 ```
 T · d = t
 ```
-where t represents a column vector of differences induced to the cells of A<sub>d</sub> by our new non-zero matrix.
+where t represents a column vector of differences induced to the cells of A<sub>d</sub> by our new non-zero matrix A<sub>d0</sub>.
 
 Here's how this looks in code:
 ```java
 if (Ad0 != null) { /* We need to solve for T * d = t */
     boolean[]   t = new boolean[m];
 
-    // Ad is constructed over c2, c4, c2^17, Ad0 is constructed over c1
+    // Ad is constructed over c2, c4, c2^17. Ad0 is constructed over c1
     boolean[][]   T = transpose(tTransposed),  Ad = calculateAd(forgedCoeffs);
     for (int i = 0; i < m; i++) {
         // t is the nonzero difference in the first n rows of AdX induced by our tweak to the length block.
@@ -1324,21 +1324,22 @@ if (Ad0 != null) { /* We need to solve for T * d = t */
     }
 ```
 
-To solve this equation I equipped my gaussianElimination method with a new parameter indicating whether to 
-perform Gaussian elimination to reduced low row echelon form or to low echelon form. I then append column vector `t`
-to the dependency matrix `T` and bring this augmented matrix to reduced row echelon form:
+To solve this equation I equipped my [BooleanMatrixOperations.gaussianElimination method](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/BooleanMatrixOperations.java#L53-L106)
+with a new parameter indicating whether to perform Gaussian elimination to reduced low row echelon form or to low echelon form.
+I then append column vector
+`t` to the dependency matrix `T` and bring this augmented matrix to reduced row echelon form:
 ```java
 boolean[][]   tWithCol = appendColumn(T, t);
 rank = gaussianElimination(tWithCol, tTransposed.length, null, true);
 d = extractColumn(tWithCol, tTransposed.length);
 ```
 
-Frequently T will not have any linearly dependent rows and the assertion
+Frequently `T` will not have any linearly dependent rows and the assertion
 ```java
 assert  Arrays.equals(multiply(T, d), t);
 ```
 will hold. However sometimes there'll be linearly dependent rows. In this case I take my chance on the resulting
-system of linear equations to be consistent:
+system of linear equations to be consistent and extract the bits of `d` from linearly independent rows:
 ```java
 if (rank < T.length) {
     // It is still possible for T, t to be consistent if the dependent row of T have the same values in t
@@ -1348,7 +1349,7 @@ if (rank < T.length) {
             d[k] = tWithCol[h][tTransposed.length];
             h++;     k++;
         } else {
-            d[k] = false;
+            d[k] = false;   // The corresponding row of T is linearly dependent on an earlier row
             k++;
         }
     }
@@ -1356,7 +1357,7 @@ if (rank < T.length) {
 ```
 
 So now we have one `d` vector of flips to try. How do we get more? We turn to [the following linear algebra theorem](https://en.wikipedia.org/wiki/System_of_linear_equations#Relation_to_nonhomogeneous_systems).
-I.e. we calculate the kernel of T, as we did in the previous challenge, and add our newly found `d` to each vector in
+I.e. we calculate the kernel of `T`, as we did in the previous challenge, and add our newly found `d` to each vector in
 the kernel. This is our new set of bit flips to try to arrive at an existential forgery.
 
 We are not done though. The code that calls the Oracle should also be modified as should be the code that extracts
@@ -1370,15 +1371,15 @@ and also get the capability to expand the last block of ciphertext to be a multi
 Now that we solve `T · d = t` rather than `T · d = 0` (where `t` is not a zero vector), a zero-vector solution `d` is 
 not possible. So what we do is construct a larger T than in the previous challenge. Its dimension used to be [128·17x128·16],
 now we increase the second dimension to be as big as the first so the dimension of T becomes [128·17x128·17]. This
-indeed allows us to zero out 17 rows of A<sub>d</sub>. However there's an wrinkle. If we calculate the kernel
-of this large T matrix, it will frequently be empty or have one or two vectors max. In fact it will have as many
-vectors as there are linearly dependent rows in this large T. Frequently there will be none.
+indeed allows us to zero out 17 rows of A<sub>d</sub>. However there's a wrinkle. If we calculate the kernel
+of this large `T` matrix, it will frequently be empty or have one or two vectors max. In fact it will have as many
+vectors as there are linearly dependent rows in this large `T`. Often there will be none.
 
 To tackle this I do the following: I solve for `T · d = t` using the large T matrix [128·17x128·17] and get one vector
-that assuredly zero's out the first 17 rows of A<sub>d</sub>. Then I reduce the second dimension of T to shrink to [128·17x128·16]
-and find the kernel of this smaller T. This gives me a kernel with the expected number of 128 vectors. I then add d to each 
+that assuredly zero's out the first 17 rows of A<sub>d</sub>. Then I reduce the second dimension of `T` to [128·17x128·16]
+and find the kernel of this smaller `T`. This gives me a kernel with the expected number of 128 vectors. I then add `d` to each 
 one of them and end up with: 1) one vector `d` which assuredly zeros out the first 17 rows of A<sub>d</sub>, 2)
- 128 `kernel[i] + d` vectors that zero out for 16 rows of A<sub>d</sub> and maybe 17. Here's how it looks like in code:
+ 128 `kernel[i] + d` vectors that zero out 16 rows of A<sub>d</sub> and, maybe, 17. Here's how it looks in code:
  ```java
 if (mReduced < m) {
     tTransposed = copy(tTransposed, mReduced);
