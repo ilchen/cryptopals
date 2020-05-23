@@ -20,32 +20,32 @@ java -jar cryptopals_server-0.2.0.jar
 as a typical SpringBoot application. This application provides either a RESTful API or an RMI component depending on
 a challenge.
 
-For the more advanced problems I created a proper explanation about the implementaiton of each these attackes that you
+For the more advanced problems I created a proper explanation about the implementation of each of these attacks, which you
 can find in the below Table of contents.
 
 ## Table of Contents
 * [Set 7: Hashes](https://github.com/ilchen/cryptopals#set-7-hashes)
-  * [Challenge 52. Iterated Hash Function Multicollisions]()
-  * [Challenge 55. MD4 Collisions]()
-  * [Challenge 56. RC4 Single-Byte Biases]()
+  * [Challenge 52. Iterated Hash Function Multicollisions](https://github.com/ilchen/cryptopals#challenge-52-iterated-hash-function-multicollisions)
+  * [Challenge 55. MD4 Collisions](https://github.com/ilchen/cryptopals#challenge-55-md4-collisions)
+  * [Challenge 56. RC4 Single-Byte Biases](https://github.com/ilchen/cryptopals#challenge-56-rc4-single-byte-biases)
   
 * [Set 8: Abstract Algebra](https://github.com/ilchen/cryptopals#set-8-abstract-algebra)
-  * [Challenge 57. Diffie-Hellman Revisited: Small Subgroup Confinement]()
-  * [Challenge 58. Pollard's Method for Catching Kangaroos]()
-  * [Challenge 59. Elliptic Curve Diffie-Hellman and Invalid-Curve Attacks]()
-  * [Challenge 60. Single-Coordinate Ladders and Insecure Twists]()
+  * [Challenge 57. Diffie-Hellman Revisited: Small Subgroup Confinement](https://github.com/ilchen/cryptopals#challenge-57-diffie-hellman-revisited-small-subgroup-confinement)
+  * [Challenge 58. Pollard's Method for Catching Kangaroos](https://github.com/ilchen/cryptopals#challenge-58-pollards-method-for-catching-kangaroos)
+  * [Challenge 59. Elliptic Curve Diffie-Hellman and Invalid-Curve Attacks](https://github.com/ilchen/cryptopals#challenge-59-elliptic-curve-diffie-hellman-and-invalid-curve-attacks)
+  * [Challenge 60. Single-Coordinate Ladders and Insecure Twists](https://github.com/ilchen/cryptopals#challenge-60-single-coordinate-ladders-and-insecure-twists)
   * [Challenge 61. Duplicate-Signature Key Selection in ECDSA (and RSA)](https://github.com/ilchen/cryptopals#challenge-61-duplicate-signature-key-selection-in-ecdsa-and-rsa)
   * [Challenge 63. Key-Recovery Attacks on GCM with Repeated Nonces](https://github.com/ilchen/cryptopals#challenge-63-key-recovery-attacks-on-gcm-with-repeated-nonces)
   * [Challenge 64. Key-Recovery Attacks on GCM with a Truncated MAC](https://github.com/ilchen/cryptopals#challenge-64-key-recovery-attacks-on-gcm-with-a-truncated-mac)
   * [Challenge 65. Truncated-MAC GCM Revisited: Improving the Key-Recovery Attack via Ciphertext Length Extension](https://github.com/ilchen/cryptopals#challenge-65-truncated-mac-gcm-revisited-improving-the-key-recovery-attack-via-ciphertext-length-extension)
 
-## [Set 6](https://cryptopals.com/sets/6)
+## [Set 6: RSA and DSA](https://cryptopals.com/sets/6)
 ### Challenge 48. Bleichenbacher's PKCS 1.5 Padding Oracle (Complete Case)
 For [Challenge 48](https://cryptopals.com/sets/6/challenges/48) there's a dependency on https://github.com/square/jna-gmp/tree/master/jnagmp, which is a wrapper
 around gmp 6.1.x. If you are on macOS, you probably already installed gmp when you installed python using brew. With
 JRE's BigInteger Challenge 48 will take around 5 hours to finish. Using gmp it finishes under 1 hour.
 
-## [Set 7](https://cryptopals.com/sets/7)
+## [Set 7: Hashes](https://cryptopals.com/sets/7)
 ### Challenge 49. CBC-MAC Message Forgery
 The second part of [this challenge](https://cryptopals.com/sets/7/challenges/49), which deals with a message length extension attack for a multiple transactions request:
 > Your mission: capture a valid message from your target user. Use length extension to add a transaction paying the attacker's account 1M spacebucks.
