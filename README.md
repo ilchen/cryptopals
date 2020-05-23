@@ -20,28 +20,39 @@ java -jar cryptopals_server-0.2.0.jar
 as a typical SpringBoot application. This application provides either a RESTful API or an RMI component depending on
 a challenge.
 
+For the more advanced problems I created a proper explanation about the implementaiton of each these attackes that you
+can find in the below Table of contents.
 
 ## Table of Contents
-* [Set8: Abstract Algebra](https://github.com/ilchen/cryptopals#user-content-set-8)
-  * [Challenge 61. Duplicate-Signature Key Selection in ECDSA (and RSA)](https://github.com/ilchen/cryptopals#user-content-challenge-61)
-  * [Challenge 63. Key-Recovery Attacks on GCM with Repeated Nonces](https://github.com/ilchen/cryptopals#user-content-challenge-63)
-  * [Challenge 64. Key-Recovery Attacks on GCM with a Truncated MAC](https://github.com/ilchen/cryptopals#user-content-challenge-64)
-  * [Challenge 65. Truncated-MAC GCM Revisited: Improving the Key-Recovery Attack via Ciphertext Length Extension](https://github.com/ilchen/cryptopals#user-content-challenge-65)
+* [Set 7: Hashes](https://github.com/ilchen/cryptopals#set-7-hashes)
+  * [Challenge 52. Iterated Hash Function Multicollisions]()
+  * [Challenge 55. MD4 Collisions]()
+  * [Challenge 56. RC4 Single-Byte Biases]()
+  
+* [Set 8: Abstract Algebra](https://github.com/ilchen/cryptopals#set-8-abstract-algebra)
+  * [Challenge 57. Diffie-Hellman Revisited: Small Subgroup Confinement]()
+  * [Challenge 58. Pollard's Method for Catching Kangaroos]()
+  * [Challenge 59. Elliptic Curve Diffie-Hellman and Invalid-Curve Attacks]()
+  * [Challenge 60. Single-Coordinate Ladders and Insecure Twists]()
+  * [Challenge 61. Duplicate-Signature Key Selection in ECDSA (and RSA)](https://github.com/ilchen/cryptopals#challenge-61-duplicate-signature-key-selection-in-ecdsa-and-rsa)
+  * [Challenge 63. Key-Recovery Attacks on GCM with Repeated Nonces](https://github.com/ilchen/cryptopals#challenge-63-key-recovery-attacks-on-gcm-with-repeated-nonces)
+  * [Challenge 64. Key-Recovery Attacks on GCM with a Truncated MAC](https://github.com/ilchen/cryptopals#challenge-64-key-recovery-attacks-on-gcm-with-a-truncated-mac)
+  * [Challenge 65. Truncated-MAC GCM Revisited: Improving the Key-Recovery Attack via Ciphertext Length Extension](https://github.com/ilchen/cryptopals#challenge-65-truncated-mac-gcm-revisited-improving-the-key-recovery-attack-via-ciphertext-length-extension)
 
 ## [Set 6](https://cryptopals.com/sets/6)
-### Challenge 48
+### Challenge 48. Bleichenbacher's PKCS 1.5 Padding Oracle (Complete Case)
 For [Challenge 48](https://cryptopals.com/sets/6/challenges/48) there's a dependency on https://github.com/square/jna-gmp/tree/master/jnagmp, which is a wrapper
 around gmp 6.1.x. If you are on macOS, you probably already installed gmp when you installed python using brew. With
 JRE's BigInteger Challenge 48 will take around 5 hours to finish. Using gmp it finishes under 1 hour.
 
 ## [Set 7](https://cryptopals.com/sets/7)
-### Challenge 49
+### Challenge 49. CBC-MAC Message Forgery
 The second part of [this challenge](https://cryptopals.com/sets/7/challenges/49), which deals with a message length extension attack for a multiple transactions request:
 > Your mission: capture a valid message from your target user. Use length extension to add a transaction paying the attacker's account 1M spacebucks.
 
 assumes that the attacker and the victim share the same authentication key, which is quite a stretch.
 
-### Challenge 52
+### Challenge 52. Iterated Hash Function Multicollisions
 [Challenge 52](https://cryptopals.com/sets/7/challenges/52) is one of the best demonstrations of the birthday paradox
 I've seen. **NB:** the way this challenge defines the compression function containts
 [a mistake](https://twitter.com/spdevlin/status/1134220310109024257). The correct definition should
@@ -59,7 +70,7 @@ if the cipher's key and block sizes are the same. I opted for Blowfish, which is
 This way I needed to find 2<sup>16</sup> messages colliding in f to ensure there's a pair among them colliding in g. 
 
 
-### Challenge 55
+### Challenge 55. MD4 Collisions
 [Challenge 55](https://cryptopals.com/sets/7/challenges/55) is probably one of the most interesting to work on.
 I succeeded in implementing it in a uniform Object-Oriented way, which aids readability and maintainability.
 The implementation is also blazingly fast -- it finds a collison within a few seconds. Here is one found with it:
@@ -82,7 +93,7 @@ discovered differential cryptanalysis as early as in the 1970s, which is one of 
 (see [this paper](https://ieeexplore.ieee.org/abstract/document/5389567) or Section 12.4 in Bruce Schneier's Applied Cryptography
 2<sup>nd</sup> edition for details).
 
-### Challenge 56
+### Challenge 56. RC4 Single-Byte Biases
 [Challenge 56](https://cryptopals.com/sets/7/challenges/56) is an excellent demonstration of how even a tiny bias that
 makes the distribution of a secure PRF slightly different from uniform might be enough to break it. In the case of RC4
 bytes 2 to 255 of RC4 keystream have biases on the order of 1/2<sup>16</sup> or higher.
@@ -109,7 +120,7 @@ For the maximum-likelihood estimation of the plaintext bytes I used 2<sup>24</su
 P<sub>16</sub> and P<sub>32</sub> and fully corraborates the results in Figure 4 in the paper.
 
 ## [Set 8: Abstract Algebra](https://toadstyle.org/cryptopals/)
-### Challenge 57
+### Challenge 57. Diffie-Hellman Revisited: Small Subgroup Confinement
 [Challenge 57](https://toadstyle.org/cryptopals/57.txt) presented me with a need to
 [implement Garner's algorithm](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L44-L72) to
 reconstruct Bob's private key from its residues per subset of the moduli of p-1.
@@ -126,7 +137,7 @@ The challenge does make two big assumptions though, namely that
 * That group Z<sub>p</sub><sup>*</sup> contains a large number of subgroups with small order. The attack will for example
 not work if p is [a safe prime](https://en.wikipedia.org/wiki/Safe_prime).
 
-### Challenge 58
+### Challenge 58. Pollard's Method for Catching Kangaroos
 [Challenge 58](https://toadstyle.org/cryptopals/58.txt) makes the attack from the previous challenge yet more realistic.
 It can be mounted against a group where `p-1` has at least one large factor in addition to `q`.
 
@@ -163,7 +174,7 @@ in a realistic setting where Bob generates a new private key for each new sessio
 are rare as they lead to more computationally intensive exponentiation in the group.
 
 
-### Challenge 59
+### Challenge 59. Elliptic Curve Diffie-Hellman and Invalid-Curve Attacks
 [Challenge 59](https://toadstyle.org/cryptopals/59.txt) is based on the Weierstrass form of representing
 elliptic curves: y<sup>2</sup> = x<sup>3</sup> + ax + b
 
@@ -252,7 +263,7 @@ public Set8.Challenge59ECDHBobResponse initiate(ECGroup.ECGroupElement g, BigInt
     }
 ```
 
-### Challenge 60
+### Challenge 60. Single-Coordinate Ladders and Insecure Twists
 [Challenge 60](https://toadstyle.org/cryptopals/60.txt) is based on the Montgomery form of representing
 elliptic curves: Bv<sup>2</sup> = u<sup>3</sup> + Au<sup>2</sup> + u
 
@@ -1062,7 +1073,7 @@ Quoting Niels on zeroing out rows in A<sub>d</sub>·X:
   the forgery probability to 2<sup>-13</sup>.
 
 Actually the size of the first dimension m of T [m x 17·128] should be adjusted per iteration to be
-min(tLen-1, 17·128 / ncols(X)) · ncols(X). As @sp puts it:
+min(tLen-1, 17·128 / ncols(X)) · ncols(X). As @spdevlin puts it:
 > The general picture is that if we have n·128 bits to play with, we can
   zero out (n·128) / (ncols(X)) rows. Just remember to leave at least
   one nonzero row in each attempt; otherwise you won't learn anything new.
