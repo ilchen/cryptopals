@@ -20,6 +20,14 @@ java -jar cryptopals_server-0.2.0.jar
 as a typical SpringBoot application. This application provides either a RESTful API or an RMI component depending on
 a challenge.
 
+
+## Table of Contents
+* [Set8: Abstract Algebra](https://github.com/ilchen/cryptopals#user-content-set-8)
+  * [Challenge 61. Duplicate-Signature Key Selection in ECDSA (and RSA)](https://github.com/ilchen/cryptopals#user-content-challenge-61)
+  * [Challenge 63. Key-Recovery Attacks on GCM with Repeated Nonces](https://github.com/ilchen/cryptopals#user-content-challenge-63)
+  * [Challenge 64. Key-Recovery Attacks on GCM with a Truncated MAC](https://github.com/ilchen/cryptopals#user-content-challenge-64)
+  * [Challenge 65. Truncated-MAC GCM Revisited: Improving the Key-Recovery Attack via Ciphertext Length Extension](https://github.com/ilchen/cryptopals#user-content-challenge-65)
+
 ## [Set 6](https://cryptopals.com/sets/6)
 ### Challenge 48
 For [Challenge 48](https://cryptopals.com/sets/6/challenges/48) there's a dependency on https://github.com/square/jna-gmp/tree/master/jnagmp, which is a wrapper
@@ -100,7 +108,7 @@ this would be an overkill.
 For the maximum-likelihood estimation of the plaintext bytes I used 2<sup>24</sup> ciphertexts. This is enough to recover
 P<sub>16</sub> and P<sub>32</sub> and fully corraborates the results in Figure 4 in the paper.
 
-## [Set 8](https://toadstyle.org/cryptopals/)
+## [Set 8: Abstract Algebra](https://toadstyle.org/cryptopals/)
 ### Challenge 57
 [Challenge 57](https://toadstyle.org/cryptopals/57.txt) presented me with a need to
 [implement Garner's algorithm](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L44-L72) to
@@ -375,7 +383,7 @@ a twist secure elliptic curve group is one whose quadratic twist Ē(GF(p)) has a
 small subgroups.
 
 
-### Challenge 61
+### Challenge 61. Duplicate-Signature Key Selection in ECDSA (and RSA)
 The first part of [Challenge 61](https://toadstyle.org/cryptopals/61.txt) that concerns itself with Duplicate Signature
 Key Selection (DSKS) for ECDSA is almost trivial compared to anything else in Sets 7 and 8.
 [The implementation is quite compact](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/ECDSA.java#L15-L63)
@@ -446,7 +454,7 @@ to pay attention to the public keys of RSA and be suspicious of public exponents
 used ones: { 3, 5, 17, 65537 }.
 
 
-### Challenge 63
+### Challenge 63. Key-Recovery Attacks on GCM with Repeated Nonces
 [Challenge 63](https://toadstyle.org/cryptopals/63.txt) consists of six parts:
 1. Implementing GF(2<sup>128</sup>) &mdash; Polynomial Galois field over GF(2)
 2. Implementing Galois Counter Mode (GCM) where the earlier devised GF(2<sup>128</sup>) is used to calculate 
@@ -716,7 +724,7 @@ Decrypted by the crypto system under attack into: ⊥
 I am able to commit an existential forgery attack!
 
 
-### Challenge 64
+### Challenge 64. Key-Recovery Attacks on GCM with a Truncated MAC
 [Challenge 64](https://toadstyle.org/cryptopals/64.txt) implements an attack first outlined by Niels Ferguson in his 
 [Authentication weaknesses in GCM](https://csrc.nist.gov/csrc/media/projects/block-cipher-techniques/documents/bcm/comments/cwc-gcm/ferguson2.pdf)
 paper. GCM is the most popular standard for authenticated encryption and is used in TLS 1.2 and higher. To aid efficient
@@ -1260,7 +1268,7 @@ Why is this attack possible in the first place? The reason is two-fold:
  by NIST such as CCM.
  
  
- ### Challenge 65
+ ### Challenge 65. Truncated-MAC GCM Revisited: Improving the Key-Recovery Attack via Ciphertext Length Extension
  [Challenge 65](https://toadstyle.org/cryptopals/65.txt) continues with making the attack outlined by Niels Ferguson in his 
  [Authentication weaknesses in GCM](https://csrc.nist.gov/csrc/media/projects/block-cipher-techniques/documents/bcm/comments/cwc-gcm/ferguson2.pdf)
  paper more generic. It's actually quite admirable that @spdevlin created such a fascinating challenge out of a small
