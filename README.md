@@ -121,8 +121,22 @@ P<sub>16</sub> and P<sub>32</sub> and fully corraborates the results in Figure 4
 
 ## [Set 8: Abstract Algebra](https://toadstyle.org/cryptopals/)
 ### Challenge 57. Diffie-Hellman Revisited: Small Subgroup Confinement
-[Challenge 57](https://toadstyle.org/cryptopals/57.txt) presented me with a need to
-[implement Garner's algorithm](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L44-L72) to
+[Challenge 57](https://toadstyle.org/cryptopals/57.txt) introduces the Pohlig-Hellman
+algorithm. The best general-purpose algorithm for taking discrete logs in Z<sub>p</sub><sup>\*</sup> is
+[the General Number Field Sieve (GNFS)](https://en.wikipedia.org/wiki/General_number_field_sieve). The running time
+of the GNFS is O(&#x221B;p), where `p` is the group's prime.
+
+The Pohlig-Hellman algorithm lets take discrete logs potentially faster than that for groups where `n = p-1` (the order of Z<sub>p</sub><sup>\*</sup>)
+has many small factors. Moreover it works for any cyclic group &mdash; the fact that will come in handy in [Challenge 59](https://github.com/ilchen/cryptopals#challenge-59-elliptic-curve-diffie-hellman-and-invalid-curve-attacks).
+If n = p<sub>1</sub><sup>e1</sup> · p<sub>2</sub><sup>e2</sup> · ... · p<sub>r</sub><sup>er</sup>, then
+the computational complexity of taking dlog with Pohlig-Hellman is O{&Sigma;[e<sub>i</sub> · (lg`n` + &Sqrt;p<sub>i</sub>)]}.
+Well, the way @spdevlin proposes to go about the solution, which is the path I took:
+> Friendly tip: maybe avoid any repeated factors. They only complicate things.
+
+the complexity will be O[&Sigma;(lg`n` + &Sqrt;p<sub>i</sub>)], where n <= p<sub>1</sub> · p<sub>2</sub> · ... · p<sub>r</sub>.
+                                                                     
+Probably the most involved part of Pohlig-Hellman is a need to
+[implement Garner's algorithm](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L128-L161) to
 reconstruct Bob's private key from its residues per subset of the moduli of p-1.
 
 All in all the challenge presents an attack that can bypass DH implementations where Bob makes some rudimentary checks
@@ -139,10 +153,13 @@ not work if p is [a safe prime](https://en.wikipedia.org/wiki/Safe_prime).
 
 ### Challenge 58. Pollard's Method for Catching Kangaroos
 [Challenge 58](https://toadstyle.org/cryptopals/58.txt) makes the attack from the previous challenge yet more realistic.
-It can be mounted against a group where `p-1` has at least one large factor in addition to `q`.
+It can be mounted against a group where `p-1` has at least one large factor in addition to `q` (the order of a generator used).
 
 The attack makes use of J.M. Pollard's Lambda Method for Catching Kangaroos, as outlined in
 [Section 3 of Pollard's paper](https://www.ams.org/journals/mcom/1978-32-143/S0025-5718-1978-0491431-9/S0025-5718-1978-0491431-9.pdf).
+While not as efficient as the GNFS, Pollard's kangaroo algorithm can be applied to any cyclic group (e.g. not only to Z<sub>p</sub><sup>*</sup>
+but also to elliptic curve groups) &mdash; a fact that will be of use in [a later elliptic curve challenge](https://github.com/ilchen/cryptopals#challenge-60-single-coordinate-ladders-and-insecure-twists).
+Its running time is O(&Sqrt;`q`), where `q` is the order of the generator used.
 
 Pollard's method employs a pseudo-random mapping function f that maps from set {1, 2, ..., p-1} to set {0, 1, ... k-1}.
 The challenge suggested the following simplistic definition for f (which is similar to what Pollard gives in one of his examples):

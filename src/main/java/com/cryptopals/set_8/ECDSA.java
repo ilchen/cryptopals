@@ -4,6 +4,7 @@ import com.cryptopals.set_6.DSAHelper;
 import static com.cryptopals.set_6.DSAHelper.hashAsBigInteger;
 
 import lombok.Data;
+import lombok.Getter;
 
 import java.math.BigInteger;
 
@@ -14,7 +15,7 @@ import java.math.BigInteger;
  */
 public class ECDSA {
     @Data
-    public static class PublicKey {
+    public static final class  PublicKey {
         private final ECGroupElement   G;
         private final BigInteger       n;
         private final ECGroupElement   Q;
@@ -26,10 +27,10 @@ public class ECDSA {
         }
     }
 
-    private final ECGroupElement   G;
+    final ECGroupElement   G;
 
     // n is the order of group E(Fp), d is the private key
-    private final BigInteger   n,  d;
+    final BigInteger   n,  d;
 
 
     /**

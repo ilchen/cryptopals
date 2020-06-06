@@ -32,9 +32,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static com.cryptopals.Set8.CHALLENGE56_MSG;
-import static com.cryptopals.Set8.CURVE_25519_ORDER;
-import static com.cryptopals.Set8.CURVE_25519_PRIME;
+import static com.cryptopals.Set8.*;
 import static com.cryptopals.set_8.BooleanMatrixOperations.*;
 import static java.math.BigInteger.ZERO;
 import static java.math.BigInteger.ONE;
@@ -196,6 +194,31 @@ class Set8Tests {
                                                                    legitRSAPk.getModulus().bitLength());
         assertTrue(legitRSAPk.verify(CHALLENGE56_MSG.getBytes(), rsaSignature));
         assertTrue(forgedRSAPk.verify(CHALLENGE56_MSG.getBytes(), rsaSignature));
+    }
+
+    @DisplayName("https://toadstyle.org/cryptopals/62.txt")
+    @Test
+    void challenge62() {
+        // Using Bitcoin's secp256k1
+        WeierstrassECGroup   secp256k1 = new WeierstrassECGroup(CURVE_SECP256K1_PRIME, ZERO, valueOf(7), CURVE_SECP256K1_ORDER);
+        BigInteger   baseX = new BigInteger("79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798", 16);
+        WeierstrassECGroup.ECGroupElement   secp256k1Base = secp256k1.createPoint(
+                baseX, secp256k1.mapToY(baseX));
+        BigInteger   q = secp256k1.getCyclicOrder();
+        System.out.println("secp256k1 base: " + secp256k1Base);
+        System.out.println("base.y^2: " + secp256k1Base.getY().modPow(valueOf(2), secp256k1.getModulus()));
+        System.out.println("base.-y^2: " + secp256k1.getModulus().subtract(secp256k1Base.getY()).modPow(valueOf(2), secp256k1.getModulus()));
+        System.out.println(secp256k1Base.scale(q.subtract(valueOf(2))));
+        System.out.println(secp256k1Base.scale(q.subtract(ONE)));
+        System.out.println(secp256k1Base.scale(q));
+        System.out.println(secp256k1Base.scale(q.add(ONE)));
+        ECDSA   ecdsa = new BiasedECDSA(secp256k1Base, q);
+        DSAHelper.Signature   signature = ecdsa.sign(CHALLENGE56_MSG.getBytes());
+        ECDSA.PublicKey   legitPk = ecdsa.getPublicKey(),
+                forgedPk = Set8.breakChallenge61ECDSA(CHALLENGE56_MSG.getBytes(), signature, ecdsa.getPublicKey());
+        assertTrue(legitPk.verifySignature(CHALLENGE56_MSG.getBytes(), signature));
+        assertTrue(forgedPk.verifySignature(CHALLENGE56_MSG.getBytes(), signature));
+        assertNotEquals(legitPk, forgedPk);
     }
 
     @DisplayName("Polynomial Galois Field over GF(2)")

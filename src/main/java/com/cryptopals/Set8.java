@@ -50,7 +50,10 @@ public class Set8 {
              + "28318042418238184896212352329118608100083187535033402010599512641674644143"),
                               Q = new BigInteger("236234353446506858198510045061214171961"),
             CURVE_25519_PRIME = ONE.shiftLeft(255).subtract(valueOf(19)),
-            CURVE_25519_ORDER = ONE.shiftLeft(252).add(new BigInteger("27742317777372353535851937790883648493"));
+            CURVE_25519_ORDER = ONE.shiftLeft(252).add(new BigInteger("27742317777372353535851937790883648493")),
+            CURVE_SECP256K1_PRIME = ONE.shiftLeft(256).subtract(ONE.shiftLeft(32)).subtract(valueOf(512)).subtract(valueOf(256))
+                                                      .subtract(valueOf(128)).subtract(valueOf(64)).subtract(valueOf(16)).subtract(ONE),
+            CURVE_SECP256K1_ORDER = new BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141", 16);
     private static final BigInteger   TWO = valueOf(2),  THREE = valueOf(3),  FOUR = valueOf(4);
 
     @Data
