@@ -136,7 +136,7 @@ Well, the way @spdevlin proposes to go about the solution, which is the path I t
 the complexity will be O[&Sigma;(lg`n` + &Sqrt;p<sub>i</sub>)], where n <= p<sub>1</sub> · p<sub>2</sub> · ... · p<sub>r</sub>.
                                                                      
 Probably the most involved part of Pohlig-Hellman is a need to
-[implement Garner's algorithm](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L128-L161) to
+[implement Garner's algorithm](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L131-L167) to
 reconstruct Bob's private key from its residues per subset of the moduli of p-1.
 
 All in all the challenge presents an attack that can bypass DH implementations where Bob makes some rudimentary checks

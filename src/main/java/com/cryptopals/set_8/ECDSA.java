@@ -4,7 +4,6 @@ import com.cryptopals.set_6.DSAHelper;
 import static com.cryptopals.set_6.DSAHelper.hashAsBigInteger;
 
 import lombok.Data;
-import lombok.Getter;
 
 import java.math.BigInteger;
 

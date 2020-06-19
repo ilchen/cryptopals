@@ -2,6 +2,7 @@ package com.cryptopals.set_8;
 
 import com.cryptopals.set_6.DSAHelper;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 
 import static com.cryptopals.set_6.DSAHelper.hashAsBigInteger;
@@ -20,5 +21,9 @@ public class BiasedECDSA extends ECDSA {
         // k is biased in having the 8 least significant bits as zeros
         BigInteger   k = DSAHelper.generateK(n).shiftRight(8).shiftLeft(8),  r = G.scale(k).getX();
         return  new DSAHelper.Signature(r, k.modInverse(n).multiply(hashAsBigInteger(msg).add(d.multiply(r))).mod(n));
+    }
+
+    public BigInteger  getPrivateKey() {
+        return  d;
     }
 }

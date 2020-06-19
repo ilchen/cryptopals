@@ -13,6 +13,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import javax.crypto.*;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.xml.bind.DatatypeConverter;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.MalformedURLException;
 import java.rmi.Naming;
@@ -26,13 +27,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
-import java.util.function.BiFunction;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static com.cryptopals.Set8.*;
+import static com.cryptopals.set_6.DSAHelper.hashAsBigInteger;
 import static com.cryptopals.set_8.BooleanMatrixOperations.*;
 import static java.math.BigInteger.ZERO;
 import static java.math.BigInteger.ONE;
@@ -196,29 +197,73 @@ class Set8Tests {
         assertTrue(forgedRSAPk.verify(CHALLENGE56_MSG.getBytes(), rsaSignature));
     }
 
+    @DisplayName("Matrix operations over a field of reals")
+    @Test
+    void  matrixOperationsOverFieldOfRealsForChallenge62() {
+        BigDecimal[][]   basis = { { BigDecimal.valueOf(-2), BigDecimal.ZERO, BigDecimal.valueOf(2), BigDecimal.ZERO },
+                                   { BigDecimal.valueOf(.5), BigDecimal.valueOf(-1), BigDecimal.ZERO, BigDecimal.ZERO },
+                                   { BigDecimal.valueOf(-1), BigDecimal.ZERO, BigDecimal.valueOf(-2), BigDecimal.valueOf(.5) },
+                                   { BigDecimal.valueOf(-1), BigDecimal.ONE, BigDecimal.ONE, BigDecimal.valueOf(2) }},
+
+                expectedReducedBasis = { { BigDecimal.valueOf(.5), BigDecimal.valueOf(-1), BigDecimal.ZERO, BigDecimal.ZERO },
+                                         { BigDecimal.valueOf(-1), BigDecimal.ZERO, BigDecimal.valueOf(-2), BigDecimal.valueOf(.5) },
+                                         { BigDecimal.valueOf(-.5), BigDecimal.ZERO, BigDecimal.ONE, BigDecimal.valueOf(2) },
+                                         { BigDecimal.valueOf(-1.5), BigDecimal.valueOf(-1), BigDecimal.valueOf(2), BigDecimal.ZERO  }},
+
+                orthogonalBasis = RealMatrixOperations.gramSchmidt(basis),
+                reducedBasis = RealMatrixOperations.lLL(basis, BigDecimal.valueOf(.99));
+
+        // Is the Gram-Schmidt orthogonalization process implemented correctly?
+        for (int i=0; i < orthogonalBasis.length; i++) {
+            for (int j = i + 1; j < orthogonalBasis.length; j++) {
+                assertEquals(0, BigDecimal.ZERO.compareTo(
+                        RealMatrixOperations.innerProduct(orthogonalBasis[i], orthogonalBasis[j]).setScale(10, BigDecimal.ROUND_HALF_EVEN)));
+            }
+        }
+
+        // Is L^3-lattice basis reduction algorithm implemented correctly?
+        assertTrue(RealMatrixOperations.equals(expectedReducedBasis, reducedBasis));
+
+    }
+
     @DisplayName("https://toadstyle.org/cryptopals/62.txt")
     @Test
     void challenge62() {
         // Using Bitcoin's secp256k1
         WeierstrassECGroup   secp256k1 = new WeierstrassECGroup(CURVE_SECP256K1_PRIME, ZERO, valueOf(7), CURVE_SECP256K1_ORDER);
         BigInteger   baseX = new BigInteger("79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798", 16);
-        WeierstrassECGroup.ECGroupElement   secp256k1Base = secp256k1.createPoint(
-                baseX, secp256k1.mapToY(baseX));
+        WeierstrassECGroup.ECGroupElement   secp256k1Base = secp256k1.createPoint(baseX, secp256k1.mapToY(baseX));
         BigInteger   q = secp256k1.getCyclicOrder();
-        System.out.println("secp256k1 base: " + secp256k1Base);
-        System.out.println("base.y^2: " + secp256k1Base.getY().modPow(valueOf(2), secp256k1.getModulus()));
-        System.out.println("base.-y^2: " + secp256k1.getModulus().subtract(secp256k1Base.getY()).modPow(valueOf(2), secp256k1.getModulus()));
-        System.out.println(secp256k1Base.scale(q.subtract(valueOf(2))));
-        System.out.println(secp256k1Base.scale(q.subtract(ONE)));
-        System.out.println(secp256k1Base.scale(q));
-        System.out.println(secp256k1Base.scale(q.add(ONE)));
-        ECDSA   ecdsa = new BiasedECDSA(secp256k1Base, q);
+
+        // Check whether the curve behaves as expected
+        assertEquals(secp256k1Base.inverse(), secp256k1Base.scale(q.subtract(ONE)));
+        assertEquals(secp256k1.getIdentity(), secp256k1Base.scale(q));
+        assertEquals(secp256k1.getIdentity(), secp256k1Base.combine(secp256k1Base.inverse()));
+
+        BiasedECDSA   ecdsa = new BiasedECDSA(secp256k1Base, q);
+        int   l = 8;   /* The number of bits that are biased toward 0 */
         DSAHelper.Signature   signature = ecdsa.sign(CHALLENGE56_MSG.getBytes());
         ECDSA.PublicKey   legitPk = ecdsa.getPublicKey(),
-                forgedPk = Set8.breakChallenge61ECDSA(CHALLENGE56_MSG.getBytes(), signature, ecdsa.getPublicKey());
+                          forgedPk = Set8.breakChallenge61ECDSA(CHALLENGE56_MSG.getBytes(), signature, ecdsa.getPublicKey());
         assertTrue(legitPk.verifySignature(CHALLENGE56_MSG.getBytes(), signature));
         assertTrue(forgedPk.verifySignature(CHALLENGE56_MSG.getBytes(), signature));
         assertNotEquals(legitPk, forgedPk);
+
+        int   numMsgs = 20;
+        BigInteger[][]   tuPairs = IntStream.range(0, numMsgs).mapToObj(x -> Set8.getPlainText(6)).map(m -> {
+            BigInteger[]   tuPair = new BigInteger[2];
+            DSAHelper.Signature  sign = ecdsa.sign(m);
+            // t = r / (s*2^l)
+            tuPair[0] = sign.getR().multiply(sign.getS().multiply(ONE.shiftLeft(l)).modInverse(q)).mod(q);
+            // u = H(m) / (-s*2^l)
+            tuPair[1] = hashAsBigInteger(m).multiply(sign.getS().negate().multiply(ONE.shiftLeft(l)).modInverse(q)).mod(q);
+            return  tuPair;
+        }).toArray(BigInteger[][]::new);
+
+        LatticeAttackHelper   helper = new LatticeAttackHelper(tuPairs, q, 8);
+        BigInteger   pk = helper.extractKey();
+        assertEquals(ecdsa.getPrivateKey(), pk);
+        System.out.printf("Extracted private key: 0x%x%n", pk);
     }
 
     @DisplayName("Polynomial Galois Field over GF(2)")
