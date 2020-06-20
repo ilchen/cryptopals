@@ -35,6 +35,7 @@ can find in the below Table of contents.
   * [Challenge 59. Elliptic Curve Diffie-Hellman and Invalid-Curve Attacks](https://github.com/ilchen/cryptopals#challenge-59-elliptic-curve-diffie-hellman-and-invalid-curve-attacks)
   * [Challenge 60. Single-Coordinate Ladders and Insecure Twists](https://github.com/ilchen/cryptopals#challenge-60-single-coordinate-ladders-and-insecure-twists)
   * [Challenge 61. Duplicate-Signature Key Selection in ECDSA (and RSA)](https://github.com/ilchen/cryptopals#challenge-61-duplicate-signature-key-selection-in-ecdsa-and-rsa)
+  * [Challenge 62. Key-Recovery Attacks on ECDSA with Biased Nonces](https://github.com/ilchen/cryptopals#challenge-62-key-recovery-attacks-on-ecdsa-with-biased-nonces)
   * [Challenge 63. Key-Recovery Attacks on GCM with Repeated Nonces](https://github.com/ilchen/cryptopals#challenge-63-key-recovery-attacks-on-gcm-with-repeated-nonces)
   * [Challenge 64. Key-Recovery Attacks on GCM with a Truncated MAC](https://github.com/ilchen/cryptopals#challenge-64-key-recovery-attacks-on-gcm-with-a-truncated-mac)
   * [Challenge 65. Truncated-MAC GCM Revisited: Improving the Key-Recovery Attack via Ciphertext Length Extension](https://github.com/ilchen/cryptopals#challenge-65-truncated-mac-gcm-revisited-improving-the-key-recovery-attack-via-ciphertext-length-extension)
@@ -481,6 +482,139 @@ to the message. This way, the signing public key is authenticated along with the
 to pay attention to the public keys of RSA and be suspicious of public exponents `e` that are not among the commonly
 used ones: { 3, 5, 17, 65537 }.
 
+### Challenge 62. Key-Recovery Attacks on ECDSA with Biased Nonces
+[Challenge 62](https://toadstyle.org/cryptopals/62.txt) is an excellent example of what could happen if a cryptographic
+primitive is used incorrectly. It is an egregious misnomer to call the random integer `k` used in DSA signing a nonce.
+A nonce is a number used once. But there's an important caveat to it &mdash; a proper cryptographic algorithm expecting
+a nonce should be secure even if an adversary gets to choose its nonces (provided they are all unique, of course).
+DSA's `k` must be a cryptographically strong (i.e. unpredictable) uniformally distributed random number for the resulting
+signing scheme to be secure. I will henceforth put DSA's nonce in quotation marks to accentuate that it cannot be treated 
+as a real nonce.
+
+In this attack we get to see what can happen when "nonce" `k` is biased: its `l` least significant bits are zero. In this
+case all signatures end up sharing the same "nonce" suffix `00000000`. To make the attack closer to a real-world setting
+I implemented the challenge using [curve secp256k1](https://en.bitcoin.it/wiki/Secp256k1).
+This curve is used by Bitcoin, Etherium, and Ripple. The authors of [this paper](https://eprint.iacr.org/2019/023.pdf)
+found multiple cases of signatures with the same key whose "nonces" shared the same suffix. To quote:
+
+> _256-bit nonces with shared 128-bit suffixes_. 121 signatures were compromised by nonces that shared a 128-bit suffix
+with at least one other signature. 55 of these signatures were used with multisignature addresses and 66 were generated
+by non-multisignature addresses. 13 keys were compromised this way, which had generated a total of 224 signatures. There
+were 20 distinct suffixes that had been used by these keys. The earliest signature of this type that we found was from
+March 2015, and the most recent was from August 2018. Some of the keys were used with nonces that all shared the same
+suffix, and some were used with nonces of varying and occasionally unique suffixes.
+
+Even though this is much more biased than the 8-bit shared suffixes we get to exploit in this challenge, it still highlights
+how practical this attack is.
+
+The explanation of the math behind the attack provided by @spdevlin is pretty clear. The main point to fathom is that
+the vector
+
+bu - d·bt + m<sub>1</sub>·b<sub>1</sub> + m<sub>2</sub>·b<sub>2</sub> + ... + m<sub>n</sub>·b<sub>n</sub>    (1)
+
+is reasonably short and hence is likely to be present in the reduced basis we obtain for our lattice. Why is it short?
+Because early in the problem description we learnt that 
+u - d·t + m·q ~ 0 or less than q/2<sup>l</sup> to be precise. This means that each element of (1) is less than
+q/2<sup>l</sup> and therefore the length of (1) is much shorter than the length of each of the vectors in our original lattice (2), which you can see below.
+
+
+There's one minor omission in the problem description: the lattice that needs to be constructed should look like
+```
+b1 = [  q  0  0  0  0  0 ...  0  0  0 ]
+b2 = [  0  q  0  0  0  0 ...  0  0  0 ]
+b3 = [  0  0  q  0  0  0 ...  0  0  0 ]
+b4 = [  0  0  0  q  0  0 ...  0  0  0 ]
+b5 = [  0  0  0  0  q  0 ...  0  0  0 ]     (2)
+b6 = [  0  0  0  0  0  q ...  0  0  0 ]
+        ...              ...
+bn = [  0  0  0  0  0  0 ...  q  0  0 ]
+bt = [ t1 t2 t3 t4 t5 t6 ... tn ct  0 ]
+bu = [ u1 u2 u3 u4 u5 u6 ... un  0 cu ]
+```
+and have dimension [n+2 x n+2] (in the problem description it is mistakenly shown to have dimension [n+2 x n+3]).
+
+The implementation of the Gram-Schmidt orthogonalization process and the Lenstra-Lenstra-Lovasz basis reduction algorithm
+was fairly straightforward. I opted for infinite precision floating point arithmetic provided by Java's BigDecimal.
+I created [a class with static methods for matrix operations over a field of reals]() and a simple unit test to verify
+that the main lattice operations work correctly:
+```java
+@Test
+void  matrixOperationsOverFieldOfRealsForChallenge62() {
+    BigDecimal[][]   basis = { { BigDecimal.valueOf(-2), BigDecimal.ZERO, BigDecimal.valueOf(2), BigDecimal.ZERO },
+                               { BigDecimal.valueOf(.5), BigDecimal.valueOf(-1), BigDecimal.ZERO, BigDecimal.ZERO },
+                               { BigDecimal.valueOf(-1), BigDecimal.ZERO, BigDecimal.valueOf(-2), BigDecimal.valueOf(.5) },
+                               { BigDecimal.valueOf(-1), BigDecimal.ONE, BigDecimal.ONE, BigDecimal.valueOf(2) }},
+
+            expectedReducedBasis = { { BigDecimal.valueOf(.5), BigDecimal.valueOf(-1), BigDecimal.ZERO, BigDecimal.ZERO },
+                                     { BigDecimal.valueOf(-1), BigDecimal.ZERO, BigDecimal.valueOf(-2), BigDecimal.valueOf(.5) },
+                                     { BigDecimal.valueOf(-.5), BigDecimal.ZERO, BigDecimal.ONE, BigDecimal.valueOf(2) },
+                                     { BigDecimal.valueOf(-1.5), BigDecimal.valueOf(-1), BigDecimal.valueOf(2), BigDecimal.ZERO  }},
+
+            orthogonalBasis = RealMatrixOperations.gramSchmidt(basis),
+            reducedBasis = RealMatrixOperations.lLL(basis, BigDecimal.valueOf(.99));
+
+    // Is the Gram-Schmidt orthogonalization process implemented correctly?
+    for (int i=0; i < orthogonalBasis.length; i++) {
+        for (int j=i+1; j < orthogonalBasis.length; j++) {
+            assertEquals(0, BigDecimal.ZERO.compareTo( /* The dot product of each pair of distinct vectors must be 0 */
+                    RealMatrixOperations.innerProduct(orthogonalBasis[i], orthogonalBasis[j]).setScale(10, BigDecimal.ROUND_HALF_EVEN)));
+        }
+    }
+
+    // Is L^3-lattice basis reduction algorithm implemented correctly?
+    assertTrue(RealMatrixOperations.equals(expectedReducedBasis, reducedBasis));
+
+}
+```
+Creating a biased ECDSA signer [was trivial]() too.
+
+One nuance worth pointing out is the number of signatures required to recover the private key. @spdevlin writes:
+> I get good results with as few as 20 signatures. YMMV.
+
+Well, the actual number of signatures required to assuredly recover the private key will depend on the curve chosen.
+Since I chose secp256k1 &mdash; a pretty advanced secure curve, my mileage turned out to be quite different indeed.
+I ended up needing 26 messages signed with the same key and different biased nonces. Moreover I had to increase the
+length of the shared suffix from 8 bits to 12. And, voilà, within half an hour I am able to recover the key:
+
+```
+Extracted private key:	0x59dc17a4bc3b63a7df0b0cde5d58119caa1b2c711ef46fa59735d8f7fe09e9d1
+Actual private key:		0x59dc17a4bc3b63a7df0b0cde5d58119caa1b2c711ef46fa59735d8f7fe09e9d1
+```
+
+[The code of the main test]() is pretty compact:
+```java
+@Test
+void challenge62() {
+    // Using Bitcoin's secp256k1
+    WeierstrassECGroup   secp256k1 = new WeierstrassECGroup(CURVE_SECP256K1_PRIME, ZERO, valueOf(7), CURVE_SECP256K1_ORDER);
+    BigInteger   baseX = new BigInteger("79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798", 16);
+    WeierstrassECGroup.ECGroupElement   secp256k1Base = secp256k1.createPoint(baseX, secp256k1.mapToY(baseX));
+    BigInteger   q = secp256k1.getCyclicOrder();
+
+    // Check whether the curve behaves as expected
+    assertEquals(secp256k1Base.inverse(), secp256k1Base.scale(q.subtract(ONE)));
+    assertEquals(secp256k1.getIdentity(), secp256k1Base.scale(q));
+    assertEquals(secp256k1.getIdentity(), secp256k1Base.combine(secp256k1Base.inverse()));
+
+    int   l = 12;   /* The number of least significant bits in k that will be 0 */
+    BiasedECDSA   ecdsa = new BiasedECDSA(secp256k1Base, q, l);
+    int   numMsgs = 26;                      // Each call to getPlainText(6) returns random plaintext 2^6 bytes long
+    BigInteger[][]   tuPairs = IntStream.range(0, numMsgs).mapToObj(x -> Set8.getPlainText(6)).map(m -> {
+        BigInteger[]   tuPair = new BigInteger[2];
+        DSAHelper.Signature  sign = ecdsa.sign(m);
+        // t = r / (s*2^l)
+        tuPair[0] = sign.getR().multiply(sign.getS().multiply(ONE.shiftLeft(l)).modInverse(q)).mod(q);
+        // u = H(m) / (-s*2^l)
+        tuPair[1] = hashAsBigInteger(m).multiply(sign.getS().negate().multiply(ONE.shiftLeft(l)).modInverse(q)).mod(q);
+        return  tuPair;
+    }).toArray(BigInteger[][]::new);
+
+    LatticeAttackHelper   helper = new LatticeAttackHelper(tuPairs, q, l);
+    BigInteger   pk = helper.extractKey();
+    System.out.printf("Extracted private key:\t0x%x%nActual private key:\t\t0x%x%n", pk, ecdsa.getPrivateKey());
+    assertEquals(ecdsa.getPrivateKey(), pk);
+}
+```
 
 ### Challenge 63. Key-Recovery Attacks on GCM with Repeated Nonces
 [Challenge 63](https://toadstyle.org/cryptopals/63.txt) consists of six parts:

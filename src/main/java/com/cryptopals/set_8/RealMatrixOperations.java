@@ -9,7 +9,7 @@ import java.util.stream.IntStream;
 import static java.math.BigDecimal.*;
 
 /**
- * Implements matrix operations over a field of reals. Where possible unlimited precision arithmetic is used.
+ * Implements matrix operations over a field of reals. Where possible, unlimited precision arithmetic is used.
  *
  * <br/>
  * Created by Andrei Ilchenko on 19-06-20.
@@ -29,17 +29,6 @@ public class RealMatrixOperations {
             System.arraycopy(mat[i], 0, res[i], 0, numColsToCopy);
         }
         return  res;
-    }
-
-    public static BigDecimal[][] transposeInPlace(BigDecimal[][] m) {
-        for (int i=0; i < m.length; i++) {
-            for (int j=i+1; j < m.length; j++) {
-                BigDecimal   tmp = m[i][j];
-                m[i][j] = m[j][i];
-                m[j][i] = tmp;
-            }
-        }
-        return  m;
     }
 
     public static BigDecimal[]  multiply(BigDecimal[] m, BigDecimal n) {
@@ -120,6 +109,7 @@ public class RealMatrixOperations {
         BigDecimal[][]   res = copy(B),  Q = gramSchmidt(res);
 
         for (int k=1; k < B.length;) {
+            //System.out.printf("Iteration %2d of %2d%n", k, B.length-1);
             for (int j=k-1; j >=0; j--) {
                 if (mu(Q[j], res[k]).abs().compareTo(HALF) > 0) {
                     res[k] = subtract(res[k],
@@ -141,6 +131,7 @@ public class RealMatrixOperations {
 
         return  res;
     }
+
 
     public static boolean  equals(BigDecimal[][] mat, BigDecimal[][] mat2) {
         int   i,  m = mat.length;

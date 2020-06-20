@@ -215,8 +215,8 @@ class Set8Tests {
 
         // Is the Gram-Schmidt orthogonalization process implemented correctly?
         for (int i=0; i < orthogonalBasis.length; i++) {
-            for (int j = i + 1; j < orthogonalBasis.length; j++) {
-                assertEquals(0, BigDecimal.ZERO.compareTo(
+            for (int j=i+1; j < orthogonalBasis.length; j++) {
+                assertEquals(0, BigDecimal.ZERO.compareTo( /* The dot product of each pair of distinct vectors must be 0 */
                         RealMatrixOperations.innerProduct(orthogonalBasis[i], orthogonalBasis[j]).setScale(10, BigDecimal.ROUND_HALF_EVEN)));
             }
         }
@@ -240,16 +240,9 @@ class Set8Tests {
         assertEquals(secp256k1.getIdentity(), secp256k1Base.scale(q));
         assertEquals(secp256k1.getIdentity(), secp256k1Base.combine(secp256k1Base.inverse()));
 
-        BiasedECDSA   ecdsa = new BiasedECDSA(secp256k1Base, q);
-        int   l = 8;   /* The number of bits that are biased toward 0 */
-        DSAHelper.Signature   signature = ecdsa.sign(CHALLENGE56_MSG.getBytes());
-        ECDSA.PublicKey   legitPk = ecdsa.getPublicKey(),
-                          forgedPk = Set8.breakChallenge61ECDSA(CHALLENGE56_MSG.getBytes(), signature, ecdsa.getPublicKey());
-        assertTrue(legitPk.verifySignature(CHALLENGE56_MSG.getBytes(), signature));
-        assertTrue(forgedPk.verifySignature(CHALLENGE56_MSG.getBytes(), signature));
-        assertNotEquals(legitPk, forgedPk);
-
-        int   numMsgs = 20;
+        int   l = 12;   /* The number of least significant bits in k that will be 0 */
+        BiasedECDSA   ecdsa = new BiasedECDSA(secp256k1Base, q, l);
+        int   numMsgs = 26;                      // Each call to getPlainText(6) returns random plaintext 2^6 bytes long
         BigInteger[][]   tuPairs = IntStream.range(0, numMsgs).mapToObj(x -> Set8.getPlainText(6)).map(m -> {
             BigInteger[]   tuPair = new BigInteger[2];
             DSAHelper.Signature  sign = ecdsa.sign(m);
@@ -260,10 +253,10 @@ class Set8Tests {
             return  tuPair;
         }).toArray(BigInteger[][]::new);
 
-        LatticeAttackHelper   helper = new LatticeAttackHelper(tuPairs, q, 8);
+        LatticeAttackHelper   helper = new LatticeAttackHelper(tuPairs, q, l);
         BigInteger   pk = helper.extractKey();
+        System.out.printf("Extracted private key:\t0x%x%nActual private key:\t\t0x%x%n", pk, ecdsa.getPrivateKey());
         assertEquals(ecdsa.getPrivateKey(), pk);
-        System.out.printf("Extracted private key: 0x%x%n", pk);
     }
 
     @DisplayName("Polynomial Galois Field over GF(2)")

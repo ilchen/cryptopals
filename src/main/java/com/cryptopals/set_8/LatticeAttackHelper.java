@@ -27,7 +27,7 @@ public class LatticeAttackHelper {
      *                {@code k} nonces whose least significant {@code l} bits are zeros. Each ECDSA signature (r, s)
      *                gives rise to a (t, u) pair as follows: {@code t = r / ( s*2^l); u = H(q) / (-s*2^l)}
      * @param modulus the order of the base point used for this instance of ECDSA, it need not be prime
-     * @param l  the number of the least signigicant zero bits in biased {@code k} nonces
+     * @param l  the number of the least significant zero bits in biased {@code k} nonces
      */
     public LatticeAttackHelper(BigInteger[][] tuPairs, BigInteger modulus, int l) {
         pairs = Stream.of(tuPairs).map(pair -> {
@@ -51,9 +51,10 @@ public class LatticeAttackHelper {
 
     public BigInteger  extractKey() {
         int   n = lattice.length;
+        assert  lattice[n-1][n-1].equals(q.divide(TWO_TO_THE_L_TH, MathContext.UNLIMITED));
         for (BigDecimal[] vec : reducedLattice) {
             if (lattice[n-1][n-1].equals(vec[n-1])) {
-                return  vec[n-2].multiply(TWO_TO_THE_L_TH).negate().toBigInteger();
+                return  vec[n-2].multiply(TWO_TO_THE_L_TH).negate().toBigInteger().mod(q.toBigInteger());
             }
         }
         return  BigInteger.ZERO;

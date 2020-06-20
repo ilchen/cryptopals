@@ -12,14 +12,20 @@ import static com.cryptopals.set_6.DSAHelper.hashAsBigInteger;
  * {@code k}'s least significant 8 bits are zeros.s
  */
 public class BiasedECDSA extends ECDSA {
-    public BiasedECDSA(ECGroupElement g, BigInteger order) {
+    private final int   l;
+
+    /**
+     * @param l the number of least significant bits of {@code k}'s that will be zeros
+     */
+    public BiasedECDSA(ECGroupElement g, BigInteger order, int l) {
         super(g, order);
+        this.l = l;
     }
 
     @Override
     public DSAHelper.Signature sign(byte[] msg) {
         // k is biased in having the 8 least significant bits as zeros
-        BigInteger   k = DSAHelper.generateK(n).shiftRight(8).shiftLeft(8),  r = G.scale(k).getX();
+        BigInteger   k = DSAHelper.generateK(n).shiftRight(l).shiftLeft(l),  r = G.scale(k).getX();
         return  new DSAHelper.Signature(r, k.modInverse(n).multiply(hashAsBigInteger(msg).add(d.multiply(r))).mod(n));
     }
 
