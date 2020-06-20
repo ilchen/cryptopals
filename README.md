@@ -507,24 +507,14 @@ suffix, and some were used with nonces of varying and occasionally unique suffix
 Even though this is much more biased than the 8-bit shared suffixes we get to exploit in this challenge, it still highlights
 how practical this attack is.
 
-The explanation of the math behind the attack provided by @spdevlin is pretty clear. The main point to fathom is that
-the vector
-
-bu - d·bt + m<sub>1</sub>·b<sub>1</sub> + m<sub>2</sub>·b<sub>2</sub> + ... + m<sub>n</sub>·b<sub>n</sub>    (1)
-
-is reasonably short and hence is likely to be present in the reduced basis we obtain for our lattice. Why is it short?
-Because early in the problem description we learnt that 
-u - d·t + m·q ~ 0 or less than q/2<sup>l</sup> to be precise. This means that each element of (1) is less than
-q/2<sup>l</sup> and therefore the length of (1) is much shorter than the length of each of the vectors in our original lattice (2), which you can see below.
-
-
-There's one minor omission in the problem description: the lattice that needs to be constructed should look like
+The explanation of the math behind the attack provided by @spdevlin is simply superb. There's one petty inaccuracy in
+the problem description: the lattice that needs to be constructed should look like
 ```
 b1 = [  q  0  0  0  0  0 ...  0  0  0 ]
 b2 = [  0  q  0  0  0  0 ...  0  0  0 ]
 b3 = [  0  0  q  0  0  0 ...  0  0  0 ]
 b4 = [  0  0  0  q  0  0 ...  0  0  0 ]
-b5 = [  0  0  0  0  q  0 ...  0  0  0 ]     (2)
+b5 = [  0  0  0  0  q  0 ...  0  0  0 ]     (1)
 b6 = [  0  0  0  0  0  q ...  0  0  0 ]
         ...              ...
 bn = [  0  0  0  0  0  0 ...  q  0  0 ]
@@ -533,10 +523,20 @@ bu = [ u1 u2 u3 u4 u5 u6 ... un  0 cu ]
 ```
 and have dimension [n+2 x n+2] (in the problem description it is mistakenly shown to have dimension [n+2 x n+3]).
 
+
+The main point to fathom is that the vector
+
+bu - d·bt + m<sub>1</sub>·b<sub>1</sub> + m<sub>2</sub>·b<sub>2</sub> + ... + m<sub>n</sub>·b<sub>n</sub>    (2)
+
+is reasonably short and hence is likely to be present in the reduced basis we obtain for our lattice (1). Why is it short?
+Because early in the problem description we learnt that 
+u - d·t + m·q ~ 0 or less than q/2<sup>l</sup> to be precise. This means that each element of (2) is less than
+q/2<sup>l</sup> and therefore the length of (2) is much shorter than the length of each of the vectors in our original lattice (1).
+
 The implementation of the Gram-Schmidt orthogonalization process and the Lenstra-Lenstra-Lovasz basis reduction algorithm
 was fairly straightforward. I opted for infinite precision floating point arithmetic provided by Java's BigDecimal.
-I created [a class with static methods for matrix operations over a field of reals]() and a simple unit test to verify
-that the main lattice operations work correctly:
+I created [a class with static methods for matrix operations over a field of reals](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/RealMatrixOperations.java)
+and a simple unit test to verify that the main lattice operations work correctly:
 ```java
 @Test
 void  matrixOperationsOverFieldOfRealsForChallenge62() {
@@ -566,7 +566,7 @@ void  matrixOperationsOverFieldOfRealsForChallenge62() {
 
 }
 ```
-Creating a biased ECDSA signer [was trivial]() too.
+Creating a biased ECDSA signer [was trivial](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/BiasedECDSA.java#L25-L30) too.
 
 One nuance worth pointing out is the number of signatures required to recover the private key. @spdevlin writes:
 > I get good results with as few as 20 signatures. YMMV.
@@ -581,7 +581,7 @@ Extracted private key:	0x59dc17a4bc3b63a7df0b0cde5d58119caa1b2c711ef46fa59735d8f
 Actual private key:		0x59dc17a4bc3b63a7df0b0cde5d58119caa1b2c711ef46fa59735d8f7fe09e9d1
 ```
 
-[The code of the main test]() is pretty compact:
+[The code of the main test](https://github.com/ilchen/cryptopals/blob/master/src/test/java/com/cryptopals/Set8Tests.java#L229-L260) is pretty compact:
 ```java
 @Test
 void challenge62() {
