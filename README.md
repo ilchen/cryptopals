@@ -1668,7 +1668,9 @@ private void  init(ECGroupElement g, BigInteger q) {
 Rather than mess up with the Elliptic curve classes WeierstrassECGroup and MontgomeryECGroup, which are implemented
 without flaws, I created a new one called [FaultyWeierstrassECGroup](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/FaultyWeierstrassECGroup.java).
 It differs from its legit counterpart in the implementation
-of the scale and combine methods. I ensured it works the same for the rest:
+of the [scale](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/FaultyWeierstrassECGroup.java#L132-L143)
+and [combine](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/FaultyWeierstrassECGroup.java#L149-L171) methods.
+Excepting this, it works the same as [WeierstrassECGroup](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/WeierstrassECGroup.java):
 ```java
 @Test
 void  faultyCurveForChallenge66()  {
