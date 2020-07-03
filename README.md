@@ -1734,9 +1734,9 @@ while (idx > 0) {
     }
 ```
 
-However I soon abandoned the idea as for it to work Bob is expected not do any further operations that might trigger a fault
+However I soon abandoned the idea as for it to work Bob is expected not to do any further operations that might trigger a fault
 after he calculates the shared secret from Alice's point A (her public key). This will not hold in a real-world setting
-as Bob will also go ahead to calculate his public key and this step can also trigger a fault. 
+as Bob will then go ahead to calculate his public key and this step might also trigger a fault. 
 ```java
 /** 
  * @param g  a generator of a (sub)group of the elliptic curve group that g is a member of
