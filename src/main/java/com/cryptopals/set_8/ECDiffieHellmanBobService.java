@@ -26,26 +26,32 @@ public class ECDiffieHellmanBobService implements ECDiffieHellman {
         if (ecg == null  ||  !ecg.equals(g.group())  ||  !this.g.equals(g)) {
             ecg = g.group();
             this.g = g;
-            privateKey = new DiffieHellmanHelper(ecg.getModulus(), q).generateExp().mod(q);
+            DiffieHellmanHelper   dhh = new DiffieHellmanHelper(ecg.getModulus(), q);
+            BigInteger   pk;
+            do {     /* Ensure the private key has the maximum possible number of bits */
+                pk = dhh.generateExp().mod(q);
+            }  while (pk.bitLength() != q.bitLength());
+            privateKey = pk;
         }
     }
 
     @Override
     @SneakyThrows
-    public Set8.Challenge59ECDHBobResponse initiate(ECGroupElement g, BigInteger q, ECGroupElement A) throws RemoteException {
+    public Set8.Challenge59ECDHBobResponse initiate(ECGroupElement g, BigInteger q, ECGroupElement A) {
         // A bit contrived for Bob to hang on to the same private key across new sessions, however this is what
         // Challenge 59 calls for.
         init(g, q);
 
         macKey = Set8.generateSymmetricKey(A, privateKey, 32, Set8.MAC_ALGORITHM_NAME);
         mac.init(macKey);
-        return  new Set8.Challenge59ECDHBobResponse(g.scale(privateKey), Set8.CHALLENGE56_MSG,
-                mac.doFinal(Set8.CHALLENGE56_MSG.getBytes()) );
+
+        return  new Set8.Challenge59ECDHBobResponse(
+                g.scale(privateKey), Set8.CHALLENGE56_MSG, mac.doFinal(Set8.CHALLENGE56_MSG.getBytes()) );
     }
 
     @Override
     @SneakyThrows
-    public Set8.Challenge60ECDHBobResponse initiate(ECGroupElement g, BigInteger q, BigInteger xA) throws RemoteException {
+    public Set8.Challenge60ECDHBobResponse initiate(ECGroupElement g, BigInteger q, BigInteger xA) {
         // A bit contrived for Bob to hang on to the same private key across new sessions, however this is what
         // Challenge 60 calls for.
         init(g, q);
@@ -67,7 +73,7 @@ public class ECDiffieHellmanBobService implements ECDiffieHellman {
     }
 
     @Override
-    public boolean isValidPrivateKey(BigInteger b) throws RemoteException {
+    public boolean isValidPrivateKey(BigInteger b) {
         boolean  res = false;
         if (ecg != null) {
             res = b.equals(privateKey);

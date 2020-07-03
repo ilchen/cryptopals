@@ -8,7 +8,7 @@ import java.rmi.RemoteException;
 
 public interface ECDiffieHellman extends Remote {
     /**
-     * @param g  a generator of a (sub)group of the elliptic curve group that g is a membber of
+     * @param g  a generator of a (sub)group of the elliptic curve group that g is a member of
      * @param q  the order of the generator
      * @param A  Alice's public key
      * @throws RemoteException
@@ -16,7 +16,7 @@ public interface ECDiffieHellman extends Remote {
     Set8.Challenge59ECDHBobResponse  initiate(ECGroupElement g, BigInteger q, ECGroupElement A) throws RemoteException;
 
     /**
-     * @param g  a generator of a (sub)group of the elliptic curve group that g is a membber of
+     * @param g  a generator of a (sub)group of the elliptic curve group that g is a member of
      * @param q  the order of the generator
      * @param xA  the x coordinate of Alice's public key
      * @throws RemoteException

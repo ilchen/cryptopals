@@ -12,6 +12,7 @@ import javax.crypto.Mac;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.MalformedURLException;
 import java.rmi.Naming;
@@ -671,6 +672,138 @@ public class Set8 {
         System.out.println("Suitable primes found: " + Arrays.toString(primeAndFactors));
         return  breakChallenge61RSA(msg, rsaSignature, primeAndFactors, bitLength);
     }
+
+    /**
+     * Utility for debugging purposes in Challenge 66.
+     */
+    static void  trace(ECGroupElement point, BigInteger k) {
+        System.out.println("# k = " + k.toString(16));
+        BigInteger   coef = ONE;
+        int   n = k.bitLength();
+        ECGroupElement res = point;
+        try {
+            for (int i=n-2; i >= 0; i--) {
+                System.out.printf("# i = %d, b = %d%n", n - i, k.testBit(i) ? 1 : 0);
+                System.out.printf("add(%dQ, %<dQ)%n", coef);
+                res = res.combine(res);
+                coef = coef.shiftLeft(1);
+                if (k.testBit(i)) {
+                    System.out.printf("add(%dQ, 1Q)%n", coef);
+                    res = res.combine(point);
+                    coef = coef.add(ONE);
+                }
+            }
+        } catch (IllegalStateException e) {
+            System.out.println("Fault raised");
+        }
+    }
+
+    /**
+     * A special version of scale required to mount the attack from Challenge 66.
+     */
+    private static ECGroupElement  scaleForChallenge66(ECGroupElement point, BigInteger k, int idx) {
+        int   n = k.bitLength();
+        ECGroupElement   res = point;
+        if (idx > 0)  res = res.combine(res);
+        for (int i=n-2; i >= Math.max(idx, 1); i--) try {
+            if (k.testBit(i))  {
+                res = res.combine(point);
+            }
+            res = res.combine(res);
+        } catch (IllegalStateException e) {
+            if (i == idx)  throw e;
+            return  null;
+        }
+        if (idx == 0) {
+            if (k.testBit(0)) {
+                res = res.combine(point);
+            }
+        }
+        return  res;
+    }
+
+    /**
+     * @param group  an elliptic curve group whose elements might raise a fault upon invoking their {@code combine} method
+     * @param pk  a private key whose {@code pk.bitLength() - 1 - idx} most significant bits have been recovered
+     * @param idx  the index of the private key that should trigger a fault
+     * @param isLeftBranch  a one-element boolean array that will be modified by this method to indicate which branch triggers
+     *                   a fault (left when bit with index {@code idx} is not set, right otherwise)
+     * @return  a point on {@code group} that will trigger a fault when scaled to {@code pk} or {@code pk.setBit(idx)}
+     */
+    static FaultyWeierstrassECGroup.ECGroupElement  findPointWithFaultAtBitIndex(FaultyWeierstrassECGroup group,
+                                                                                 BigInteger pk, int idx, boolean[] isLeftBranch) {
+        FaultyWeierstrassECGroup.ECGroupElement   res;
+        int   tries = 0;
+        // Instead of simulating only the b = 0 branch, simulate both branches.
+        // Find a candidate point that triggers a fault on one but not the other.
+        boolean   leftBranchTriggeredFault,  rightBranchTriggeredFault;
+        do {
+            leftBranchTriggeredFault = rightBranchTriggeredFault = false;
+            res = group.createRandomPoint();
+            try {
+                scaleForChallenge66(res, pk, idx);
+            } catch (IllegalStateException ignore) {
+                leftBranchTriggeredFault = true;
+            }
+            try {
+                scaleForChallenge66(res, pk.setBit(idx), idx);
+            } catch (IllegalStateException ignore) {
+                rightBranchTriggeredFault = true;
+            }
+            tries++;
+        } while (leftBranchTriggeredFault == rightBranchTriggeredFault);
+        System.out.printf("Point found after %d tries%n", tries);
+        isLeftBranch[0] = leftBranchTriggeredFault;
+        return  res;
+    }
+
+    /**
+     * @param base  a legitimate generator of the E(GF(p))
+     * @param order  an order of {@code base}
+     * @param url  the URL of Bob's RMI service
+     * @return  Bob's private key
+     */
+    static BigInteger  breakChallenge66(FaultyWeierstrassECGroup.ECGroupElement base, BigInteger order, String url,
+                                        BigInteger incidence)
+            throws RemoteException, NotBoundException, MalformedURLException {
+        ECDiffieHellman   bob = (ECDiffieHellman) Naming.lookup(url);
+
+        FaultyWeierstrassECGroup   group = base.group();
+        int   idxMSB = order.bitLength() - 1,  idx = idxMSB - 1;
+        BigInteger   pk = ONE.shiftLeft(idxMSB);
+        boolean[]   isLeftBranch = {   false   };
+        // double    probability = 1 - 1 / incidence.doubleValue();
+
+        while (idx >= 0) {
+            FaultyWeierstrassECGroup.ECGroupElement   point = findPointWithFaultAtBitIndex(group, pk, idx, isLeftBranch);
+            try {
+                bob.initiate(base, order, point);
+            } catch (IllegalStateException ex) {
+                // Even in the presence of uncertainty, positive results have value. You can calculate the probability
+                // of a false positive and determine whether you have enough confidence to proceed.
+                //
+                // The maximum possible number of tries after this idx is numSteps = 2 * idx.
+                // The low bound on the probability of no faults in these following steps is (1-1/incidence)^numSteps
+                /*if (Math.pow(probability, idx << 1) > .9999) {
+                    if (!isLeftBranch[0]) {
+                        pk = pk.setBit(idx);
+                    }
+                }  else*/  continue;
+            }
+
+            // The left branch was supposed to trigger a fault and there's no fault, therefore the right branch got
+            // executed so bit index idx needs to be set
+            if (isLeftBranch[0]) {
+                pk = pk.setBit(idx);
+            }
+            System.out.println("Recovered bit index # " + idx);
+            System.out.println("pk: " + pk.toString(16));
+            idx--;
+        }
+
+        return  pk;
+    }
+
 
     /**
      * Generates a piece of plain text composed of repeating the pattern captured in {@code str} so that the resultant

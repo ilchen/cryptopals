@@ -712,4 +712,41 @@ class Set8Tests {
         assertEquals(gcm.getAuthenticationKey(), h.getRecoveredAuthenticationKey(),
                 "Authentication key not recovered correctly");
     }
+
+    @DisplayName("Faulty curve and trace logic for Challenge 66)")
+    @Test
+    void  faultyCurveForChallenge66()  {
+        // Using Bitcoin's secp256k1
+        FaultyWeierstrassECGroup   secp256k1 = new FaultyWeierstrassECGroup(CURVE_SECP256K1_PRIME, ZERO, valueOf(7), CURVE_SECP256K1_ORDER, valueOf(1000));
+        BigInteger   baseX = new BigInteger("79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798", 16);
+        FaultyWeierstrassECGroup.ECGroupElement   secp256k1Base = secp256k1.createPoint(baseX, secp256k1.mapToY(baseX));
+        BigInteger   q = secp256k1.getCyclicOrder();
+
+        WeierstrassECGroup   secp256 = new WeierstrassECGroup(CURVE_SECP256K1_PRIME, ZERO, valueOf(7), CURVE_SECP256K1_ORDER, valueOf(1000));
+        WeierstrassECGroup.ECGroupElement   secp256Base = secp256.createPoint(baseX, secp256k1.mapToY(baseX));
+
+        // Verify that the faulty curve behaves correctly
+        assertEquals(secp256k1Base.scale(valueOf(58)).getX(), secp256Base.scale(valueOf(58)).getX());
+        assertEquals(secp256k1Base.scale(valueOf(58)).getY(), secp256Base.scale(valueOf(58)).getY());
+        assertEquals(secp256k1Base.scale(valueOf(62)).getX(), secp256Base.scale(valueOf(62)).getX());
+        assertEquals(secp256k1Base.scale(valueOf(62)).getY(), secp256Base.scale(valueOf(62)).getY());
+
+        Set8.trace(secp256Base, valueOf(58));
+        Set8.trace(secp256Base, valueOf(62));
+    }
+
+    @DisplayName("https://toadstyle.org/cryptopals/66.txt")
+    @ParameterizedTest @ValueSource(strings = { "rmi://localhost/ECDiffieHellmanBobService" })
+    // The corresponding SpringBoot server application must be running.
+    void challenge66(String url) throws RemoteException, NotBoundException, MalformedURLException {
+        BigInteger   incidence = valueOf(100_000);
+        FaultyWeierstrassECGroup group = new FaultyWeierstrassECGroup(new BigInteger("233970423115425145524320034830162017933"),
+                valueOf(-95051), valueOf(11279326), new BigInteger("233970423115425145498902418297807005944"), incidence);
+        FaultyWeierstrassECGroup.ECGroupElement   base = group.createPoint(
+                valueOf(182), new BigInteger("85518893674295321206118380980485522083"));
+        BigInteger   q = new BigInteger("29246302889428143187362802287225875743");
+        BigInteger   b = Set8.breakChallenge66(base, q, url, incidence);
+        ECDiffieHellman bob = (ECDiffieHellman) Naming.lookup(url);
+        assertTrue(bob.isValidPrivateKey(b));
+    }
 }
