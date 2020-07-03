@@ -12,7 +12,8 @@ Some challenges ([31](https://cryptopals.com/sets/4/challenges/31),
 [35](https://cryptopals.com/sets/5/challenges/35), [36](https://cryptopals.com/sets/5/challenges/36),
 [37](https://cryptopals.com/sets/5/challenges/37), [49](https://cryptopals.com/sets/7/challenges/49),
 [57](https://toadstyle.org/cryptopals/57.txt), [58](https://toadstyle.org/cryptopals/58.txt),
-[59](https://toadstyle.org/cryptopals/59.txt), [60](https://toadstyle.org/cryptopals/60.txt)) require a server-side application.
+[59](https://toadstyle.org/cryptopals/59.txt), [60](https://toadstyle.org/cryptopals/60.txt),
+[66](https://toadstyle.org/cryptopals/66.txt) require a server-side application.
 This can be produced with `mvn install` and executed with
 ```
 java -jar cryptopals_server-0.2.0.jar
@@ -39,6 +40,7 @@ can find in the below Table of contents.
   * [Challenge 63. Key-Recovery Attacks on GCM with Repeated Nonces](https://github.com/ilchen/cryptopals#challenge-63-key-recovery-attacks-on-gcm-with-repeated-nonces)
   * [Challenge 64. Key-Recovery Attacks on GCM with a Truncated MAC](https://github.com/ilchen/cryptopals#challenge-64-key-recovery-attacks-on-gcm-with-a-truncated-mac)
   * [Challenge 65. Truncated-MAC GCM Revisited: Improving the Key-Recovery Attack via Ciphertext Length Extension](https://github.com/ilchen/cryptopals#challenge-65-truncated-mac-gcm-revisited-improving-the-key-recovery-attack-via-ciphertext-length-extension)
+  * [Challenge 66. Exploiting Implementation Errors in Diffie-Hellman](https://github.com/ilchen/cryptopals#challenge-66-exploiting-implementation-errors-in-diffie-hellman)
 
 ## [Set 6: RSA and DSA](https://cryptopals.com/sets/6)
 ### Challenge 48. Bleichenbacher's PKCS 1.5 Padding Oracle (Complete Case)
@@ -121,6 +123,12 @@ For the maximum-likelihood estimation of the plaintext bytes I used 2<sup>24</su
 P<sub>16</sub> and P<sub>32</sub> and fully corraborates the results in Figure 4 in the paper.
 
 ## [Set 8: Abstract Algebra](https://toadstyle.org/cryptopals/)
+
+This set of problems is amazingly interesting, however it took me approximately twice as long as the previous sets combined.
+It also calls for creating some handy software that might be of use beyond solving these challenges: such as code for elliptic curve
+cryptography, various ways for calculating dlog, code for GCM along with its GHASH one-time-hash, code for finding roots of polynomials
+over different fields, matrix operations over GF(2), matrix operations over R, etc.
+
 ### Challenge 57. Diffie-Hellman Revisited: Small Subgroup Confinement
 [Challenge 57](https://toadstyle.org/cryptopals/57.txt) introduces the Pohlig-Hellman
 algorithm. The best general-purpose algorithm for taking discrete logs in Z<sub>p</sub><sup>\*</sup> is
@@ -1627,3 +1635,168 @@ plainplainplainp+	��l&��(����uI(ainplainplainplainplainplainplai
 Recovered authentication key: ee3349e46e4d8a32790c11dd49b906b9
 Actual authentication key: ee3349e46e4d8a32790c11dd49b906b9
 ```
+
+
+### Challenge 66. Exploiting Implementation Errors in Diffie-Hellman
+[Challenge 66](https://toadstyle.org/cryptopals/66.txt) picks up where Challenge 59 left off and shows an exploit based
+on a faulty implementation of arbitrary-precision integers. Of all the challenges in Set 8 this is by far the least
+strenuous. It took me the least effort as it builds upon code developed in the earlier challenges. While the problem 
+explanation is pretty self-explanatory, some notes are nevertheless worth making.
+
+> Define an oracle that accepts a point Q, multiplies it by d, and returns true or false depending upon whether a fault is
+  triggered. In a realistic setting, this could be an endpoint that computes the ECDH handshake and decrypts a message.
+  You can build this out if you're feeling fancy, but the artificial oracle is okay too.
+
+I chose the fancy path as it is more realistic and reused [the server-side code from Challenges 59 and 60](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/ECDiffieHellmanBobService.java#L25-L50)
+that represents Bob's contribution to ECDH. Remarkably the only change I needed to make for Bob is to ensure
+his private key is always of the maximum possible length (i.e. the same number of bits as in the order of the curve).
+```java
+private void  init(ECGroupElement g, BigInteger q) {
+    if (ecg == null  ||  !ecg.equals(g.group())  ||  !this.g.equals(g)) {
+        ecg = g.group();
+        this.g = g;
+        DiffieHellmanHelper   dhh = new DiffieHellmanHelper(ecg.getModulus(), q);
+        BigInteger   pk;
+        do {     /* Ensure the private key has the maximum possible number of bits */
+            pk = dhh.generateExp().mod(q);
+        }  while (pk.bitLength() != q.bitLength());
+        privateKey = pk;
+    }
+}
+```
+
+Rather than mess up with the Elliptic curve classes WeierstrassECGroup and MontgomeryECGroup, which are implemented
+without flaws, I created a new one called [FaultyWeierstrassECGroup](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/FaultyWeierstrassECGroup.java).
+It differs from its legit counterpart in the implementation
+of the scale and combine methods. I ensured it works the same for the rest:
+```java
+@Test
+void  faultyCurveForChallenge66()  {
+    // Using Bitcoin's secp256k1
+    FaultyWeierstrassECGroup   secp256k1 = new FaultyWeierstrassECGroup(CURVE_SECP256K1_PRIME, ZERO, valueOf(7), CURVE_SECP256K1_ORDER, valueOf(1000));
+    BigInteger   baseX = new BigInteger("79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798", 16);
+    FaultyWeierstrassECGroup.ECGroupElement   secp256k1Base = secp256k1.createPoint(baseX, secp256k1.mapToY(baseX));
+    BigInteger   q = secp256k1.getCyclicOrder();
+
+    WeierstrassECGroup   secp256 = new WeierstrassECGroup(CURVE_SECP256K1_PRIME, ZERO, valueOf(7), CURVE_SECP256K1_ORDER, valueOf(1000));
+    WeierstrassECGroup.ECGroupElement   secp256Base = secp256.createPoint(baseX, secp256k1.mapToY(baseX));
+
+    // Verify that the faulty curve behaves correctly
+    assertEquals(secp256k1Base.scale(valueOf(58)).getX(), secp256Base.scale(valueOf(58)).getX());
+    assertEquals(secp256k1Base.scale(valueOf(58)).getY(), secp256Base.scale(valueOf(58)).getY());
+    assertEquals(secp256k1Base.scale(valueOf(62)).getX(), secp256Base.scale(valueOf(62)).getX());
+    assertEquals(secp256k1Base.scale(valueOf(62)).getY(), secp256Base.scale(valueOf(62)).getY());
+}
+```
+
+The core of the attack lies in the [scaleForChallenge66](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L701-L723),
+[findPointWithFaultAtBitIndex](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L725-L758),
+and [breakChallenge66](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L760-L805)
+methods. The main point to understand is the following piece in the problem description:
+
+> ... If it triggers the fault, k[2] = 0 (probably.) Probably? Well, sure. There is, of course, a chance for false
+  positives. Since we're treating faults as random, there is a small but nonzero chance your input point will trigger
+  a fault on some later step.
+
+If you get it, the rest of the challenge is a piece of cake to finish.
+
+I experimented with different values for the incidence rate of faults and eventually settled for `incidence = 100000`.
+Initially I wanted to make use of both 1) outcomes that don't trigger a fault (which is guaranteed to be free of false positives),
+and 2) those that do. As proposed by @spdevlin:
+> Even in the presence of uncertainty, positive results have value. You can calculate the probability of a false positive and
+  determine whether you have enough confidence to proceed.
+  
+With some assumptions this probability is not that difficult to calculate. The probability of a fault in each invocation of
+`scale` is approximately `1/incidence`. Therefore the probability of no fault in an invocation is `1 - 1/incidence`.
+The maximum possible number of invocations of `scale` after processing private key bit with index `idx` is numSteps = 2 * idx.
+So the upper bound on the probability of no faults in these following steps is (1-1/incidence)<sup>numSteps</sup>.
+
+My code looked like this:
+```java
+double    probability = 1 - 1 / incidence.doubleValue();
+
+while (idx > 0) {
+    FaultyWeierstrassECGroup.ECGroupElement   point = findPointWithFaultAtBitIndex(group, pk, idx, isLeftBranch);
+    try {
+        bob.initiate(base, order, point);
+    } catch (IllegalStateException ex) {
+        // Even in the presence of uncertainty, positive results have value.
+        //
+        // The maximum possible number of tries after this idx is numSteps = 2 * idx.
+        // The low bound on the probability of no faults in these following steps is (1-1/incidence)^numSteps
+        if (Math.pow(probability, idx << 1) > .9999) {
+            if (!isLeftBranch[0]) {
+                pk = pk.setBit(idx);
+            }
+        }  else  continue;
+    }
+```
+
+However I soon abandoned the idea as for it to work Bob is expected not do any further operations that might trigger a fault
+after he calculates the shared secret from Alice's point A (her public key). This will not hold in a real-world setting
+as Bob will also go ahead to calculate his public key and this step can also trigger a fault. 
+```java
+/** 
+ * @param g  a generator of a (sub)group of the elliptic curve group that g is a member of
+ * @param q  the order of the generator
+ * @param A  Alice's public key
+ */
+public Set8.Challenge59ECDHBobResponse initiate(ECGroupElement g, BigInteger q, ECGroupElement A) throws RemoteException {
+    init(g, q);
+
+    macKey = Set8.generateSymmetricKey(A, privateKey, 32, Set8.MAC_ALGORITHM_NAME); // <-- We expect a fault here
+    mac.init(macKey);
+
+    return  new Set8.Challenge59ECDHBobResponse(
+            g.scale(privateKey), Set8.CHALLENGE56_MSG, mac.doFinal(Set8.CHALLENGE56_MSG.getBytes()) ); // <-- But this can also trigger a fault
+
+```
+
+Even without this optimization, the time to fully recover they key on a single thread for the curve from Challenge 59
+was a meager 4 minutes:
+
+```java
+@DisplayName("https://toadstyle.org/cryptopals/66.txt")
+@ParameterizedTest @ValueSource(strings = { "rmi://localhost/ECDiffieHellmanBobService" })
+// The corresponding SpringBoot server application must be running.
+void challenge66(String url) throws RemoteException, NotBoundException, MalformedURLException {
+    BigInteger   incidence = valueOf(100_000);
+    FaultyWeierstrassECGroup group = new FaultyWeierstrassECGroup(new BigInteger("233970423115425145524320034830162017933"),
+            valueOf(-95051), valueOf(11279326), new BigInteger("233970423115425145498902418297807005944"), incidence);
+    FaultyWeierstrassECGroup.ECGroupElement   base = group.createPoint(
+            valueOf(182), new BigInteger("85518893674295321206118380980485522083"));
+    BigInteger   q = new BigInteger("29246302889428143187362802287225875743");
+    BigInteger   b = Set8.breakChallenge66(base, q, url, incidence);
+    ECDiffieHellman bob = (ECDiffieHellman) Naming.lookup(url);
+    assertTrue(bob.isValidPrivateKey(b));
+    }
+```
+
+```
+Point found after 220 tries
+Point found after 541 tries
+Point found after 114 tries
+Recovered bit index # 123
+pk: 10000000000000000000000000000000
+...
+...
+Recovered bit index # 4
+pk: 115f0d01b0f5b1f821a9740366c59020
+Point found after 197 tries
+Recovered bit index # 3
+pk: 115f0d01b0f5b1f821a9740366c59028
+Point found after 713 tries
+Recovered bit index # 2
+pk: 115f0d01b0f5b1f821a9740366c59028
+Point found after 664 tries
+Recovered bit index # 1
+pk: 115f0d01b0f5b1f821a9740366c5902a
+Point found after 756 tries
+Recovered bit index # 0
+pk: 115f0d01b0f5b1f821a9740366c5902a
+```
+
+As a final note, the challenge does make two assumptions apart from a faulty implementation of arbitrary-precision integers on Bob's side,
+namely that:
+* Bob will naively hang on to the same private key across all new sessions with Alice.
+* Bob will ensure his private key of the same bit length and that this length.
