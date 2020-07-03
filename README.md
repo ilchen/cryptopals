@@ -1771,7 +1771,7 @@ void challenge66(String url) throws RemoteException, NotBoundException, Malforme
     BigInteger   b = Set8.breakChallenge66(base, q, url, incidence);
     ECDiffieHellman bob = (ECDiffieHellman) Naming.lookup(url);
     assertTrue(bob.isValidPrivateKey(b));
-    }
+}
 ```
 
 ```
@@ -1801,4 +1801,4 @@ pk: 115f0d01b0f5b1f821a9740366c5902a
 As a final note, the challenge does make two assumptions apart from a faulty implementation of arbitrary-precision integers on Bob's side,
 namely that:
 * Bob will naively hang on to the same private key across all new sessions with Alice.
-* Bob will ensure his private key of the same bit length and that this length.
+* Bob will ensure his private key is always of the same bit length and that this length is known to Alice.
