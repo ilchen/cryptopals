@@ -259,11 +259,14 @@ small factors collected from all the crafted curves.
   land on the identity, start over.
 
 only works for _cyclic_ groups. For Challenge 57 it didn't matter much because Z<sub>p</sub><sup>*</sup> is always
-cyclic. This doesn't hold for elliptic curve groups though, i.e. not every elliptic curve group is cyclic. In fact you
+cyclic. This doesn't always hold for elliptic curve groups though, i.e. not every elliptic curve group is cyclic. In fact you
 will not be able to find a generator of order 2 for `y^2 = x^3 - 95051*x + 210` if you use the order of the group
 233970423115425145550826547352470124412. The correct way to find generators of required order is to use the order
 of the largest cyclic subgroup of an elliptic curve. For this curve it is 116985211557712572775413273676235062206.
-See [my discussion with @spdevlin](https://twitter.com/_ilchen_/status/1174045790748254210?s=20).
+See [my discussion with @spdevlin](https://twitter.com/_ilchen_/status/1174045790748254210?s=20). Worth noting here
+that any group of a prime order is cyclic. That's one of the reasons why some popular elliptic curves such as 
+secp256r1 or secp256k1 have prime orders. The converse is not always true, i.e. there can be groups of non-prime order
+that are cyclic. 
 
 The attack in this challenge does make two assumptions though, namely that
 * Bob will hang on to the same private key across all new sessions with Alice. This is the same as in Challenge 57.
@@ -407,10 +410,10 @@ you narrow the four combinations to just two that match kk or comp-kk. Implement
 than this explanation. I ended up creating [a class dedicated to tracking different allowed combinations of residues](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/CRTCombinations.java)
 moduli [11, 107, 197, 1621, 105143, 405373, 2323367]. The class implements
 [Iterable<BigInteger[][]>](https://docs.oracle.com/javase/8/docs/api/java/lang/Iterable.html) and thus allows iterating
-through all legit combinations of possible residues to try. Another complication is that finding b mod comp requires
+through all legit combinations of possible residues to try. Another complication is that finding `b mod comp` requires
 ploughing through large ranges for the bigger subgroups. For example to find b mod (1621*105143) requires wading through
 the [0, 1621*105143/2] range, and for each element of the range you need to calculate a DH key and derive a MAC.
-Without parallelizing this easily takes an hour. I therefore implemented [logic to carry such scans in parallel](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L271-L317).
+Without parallelizing this easily takes an hour. I therefore implemented [logic to carry such scans in parallel](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L309-L355).
 
 This challenge is an excellent demonstration of the extra safety that one obtains by using only the x-coordinates
 of Alice's and Bob's public keys when implementing DH on an elliptic curve group. If Alice and Bob go a step further
@@ -452,7 +455,7 @@ both `s` and `pad(m)` (`s^e = pad(m) mod N`) being generators of the entire Zp* 
 I used PKCS#1 v1.5 mode 1 padding with SHA-1, just like in [Challenge 42](https://cryptopals.com/sets/6/challenges/42).
 Since the overhead of PKCS#1 padding with SHA-1 is at least 20+3+15+1=39 bytes, the minimum RSA modulus is 316 bits.
 
-I ended up writing [quite a bit of concurrent code](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L532-L598)
+I ended up writing [quite a bit of concurrent code](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L549-L615)
 to tackle this, and pre-calculated all small primes less than 2<sup>20</sup>
 so as to be able to find primes meeting the criterion 1) above in linear time. Even with such relatively small moduli
 (both p and q are around 160 bits), finding them takes on the order of 20 minutes on my MacBook Pro with all cores searching.
@@ -1665,8 +1668,10 @@ private void  init(ECGroupElement g, BigInteger q) {
 }
 ```
 
-Rather than mess up with the Elliptic curve classes WeierstrassECGroup and MontgomeryECGroup, which are implemented
-without flaws, I created a new one called [FaultyWeierstrassECGroup](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/FaultyWeierstrassECGroup.java).
+Rather than mess up with the Elliptic curve classes [WeierstrassECGroup](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/WeierstrassECGroup.java)
+and [MontgomeryECGroup](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/MontgomeryECGroup.java),
+which I implemented without flaws for earlier problems, I created a new one called
+[FaultyWeierstrassECGroup](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/FaultyWeierstrassECGroup.java).
 It differs from its legit counterpart in the implementation
 of the [scale](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/FaultyWeierstrassECGroup.java#L132-L143)
 and [combine](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/FaultyWeierstrassECGroup.java#L149-L171) methods.
@@ -1736,7 +1741,9 @@ while (idx > 0) {
 
 However I soon abandoned the idea as for it to work Bob is expected not to do any further operations that might trigger a fault
 after he calculates the shared secret from Alice's point A (her public key). This will not hold in a real-world setting
-as Bob will then go ahead to calculate his public key and this step might also trigger a fault. 
+as Bob will then go ahead to calculate his public key and this step might also trigger a fault. It is possible to make
+the code representing Bob cooperate with an attacker by propagating faults occurring when calculating the shared secret
+while swallowing those happening when computing Bob's public key. However such an approach would be utterly unrealistic. 
 ```java
 /** 
  * @param g  a generator of a (sub)group of the elliptic curve group that g is a member of
