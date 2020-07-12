@@ -1408,7 +1408,7 @@ have their unique authentication tag.
 
 Why is this attack possible in the first place? The reason is two-fold:
  
- 1) GHASH is calculated in GF(2<sub>128</sub>). Multiplication by a constant and squaring are linear operations in that field.
+ 1) GHASH is calculated in GF(2<sup>128</sup>). Multiplication by a constant and squaring are linear operations in that field.
  GHASH makes use of multiplications by a constant and squaring. Linear relationships in cryptography are recipes for trouble. That's the reason why
  all block ciphers such as AES or even DES go to such lengths to ensure that their S-boxes exhibit non-linear behavior.
  Were AES's S-boxes linear, AES encryption would boil down to multiplying a large [128x2176] matrix over GF(2) by a column vector [2176x1]
