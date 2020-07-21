@@ -87,7 +87,7 @@ If you are on macOS, you probably already installed gmp when you installed pytho
 
 With tiny changes to the [RSAHelper](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_5/RSAHelper.java#L25-L27)
 and [RSAHelperExt](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_6/RSAHelperExt.java#L66-L67) classes the speedup was
-remarkable. With GMP I was able to go all the way to 2048-bits moduli within just a few minutes:
+remarkable. With GMP 6.2.0 I was able to go all the way to 2048-bits moduli within just a few minutes:
 
 | RSA modulus size | Average duration of attack |
 | ---------------- |:--------------------------:|
