@@ -22,9 +22,12 @@ as a typical SpringBoot application. This application provides either a RESTful 
 a challenge.
 
 For the more advanced problems I created a proper explanation about the implementation of each of these attacks, which you
-can find in the below Table of contents.
+can find in the Table of Contents below.
 
 ## Table of Contents
+* [Set 6: RSA and DSA](https://cryptopals.com/sets/6)
+  * [Challenge 48. Bleichenbacher's PKCS 1.5 Padding Oracle (Complete Case)](https://github.com/ilchen/cryptopals#challenge-48-bleichenbachers-pkcs-15-padding-oracle-complete-case)
+  
 * [Set 7: Hashes](https://github.com/ilchen/cryptopals#set-7-hashes)
   * [Challenge 52. Iterated Hash Function Multicollisions](https://github.com/ilchen/cryptopals#challenge-52-iterated-hash-function-multicollisions)
   * [Challenge 55. MD4 Collisions](https://github.com/ilchen/cryptopals#challenge-55-md4-collisions)
@@ -44,9 +47,75 @@ can find in the below Table of contents.
 
 ## [Set 6: RSA and DSA](https://cryptopals.com/sets/6)
 ### Challenge 48. Bleichenbacher's PKCS 1.5 Padding Oracle (Complete Case)
-For [Challenge 48](https://cryptopals.com/sets/6/challenges/48) there's a dependency on https://github.com/square/jna-gmp/tree/master/jnagmp, which is a wrapper
-around gmp 6.1.x. If you are on macOS, you probably already installed gmp when you installed python using brew. With
-JRE's BigInteger Challenge 48 will take around 5 hours to finish. Using gmp it finishes under 1 hour.
+[Challenge 48](https://cryptopals.com/sets/6/challenges/48) is fairly straightforward to implement by following the steps
+in Section _3.1 Description of the Attack_ of Bleichenbacher's
+[Chosen Ciphertext Attacks Against Protocols Based on the RSA Encryption Standard PKCS #1 paper](http://archiv.infsec.ethz.ch/education/fs08/secsem/bleichenbacher98.pdf).
+An important observation is that thanks to Step 2c the attack runs in O(log(n)), where n is the size of the RSA modulus.
+
+I created [a helper class](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_6/PaddingOracleHelper.java) to aid this process.
+When following the paper, one needs to pay particular attention to rounding in all the equalities.
+For example I ended up waisting a lot of time with Inequality (2) in Step 2c:
+```
+2B + ri·n         3B + ri·n
+--------- <= si < ---------    (2)
+   b                 a
+
+```
+Initially I implemented it by letting `si` iterate from the lower bound until (not including) the upper bound. However
+that resulted in an incorrect implementation. The term on the right of Inequality (2) will most likely **not be an integer**
+value. Therefore, when computed using infinite precision integers, it will be less than its counterpart computed over reals.
+As a result the correct way to implement Step 2c is to let `si` go to (including) the upper bound when the upper bound
+is rounded down to an integer:
+```java
+while (true) {
+    BigInteger   lower = divideAndRoundUp(_2B.add(rn), interval.upper),
+                 upper = _3B.add(rn).divide(interval.lower);
+    for (BigInteger nextS=lower; nextS.compareTo(upper) <= 0; nextS = nextS.add(ONE)) {
+        if (paddingOracle.test(pubKey.encrypt(nextS).multiply(cipherText)))  return  s = nextS;
+    }
+    rn = rn.add(pubKey.getModulus());
+}
+```
+
+#### Practical optimization to tackle real world length RSA moduli
+The challenge suggests to go all the way up to 768-bits moduli. With my first implementation using Java's BigInteger
+it takes about 30 seconds. Yet, in the real world such small RSA moduli are long a relic of the past. Trying to go
+for 1024-bits moduli and longer let the implementation spin for longer than I wanted to wait. To address that I switched
+to an optimized implementation of infinite precision integers based on [The GNU Multiple Precision Arithmentic Library (GMP)](https://gmplib.org).
+Thanks to [the JNA-GMP wrapper](https://github.com/square/jna-gmp/tree/master/jnagmp) this was very easy to do.
+If you are on macOS, you probably already installed gmp when you installed python with [Homebrew](https://brew.sh).
+
+With tiny changes to the [RSAHelper](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_5/RSAHelper.java#L25-L27)
+and [RSAHelperExt](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_6/RSAHelperExt.java#L66-L67) classes the speedup was
+remarkable. With GMP I was able to go all the way to 2048-bits moduli within just a few minutes:
+
+| RSA modulus size | Average duration of attack |
+| ---------------- |:--------------------------:|
+| 256 bits         | 592 ms                     |
+| 768 bits         | 1 s 12 ms                  |
+| 1024 bits        | 1 s 792 ms                 |
+| 1536 bits        | 35 s 490 ms                |
+| 2048 bits        | 6 m 18s 615 ms             |
+
+This difference between the performance of JRE's implementation of BigIntegers and that of GMP is quite remarkable and
+goes somewhat against Joshua Bloch's advice given in "Item 66: Use native methods judiciously" of his excellent
+"Effective Java, 3<sup>rd</sup> edition" book. [His reply to my tweet](https://twitter.com/joshbloch/status/1125530136927821824?s=20) confirmed that.
+
+```java
+/**
+ * @param numBits  number of bits in each prime factors of an RSA modulus, i.e. the modulus is thus {@code 2*numBits} long
+ */
+@DisplayName("https://cryptopals.com/sets/6/challenges/47 and https://cryptopals.com/sets/6/challenges/48")
+@ParameterizedTest @ValueSource(ints = { 128, 384, 512, 768, 1024 })
+void  challenges47and48(int numBits)  {
+    RSAHelperExt rsa = new RSAHelperExt(BigInteger.valueOf(17), numBits);
+    BigInteger   plainText = RSAHelperExt.pkcs15Pad(CHALLANGE_47_PLAINTEXT.getBytes(),
+                                                    rsa.getPublicKey().getModulus().bitLength());
+    BigInteger   cipherTxt = rsa.encrypt(plainText);
+    BigInteger   crackedPlainText = PaddingOracleHelper.solve(cipherTxt, rsa.getPublicKey(), rsa::paddingOracle);
+    assertArrayEquals(CHALLANGE_47_PLAINTEXT.getBytes(), rsa.pkcs15Unpad(crackedPlainText));
+}
+```
 
 ## [Set 7: Hashes](https://cryptopals.com/sets/7)
 ### Challenge 49. CBC-MAC Message Forgery

@@ -7,11 +7,17 @@ import lombok.ToString;
 import java.math.BigInteger;
 import java.util.*;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import static com.cryptopals.set_6.DSAHelper.TWO;
 import static java.math.BigInteger.*;
 
 /**
+ * Implements the attack outlined by Daniel Bleichenbacher in his
+ * <a href="http://archiv.infsec.ethz.ch/education/fs08/secsem/bleichenbacher98.pdf">
+ * Chosen Ciphertext Attacks Against Protocols Based on the RSA Encryption Standard PKCS #1 paper</a>
+ * <br/>
+ *
  * Created by Andrei Ilchenko on 22-04-19.
  */
 public class PaddingOracleHelper {
@@ -57,7 +63,7 @@ public class PaddingOracleHelper {
     private final BigInteger   B,  _2B,  _3B,  _3B_MIN_1;
     private final Predicate<BigInteger>   paddingOracle;
     private BigInteger   s;
-    private Collection<Interval>   intervals = new TreeSet<>();
+    private Collection<Interval>   intervals = new ArrayList<>();
 
     private PaddingOracleHelper(BigInteger cipherTxt, RSAHelper.PublicKey pk, Predicate<BigInteger> oracle) {
         cipherText = cipherTxt;
@@ -68,13 +74,16 @@ public class PaddingOracleHelper {
         _2B = TWO.multiply(B);
         _3B = THREE.multiply(B);
         _3B_MIN_1 = _3B.subtract(ONE);
-        s = pk.getModulus().divide(_3B);
+        s = divideAndRoundUp(pk.getModulus(), _3B);
         intervals.add(new Interval(_2B,  _3B_MIN_1));
         assert oracle.test(pk.encrypt(_2B));
         assert oracle.test(pk.encrypt(_3B_MIN_1));
         assert !oracle.test(pk.encrypt(_3B));
     }
 
+    /**
+     * Implements steps 2a and 2b from Bleichenbacher's paper
+     */
     private BigInteger  findNextS() {
         BigInteger   nextS = s;
         while (true) {
@@ -86,57 +95,63 @@ public class PaddingOracleHelper {
 //                .filter(paddingOracle).findFirst().orElseThrow(IllegalStateException::new);
     }
 
+    /**
+     * Implements step 2c from Bleichenbacher's paper
+     */
     private BigInteger  step2c() {
         assert  intervals.size() == 1;
-        // In this step the current value of this.s doesn't matter as it gets set anew.
         Interval   interval = intervals.iterator().next();
-        BigInteger   r[] = interval.upper.multiply(s).subtract(_2B).multiply(TWO).divideAndRemainder(pubKey.getModulus());
-        if (!r[1].equals(ZERO))  r[0] = r[0].add(ONE);
+        BigInteger   r = divideAndRoundUp(interval.upper.multiply(s).subtract(_2B).multiply(TWO), pubKey.getModulus()),
+                     rn = r.multiply(pubKey.getModulus());
 
         while (true) {
-            BigInteger   lower[] = _2B.add(r[0].multiply(pubKey.getModulus())).divideAndRemainder(interval.upper),
-                    upper = _3B.add(r[0].multiply(pubKey.getModulus()).divide(interval.lower)),  nextS;
-            if (!lower[1].equals(ZERO))  lower[0] = lower[0].add(ONE);
-
-            for (nextS = lower[0]; nextS.compareTo(upper) < 0; nextS = nextS.add(ONE)) {
+            BigInteger   lower = divideAndRoundUp(_2B.add(rn), interval.upper),
+                         upper = _3B.add(rn).divide(interval.lower);
+            for (BigInteger nextS=lower; nextS.compareTo(upper) <= 0; nextS = nextS.add(ONE)) {
                 if (paddingOracle.test(pubKey.encrypt(nextS).multiply(cipherText)))  return  s = nextS;
             }
-            r[0] = r[0].add(ONE);
+            rn = rn.add(pubKey.getModulus());
         }
+//        return  s = Stream.iterate(r, ri -> ri.add(BigInteger.ONE))
+//                .flatMap(ri -> {
+//                    BigInteger  rn = ri.multiply(pubKey.getModulus()), lower = divideAndRoundUp(_2B.add(rn), interval.upper),
+//                                upper = _3B.add(rn).divide(interval.lower);
+//                    return  Stream.iterate(lower, s -> s.add(ONE)).limit(upper.subtract(lower).longValueExact());
+//                }).filter(s -> paddingOracle.test(pubKey.encrypt(s).multiply(cipherText))).findFirst().orElseThrow(IllegalStateException::new);
     }
 
     private int  step3() {
         // Only this step can give rise to multiple M intervals.
-        TreeMap<Interval, Interval> newIntervals = new TreeMap<>();
-        System.out.printf("s = %x%n", s);
+        List<Interval>   newIntervals = new ArrayList<>();
+        System.out.printf("s =  %x%n", s);
         for (Interval interval : intervals) {
             System.out.printf("m \u2208 [%x,%n     %x]%n", interval.lower, interval.upper);
-            BigInteger[]   lowerBound = interval.lower.multiply(s).subtract(_3B_MIN_1).divideAndRemainder(pubKey.getModulus());
-            BigInteger     upperBound = interval.upper.multiply(s).subtract(_2B).divide(pubKey.getModulus());
-            if (!lowerBound[1].equals(ZERO))  lowerBound[0] = lowerBound[0].add(ONE);
-            System.out.printf("r \u2208 [%x,%n     %x]%n", lowerBound[0], upperBound);
-            for (BigInteger r = lowerBound[0]; r.compareTo(upperBound) <= 0; r = r.add(ONE)) {
-                BigInteger[]  a = _2B.add(r.multiply(pubKey.getModulus())).divideAndRemainder(s);
-                BigInteger    b = _3B_MIN_1.add(r.multiply(pubKey.getModulus())).divide(s);
-                if (a[1].compareTo(ZERO) != 0) a[0] = a[0].add(ONE);
-                if (a[0].compareTo(b) > 0) continue;
-                a[0] = a[0].max(interval.lower);
-                b = b.min(interval.upper);
-                Interval   newInterval = new Interval(a[0], b);
-                newIntervals.compute(newInterval,
-                        (key, oldInterval) -> oldInterval == null  ?  newInterval : oldInterval.intersection(newInterval) );
+            BigInteger   lowerBound = divideAndRoundUp(interval.lower.multiply(s).subtract(_3B_MIN_1), pubKey.getModulus());
+            BigInteger   upperBound = interval.upper.multiply(s).subtract(_2B).divide(pubKey.getModulus());
+            System.out.printf("r \u2208 [%x,%n     %x]%n", lowerBound, upperBound);
+            for (BigInteger r = lowerBound; r.compareTo(upperBound) <= 0; r = r.add(ONE)) {
+                BigInteger   rn = r.multiply(pubKey.getModulus()),
+                             a = divideAndRoundUp(_2B.add(rn), s),  b = _3B_MIN_1.add(rn).divide(s);
+                if (a.compareTo(b) > 0)  continue;
+                Interval   newInterval = new Interval(a.max(interval.lower), b.min(interval.upper));
+//                newIntervals.compute(newInterval,
+//                        (key, oldInterval) -> oldInterval == null  ?  newInterval : oldInterval.intersection(newInterval) );
+                newIntervals.add(newInterval);
             }
         }
-        intervals = newIntervals.values();
-        s = s.add(ONE);
-        System.out.printf("New intervals:%n%s%n%n", newIntervals.toString());
-        return  newIntervals.size();
+        intervals = newIntervals;
+        int   numNewIntervals = newIntervals.size();
+        // Only incrementing 's' for step 2b (more than one interval found)
+        if (numNewIntervals > 1)  s = s.add(ONE);
+        System.out.printf("Number of new intervals: %d%n%n", numNewIntervals);
+        return  numNewIntervals;
     }
 
     public static BigInteger  solve(BigInteger cipherTxt, RSAHelper.PublicKey pk, Predicate<BigInteger> oracle) {
         PaddingOracleHelper   solver = new PaddingOracleHelper(cipherTxt, pk, oracle);
         solver.findNextS();
         solver.step3();
+        int   numIntervals;
         Interval   interval;
         do {
             if (solver.intervals.size() > 1) {
@@ -144,8 +159,17 @@ public class PaddingOracleHelper {
             } else {
                 solver.step2c();
             }
+            numIntervals = solver.step3();
             interval = solver.intervals.iterator().next();
-        } while (solver.step3() > 1  ||  !interval.lower.equals(interval.upper));
+        } while (numIntervals > 1  ||  !interval.lower.equals(interval.upper));
         return  interval.lower;
+    }
+
+    /**
+     * Computes &lceil;a/b&rceil;
+     */
+    private static BigInteger  divideAndRoundUp(BigInteger a, BigInteger b) {
+        BigInteger[]   res = a.divideAndRemainder(b);
+        return  res[1].equals(ZERO)  ?  res[0] : res[0].add(ONE);
     }
 }

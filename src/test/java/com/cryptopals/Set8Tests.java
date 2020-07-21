@@ -104,7 +104,7 @@ class Set8Tests {
 
     @DisplayName("https://toadstyle.org/cryptopals/59.txt")
     @ParameterizedTest @ValueSource(strings = { "rmi://localhost/ECDiffieHellmanBobService" })
-        // The corresponding SpringBoot server application must be running.
+    // The corresponding SpringBoot server application must be running.
     void challenge59(String url) throws RemoteException, NotBoundException, MalformedURLException,
             NoSuchAlgorithmException, InvalidKeyException {
         WeierstrassECGroup group = new WeierstrassECGroup(new BigInteger("233970423115425145524320034830162017933"),

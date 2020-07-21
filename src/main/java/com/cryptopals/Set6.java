@@ -235,11 +235,11 @@ public class Set6 {
 
             System.out.println("\nChallenge 47");
             rsa = new RSAHelperExt(BigInteger.valueOf(17), 384);
-            plainText = rsa.pkcs15Pad(CHALLANGE_47_PLAINTEXT.getBytes(), rsa.getPublicKey().getModulus().bitLength());
+            plainText = RSAHelperExt.pkcs15Pad(CHALLANGE_47_PLAINTEXT.getBytes(), rsa.getPublicKey().getModulus().bitLength());
             cipherTxt = rsa.encrypt(plainText);
             BigInteger   crackedPlainText = PaddingOracleHelper.solve(cipherTxt, rsa.getPublicKey(), rsa::paddingOracle);
             System.out.printf("%nPlaintext: %x%nCiphertext: %x%nRecovered plaintext: %x%n", plainText, cipherTxt, crackedPlainText);
-            System.out.printf("Recovered plainext: %s%n", new String(rsa.pkcs15Unpad(crackedPlainText)));
+            System.out.printf("Recovered plaintext: %s%n", new String(rsa.pkcs15Unpad(crackedPlainText)));
             assert  Arrays.equals(rsa.pkcs15Unpad(crackedPlainText), CHALLANGE_47_PLAINTEXT.getBytes());
 
         } catch (Exception e) {

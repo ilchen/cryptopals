@@ -37,7 +37,7 @@ public class RSAHelperExt extends RSAHelper {
 
 
     private final Set<ByteBuffer>   processed = ConcurrentHashMap.newKeySet();
-    private final int    numBytes = (n.bitLength() + 7 & ~7) / 8;
+    private final int    numBytes = (n.bitLength() + 7 & ~7) / 8; /* Number of bytes required to store n.bitLength() bits */
     public RSAHelperExt() {
         super();
     }
@@ -94,10 +94,12 @@ public class RSAHelperExt extends RSAHelper {
 
     public byte[]  pkcs15Unpad(BigInteger paddedPlainText) {
         byte   repr[] = paddedPlainText.toByteArray();
-        // BigInteger removes the most significant 0 from the padding
+        // BigInteger removes the most significant 0 byte from the internal representation
         if (repr.length == numBytes - 1  && repr[0] == 2) {
             for (int i=1; i < repr.length; i++) {
-                if (repr[i] == 0  &&  i >= 10)  {
+                // EB1 = 00, EB2 = 02, EB3 through EB10 are nonzero. At least one of the bytes EB11 through EBk is 00.
+                // EB11 is repr[9] given that BigInteger removes the most significant 0 byte.
+                if (repr[i] == 0  &&  i >= 9)  {
                     return  Arrays.copyOfRange(repr, i + 1, repr.length);
                 }
             }

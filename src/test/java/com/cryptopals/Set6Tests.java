@@ -10,6 +10,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -111,14 +112,18 @@ class Set6Tests {
                 "Didn't succeed in obtaining correct plaintext");
     }
 
-    @DisplayName("https://cryptopals.com/sets/6/challenges/47")
-    @Test
-    void  challenge47()  {
-        RSAHelperExt rsa = new RSAHelperExt(BigInteger.valueOf(17), 128);
-        BigInteger   plainText = rsa.pkcs15Pad(CHALLANGE_47_PLAINTEXT.getBytes(),
-                                               rsa.getPublicKey().getModulus().bitLength());
+    /**
+     * @param numBits  number of bits in each prime factors of an RSA modulus, i.e. the modulus is thus {@code 2*numBits} long
+     */
+    @DisplayName("https://cryptopals.com/sets/6/challenges/47 and https://cryptopals.com/sets/6/challenges/48")
+    @ParameterizedTest @ValueSource(ints = { 128, 384, 512, 768, 1024 })
+    void  challenges47and48(int numBits)  {
+        RSAHelperExt rsa = new RSAHelperExt(BigInteger.valueOf(17), numBits);
+        BigInteger   plainText = RSAHelperExt.pkcs15Pad(CHALLANGE_47_PLAINTEXT.getBytes(),
+                                                        rsa.getPublicKey().getModulus().bitLength());
         BigInteger   cipherTxt = rsa.encrypt(plainText);
         BigInteger   crackedPlainText = PaddingOracleHelper.solve(cipherTxt, rsa.getPublicKey(), rsa::paddingOracle);
         assertArrayEquals(CHALLANGE_47_PLAINTEXT.getBytes(), rsa.pkcs15Unpad(crackedPlainText));
     }
+
 }

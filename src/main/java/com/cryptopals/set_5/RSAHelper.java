@@ -62,6 +62,11 @@ public class RSAHelper {
         this(e, NUM_BITS);
     }
 
+    /**
+     * Constructs a new instance of RSA sk, pk pair. The modulus is guaranteed to be exactly {@code 2*numBits} long
+     * @param e  the public exponent that will be used by the constructed instance
+     * @param numBits  the number of bits in each of the {@code p} and {@code q} primes
+     */
     public RSAHelper(BigInteger e, int numBits) {
         if (!isOdd(e) || e.compareTo(PUBLIC_EXPONENT) < 0) {
             throw  new IllegalArgumentException("Invalid public exponent: " + e);
