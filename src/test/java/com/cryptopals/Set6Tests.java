@@ -113,7 +113,7 @@ class Set6Tests {
     }
 
     /**
-     * @param numBits  number of bits in each prime factors of an RSA modulus, i.e. the modulus is thus {@code 2*numBits} long
+     * @param numBits  number of bits in each prime factor of an RSA modulus, i.e. the modulus is thus {@code 2*numBits} long
      */
     @DisplayName("https://cryptopals.com/sets/6/challenges/47 and https://cryptopals.com/sets/6/challenges/48")
     @ParameterizedTest @ValueSource(ints = { 128, 384, 512, 768, 1024 })
