@@ -567,7 +567,7 @@ used ones: { 3, 5, 17, 65537 }.
 primitive is used incorrectly. It is an egregious misnomer to call the random integer `k` used in DSA signing a nonce.
 A nonce is a number used once. But there's an important caveat to it &mdash; a proper cryptographic algorithm expecting
 a nonce should be secure even if an adversary gets to choose its nonces (provided they are all unique, of course).
-DSA's `k` must be a cryptographically strong (i.e. unpredictable) uniformally distributed random number for the resulting
+DSA's `k` must be a cryptographically strong (i.e. unpredictable) uniformly distributed random number for the resulting
 signing scheme to be secure. I will henceforth put DSA's nonce in quotation marks to accentuate that it cannot be treated 
 as a real nonce.
 
