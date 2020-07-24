@@ -96,6 +96,7 @@ remarkable. With GMP 6.2.0 I was able to go all the way to 2048-bits moduli with
 | 1024 bits        | 19 s 271 ms                |
 | 1536 bits        | 39 s 213 ms                |
 | 2048 bits        | 1 m 54s 607 ms             |
+**Table**: average times over 20 tries
 
 This difference between the performance of JRE's implementation of BigIntegers and that of GMP is quite remarkable and
 goes somewhat against Joshua Bloch's advice given in "Item 66: Use native methods judiciously" of his excellent
