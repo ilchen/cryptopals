@@ -87,16 +87,16 @@ If you are on macOS, you probably already installed gmp when you installed pytho
 
 With tiny changes to the [RSAHelper](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_5/RSAHelper.java#L25-L27)
 and [RSAHelperExt](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_6/RSAHelperExt.java#L66-L67) classes the speedup was
-remarkable. With GMP 6.2.0 I was able to go all the way to 2048-bits moduli within just a few minutes:
+remarkable. With GMP 6.2.0 I was able to go all the way to 2048-bits moduli within just a couple of minutes:
 
-| RSA modulus size | Average duration of attack |
-| ---------------- |:--------------------------:|
-| 256 bits         | 2 s 262 ms                 |
-| 768 bits         | 7 s 207 ms                 |
-| 1024 bits        | 19 s 271 ms                |
-| 1536 bits        | 39 s 213 ms                |
-| 2048 bits        | 1 m 54s 607 ms             |
-**Table**: average times over 20 tries
+| RSA modulus size | Average duration of attack (20 tries) |
+| ---------------- |:-------------------------------------:|
+| 256 bits         | 2 s 262 ms                            |
+| 768 bits         | 7 s 207 ms                            |
+| 1024 bits        | 19 s 271 ms                           |
+| 1536 bits        | 39 s 213 ms                           |
+| 2048 bits        | 1 m 54s 607 ms                        |
+
 
 This difference between the performance of JRE's implementation of BigIntegers and that of GMP is quite remarkable and
 goes somewhat against Joshua Bloch's advice given in "Item 66: Use native methods judiciously" of his excellent
