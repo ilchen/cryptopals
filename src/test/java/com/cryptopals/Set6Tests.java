@@ -104,7 +104,7 @@ class Set6Tests {
 
     @DisplayName("https://cryptopals.com/sets/6/challenges/46")
     @Test
-    void  challenge46()  {
+    void  challenge46() {
         RSAHelperExt   rsa = new RSAHelperExt(BigInteger.valueOf(17));
         BigInteger     cipherTxt = rsa.encrypt(fromHash(CHALLANGE_46_PLAINTEXT));
         BigInteger  plainText = breakChallenge46(cipherTxt, rsa.getPublicKey(), rsa::decryptionOracle);
@@ -117,7 +117,7 @@ class Set6Tests {
      */
     @DisplayName("https://cryptopals.com/sets/6/challenges/47 and https://cryptopals.com/sets/6/challenges/48")
     @ParameterizedTest @ValueSource(ints = { 128, 384, 512, 768, 1024 })
-    void  challenges47and48(int numBits)  {
+    void  challenges47and48(int numBits) {
         RSAHelperExt rsa = new RSAHelperExt(BigInteger.valueOf(17), numBits);
         BigInteger   plainText = RSAHelperExt.pkcs15Pad(CHALLANGE_47_PLAINTEXT.getBytes(),
                                                         rsa.getPublicKey().getModulus().bitLength());

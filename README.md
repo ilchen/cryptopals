@@ -91,11 +91,11 @@ remarkable. With GMP 6.2.0 I was able to go all the way to 2048-bits moduli with
 
 | RSA modulus size | Average duration of attack |
 | ---------------- |:--------------------------:|
-| 256 bits         | 592 ms                     |
-| 768 bits         | 1 s 12 ms                  |
-| 1024 bits        | 1 s 792 ms                 |
-| 1536 bits        | 35 s 490 ms                |
-| 2048 bits        | 6 m 18s 615 ms             |
+| 256 bits         | 2 s 262 ms                 |
+| 768 bits         | 7 s 207 ms                 |
+| 1024 bits        | 19 s 271 ms                |
+| 1536 bits        | 39 s 213 ms                |
+| 2048 bits        | 1 m 54s 607 ms             |
 
 This difference between the performance of JRE's implementation of BigIntegers and that of GMP is quite remarkable and
 goes somewhat against Joshua Bloch's advice given in "Item 66: Use native methods judiciously" of his excellent
@@ -116,6 +116,14 @@ void  challenges47and48(int numBits)  {
     assertArrayEquals(CHALLANGE_47_PLAINTEXT.getBytes(), rsa.pkcs15Unpad(crackedPlainText));
 }
 ```
+
+#### Conclusions
+Bleichenbacher’s attack clearly demonstrats that RSA-PKCS1 v1.5 encryption is not CCA-secure. A truly CCA-secure public key
+encryption system cannot be broken even given a _full_ decryption oracle (this is by definition of CCA security for
+public key encryption), while Bleichenbacher’s attack merely uses a _partial_ oracle. Is the fix that was implemented
+in TLS 1.0 sufficient to make RSA-PKCS1 v1.5 CCA secure? Likely, but there's no security proof. This is the main reason
+v2.0 of RSA-PKCS1 adopted Optimal Asymmetric Encryption Padding (OAEP) for RSA encryption, for which there's a security
+proof that the resulting scheme is CCA secure under certain assumptions.
 
 ## [Set 7: Hashes](https://cryptopals.com/sets/7)
 ### Challenge 49. CBC-MAC Message Forgery

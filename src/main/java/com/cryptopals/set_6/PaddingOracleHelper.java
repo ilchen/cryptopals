@@ -116,7 +116,7 @@ public class PaddingOracleHelper {
 //                .flatMap(ri -> {
 //                    BigInteger  rn = ri.multiply(pubKey.getModulus()), lower = divideAndRoundUp(_2B.add(rn), interval.upper),
 //                                upper = _3B.add(rn).divide(interval.lower);
-//                    return  Stream.iterate(lower, s -> s.add(ONE)).limit(upper.subtract(lower).longValueExact());
+//                    return  Stream.iterate(lower, s -> s.add(ONE)).limit(upper.subtract(lower).add(ONE).longValueExact());
 //                }).filter(s -> paddingOracle.test(pubKey.encrypt(s).multiply(cipherText))).findFirst().orElseThrow(IllegalStateException::new);
     }
 
@@ -134,8 +134,6 @@ public class PaddingOracleHelper {
                              a = divideAndRoundUp(_2B.add(rn), s),  b = _3B_MIN_1.add(rn).divide(s);
                 if (a.compareTo(b) > 0)  continue;
                 Interval   newInterval = new Interval(a.max(interval.lower), b.min(interval.upper));
-//                newIntervals.compute(newInterval,
-//                        (key, oldInterval) -> oldInterval == null  ?  newInterval : oldInterval.intersection(newInterval) );
                 newIntervals.add(newInterval);
             }
         }
