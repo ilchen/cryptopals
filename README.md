@@ -30,6 +30,7 @@ can find in the Table of Contents below.
   
 * [Set 7: Hashes](https://github.com/ilchen/cryptopals#set-7-hashes)
   * [Challenge 52. Iterated Hash Function Multicollisions](https://github.com/ilchen/cryptopals#challenge-52-iterated-hash-function-multicollisions)
+  * [Challenge 54. Kelsey and Kohno's Nostradamus Attack](https://github.com/ilchen/cryptopals#challenge-54-kelsey-and-kohnos-nostradamus-attack)
   * [Challenge 55. MD4 Collisions](https://github.com/ilchen/cryptopals#challenge-55-md4-collisions)
   * [Challenge 56. RC4 Single-Byte Biases](https://github.com/ilchen/cryptopals#challenge-56-rc4-single-byte-biases)
   
@@ -119,7 +120,7 @@ void  challenges47and48(int numBits)  {
 ```
 
 #### Conclusions
-Bleichenbacher’s attack clearly demonstrats that RSA-PKCS1 v1.5 encryption is not CCA-secure. A truly CCA-secure public key
+Bleichenbacher’s attack clearly demonstrates that RSA-PKCS1 v1.5 encryption is not CCA-secure. A truly CCA-secure public key
 encryption system cannot be broken even given a _full_ decryption oracle (this is by definition of CCA security for
 public key encryption), while Bleichenbacher’s attack merely uses a _partial_ oracle. Is the fix that was implemented
 in TLS 1.0 sufficient to make RSA-PKCS1 v1.5 CCA secure? Likely, but there's no security proof. This is the main reason
@@ -154,7 +155,8 @@ This way I needed to find 2<sup>16</sup> messages colliding in f to ensure there
 [Challenge 54](https://cryptopals.com/sets/7/challenges/54) shows an ingenious way of finding a collision between an MD
 hash of two messages m<sub>0</sub> and m<sub>1</sub>, where m<sub>0</sub> is chosen arbitrarily by the attacker while
 m<sub>1</sub> is not. The only requirement is that |m<sub>0</sub>| > |m<sub>1</sub>| by a few blocks. This number of blocks
-by which the length of m<sub>0</sub> exceeds the length of m<sub>1</sub> is referred to as `k`.
+by which the length of m<sub>0</sub> exceeds the length of m<sub>1</sub> is referred to as `k`. The way this challenge
+is presented is in the form of using hashes to produce _commitments_.
 
 The attack is explained at length by John Kelsey and Tadayoshi Kohno in
 [their _Herding Hash Functions and the Nostradamus Attack_ paper](https://eprint.iacr.org/2005/281.pdf). The most 
@@ -164,14 +166,62 @@ is the starting hash h[i, j] (i.e. the chaining variable) and the second element
 with that of the message starting at either h[i, j+1] (when j is even) or h[i, j-1] (when j is odd). I demonstrate this
 in the following picture:
 ![alt text](https://raw.githubusercontent.com/ilchen/cryptopals/master/src/docs/challenge54_diamond_structure.png)
-To make working with the diamond structure easier I created the [DiamondStrcuture class](), which encapsulates it.
+To make working with the diamond structure easier I created the [DiamondStrcuture class](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_7/DiamondStructure.java),
+which encapsulates it.
 
 Level 0 of the array is special in that all the hashes stored in h[0, j, 0] are the initial chaining variables
 and can be set at will. I decided to populate the elements h[0, j, 0] in such as way as to ensure that they are sorted.
 This allows me to make use of a binary search when I need to construct a k-blocks long suffix for m<sub>1</sub>. The
 construction of level `i` of the diamond structure calls for finding 2<sup>k-i</sup> message blocks whose hash matches
-a given target. I created [MDHelper::findCollisionsWith]() helper method to make it easier. To speed up the construction
-of a given level, I observed that this task [lends itself to parallelization](). This sped up the process a lot.
+a given target. I created [MDHelper::findCollisionsWith](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_7/MDHelper.java#L135-L163)
+helper method to make it easier. To speed up the construction of a given level, I observed that this task
+[lends itself to parallelization](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_7/DiamondStructure.java#L83-L114).
+This sped up the process a lot.
+
+Some other notes worth mentioning. I use m<sub>0</sub> of 14 blocks long and m<sub>1</sub> of 4 blocks. This gives me
+a diamond structure with 10 levels and 2^10 different initial hashes at level 0. I make use of the easy 16-bit hash `f`
+from Challenge 52. With this setup I am able to construct the desired Nostradamus message in about 11 minutes on
+my MacBook Pro (with 8 virtual cores).
+
+```java
+@Test
+void challenge54() throws NoSuchAlgorithmException, NoSuchPaddingException, BadPaddingException, InvalidKeyException, IllegalBlockSizeException, ExecutionException, InterruptedException {
+    byte[] H = {0, 1}, H2 = {0, 1, 2};
+    MDHelper mdHelper = new MDHelper(H, H2, "Blowfish", 8);
+    String originalCommittedToMsg = /* 14 blocks, 2^10 */
+            "3-5, 0-0, 1-6, 4-2, 2-2, 4-3, 1-1 dummy prediction that will be replaced"
+                    + "1234567887654321012345677654321012345678",
+            nostradamusMsg = "3-1, 0-1, 2-6, 2-2, 3-1, 1-1,0-3"; /* 4 blocks */
+
+    byte[] hash = mdHelper.mdEasy(originalCommittedToMsg.getBytes()),
+            trgtHash = mdHelper.mdInnerLast(originalCommittedToMsg.getBytes(), H,
+                    0, originalCommittedToMsg.length() / 8), sfx;
+    DiamondStructure ds = new DiamondStructure(
+            originalCommittedToMsg.length() - nostradamusMsg.length() >> 3,
+            trgtHash, "Blowfish", 8);
+
+    sfx = ds.constructSuffix(mdHelper.mdInnerLast(nostradamusMsg.getBytes(), H, 0, 4));
+    if (sfx != null) {
+        assertEquals(originalCommittedToMsg.length(), nostradamusMsg.length() + sfx.length);
+        byte longMsg[] = Arrays.copyOf(nostradamusMsg.getBytes(), nostradamusMsg.length() + sfx.length);
+        System.arraycopy(sfx, 0, longMsg, nostradamusMsg.length(), sfx.length);
+        assertArrayEquals(hash, mdHelper.mdEasy(longMsg));
+    } else {
+        fail("Too few leaves in the diamond structure :-(");
+    }
+}
+```
+
+#### Conclusions
+This attack shows that producing a commitment just by hashing a secret message `m` with a collision resistant hash function
+doesn't guarantee the _binding_ property, which a cryptographically secure commitment must possess (in addition to that of
+_hiding_ `m`). Why does this attack work? For two reasons:
+1. Hash functions employing the Merkle–Damgård construction are vulnerable to message-length extension attacks.
+2. It is not safe to produce a commitment just by hashing a secret message `m` with a collision-resistant hash function. There's no
+security proof that such a construction is safe. The correct way to produce a commitment for a secret message `m`
+is to generate a uniformly distributed random number `r` of, say 512 bits if SHA256 is used as a collision-resistant hash function.
+Then compute h = SHA256(r || m). The commitment is a pair (r, h), of which `h` is revealed while `r` is kept secret until
+it comes time to prove knowledge of `m`.
 
 ### Challenge 55. MD4 Collisions
 [Challenge 55](https://cryptopals.com/sets/7/challenges/55) is probably one of the most interesting to work on in the first
