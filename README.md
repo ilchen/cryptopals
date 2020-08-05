@@ -220,7 +220,7 @@ _hiding_ `m`). Why does this attack work? For two reasons:
 2. It is not safe to produce a commitment just by hashing a secret message `m` with a collision-resistant hash function. There's no
 security proof that such a construction is safe. The correct way to produce a commitment for a secret message `m`
 is to generate a uniformly distributed random number `r` of, say 512 bits if SHA256 is used as a collision-resistant hash function.
-Then compute h = SHA256(r || m). The commitment is a pair (r, h), of which `h` is revealed while `r` is kept secret until
+Then compute `h = SHA256(r || m)`. The commitment is a pair `(r, h)`, of which `h` is revealed while `r` is kept secret until
 it comes time to prove knowledge of `m`.
 
 ### Challenge 55. MD4 Collisions
