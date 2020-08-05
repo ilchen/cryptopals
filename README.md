@@ -150,10 +150,32 @@ if the cipher's key and block sizes are the same. I opted for Blowfish, which is
 `com.sun.crypto.provider.SunJCE provider`. I used a 16 bit hash for the easier hash function f, and a 32 bit hash for g.
 This way I needed to find 2<sup>16</sup> messages colliding in f to ensure there's a pair among them colliding in g. 
 
+### Challenge 54. Kelsey and Kohno's Nostradamus Attack
+[Challenge 54](https://cryptopals.com/sets/7/challenges/54) shows an ingenious way of finding a collision between an MD
+hash of two messages m<sub>0</sub> and m<sub>1</sub>, where m<sub>0</sub> is chosen arbitrarily by the attacker while
+m<sub>1</sub> is not. The only requirement is that |m<sub>0</sub>| > |m<sub>1</sub>| by a few blocks. This number of blocks
+by which the length of m<sub>0</sub> exceeds the length of m<sub>1</sub> is referred to as `k`.
+
+The attack is explained at length by John Kelsey and Tadayoshi Kohno in
+[their _Herding Hash Functions and the Nostradamus Attack_ paper](https://eprint.iacr.org/2005/281.pdf). The most 
+involved part of the attack is building the diamond structure. I decided to represent it as a multi dimensional array.
+The first dimension (i) is the tree level, the second (j) contains 2^(k-i) two-element arrays in which the first element
+is the starting hash h[i, j] (i.e. the chaining variable) and the second element is a message block whose hash collides
+with that of the message starting at either h[i, j+1] (when j is even) or h[i, j-1] (when j is odd). I demonstrate this
+in the following picture:
+![alt text](https://raw.githubusercontent.com/ilchen/cryptopals/master/src/docs/challenge54_diamond_structure.png)
+To make working with the diamond structure easier I created the [DiamondStrcuture class](), which encapsulates it.
+
+Level 0 of the array is special in that all the hashes stored in h[0, j, 0] are the initial chaining variables
+and can be set at will. I decided to populate the elements h[0, j, 0] in such as way as to ensure that they are sorted.
+This allows me to make use of a binary search when I need to construct a k-blocks long suffix for m<sub>1</sub>. The
+construction of level `i` of the diamond structure calls for finding 2<sup>k-i</sup> message blocks whose hash matches
+a given target. I created [MDHelper::findCollisionsWith]() helper method to make it easier. To speed up the construction
+of a given level, I observed that this task [lends itself to parallelization](). This sped up the process a lot.
 
 ### Challenge 55. MD4 Collisions
-[Challenge 55](https://cryptopals.com/sets/7/challenges/55) is probably one of the most interesting to work on.
-I succeeded in implementing it in a uniform Object-Oriented way, which aids readability and maintainability.
+[Challenge 55](https://cryptopals.com/sets/7/challenges/55) is probably one of the most interesting to work on in the first
+7 sets. I succeeded in implementing it in a uniform Object-Oriented way, which aids readability and maintainability.
 The implementation is also blazingly fast -- it finds a collison within a few seconds. Here is one found with it:
 ```$xslt
 Collision found between

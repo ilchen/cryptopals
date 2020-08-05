@@ -21,8 +21,8 @@ import java.util.*;
  * Created by Andrei Ilchenko on 12-05-19.
  */
 public class MDHelper {
-    static final Random   SECURE_RANDOM = new SecureRandom(); // Thread safe
-    static final int      BLOCK_SIZE = 8;
+    private static final Random   SECURE_RANDOM = new SecureRandom(); // Thread safe
+    private static final int      BLOCK_SIZE = 8;
     private final String   cipher;
     private final Cipher   encryptor;
     private final int   blockSize,  keyLen;
@@ -109,6 +109,10 @@ public class MDHelper {
     /**
      * Implements a makeshift hash function using a proper Davies-Meyer construction. Challenge 52 contains
      * <a href="https://twitter.com/spdevlin/status/1134220310109024257">a mistake</a>.
+     *
+     * @param H  the initial chaining variable, its length determines the size of the output tag
+     * @param from  the index of the {@code msg}'s block from which to start hashing
+     * @param to  the index of the {@code msg}'s block up to which (not including) to carry out hashing
      */
     private byte[][]  mdInner(byte msg[], byte H[], int from, int to) throws InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
         assert  from < to;
@@ -119,6 +123,7 @@ public class MDHelper {
         for (int i=from*keyLen; i < to*keyLen; i+=keyLen) {
             encryptor.init(Cipher.ENCRYPT_MODE,
                     new SecretKeySpec(Arrays.copyOfRange(msg, i, i+keyLen), cipher));
+            // Artificially reducing the length of the chaining variable
             h = Arrays.copyOf(encryptor.doFinal(Arrays.copyOf(_H, blockSize)), H.length);
             Set2.xorBlock(_H, h);
             res[j++] = _H.clone();
@@ -127,6 +132,13 @@ public class MDHelper {
         return  res;
     }
 
+    /**
+     * Finds such a message {@code res} of one block long that when hashed using the initial chaining variable
+     * {@code startingHash} produces an output chaining variable that collides with {@code targetHash}. This
+     * method manipulates only the first 3 bytes when searching for such a message.
+     *
+     * @return  a message that produces the collision. The last {@code BLOCK_SIZE - 3} bytes of the message are 0.
+     */
     byte[]  findCollisionWith(byte startingHash[], byte targetHash[])
             throws BadPaddingException, InvalidKeyException, IllegalBlockSizeException {
         byte[]   res = new byte[BLOCK_SIZE],  hash;

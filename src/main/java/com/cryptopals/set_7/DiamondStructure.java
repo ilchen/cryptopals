@@ -10,7 +10,7 @@ import java.util.*;
 import java.util.concurrent.*;
 
 /**
- * This class ues a four dimensional array to represent the diamond structure from:
+ * This class uses a four dimensional array to represent the diamond structure from:
  * <a href="https://eprint.iacr.org/2005/281.pdf">this paper</a>
  *
  * <p>The first dimension (i) is the tree level, the second (j) contains 2^(k-i) [][] arrays in which the first dimension
@@ -85,7 +85,8 @@ public class DiamondStructure {
         try {
             List<Future<Void>> futures = new ArrayList<>(concurrency);
 
-            // Populating the first h[0, j]
+            // Populating the first h[0, j]. The population of the elements h[0, j, 0] is done in such as way
+            // as to ensure that they are sorted.
             byte h[] = new byte[trgtHash.length];
             diamondStructure[0] = new byte[1 << k][][];
             for (int j = 0; j < 1 << k; j++) {
@@ -95,12 +96,12 @@ public class DiamondStructure {
                 diamondStructure[0][j][0] = h.clone();
             }
 
-            for (int i = 0; i < k - 1; i++) {
+            for (int i=0; i < k - 1; i++) {
                 diamondStructure[i + 1] = new byte[1 << k - i - 1][][];
                 int step = (1 << k - i) / concurrency;
 
                 if (1 << k - i > concurrency << 2) {
-                    for (int j = 0; j < 1 << k - i; j += step) {
+                    for (int j=0; j < 1 << k - i; j += step) {
                         futures.add(executor.submit(new LevelRangeBuilder(i, j, j + step)));
                     }
 
