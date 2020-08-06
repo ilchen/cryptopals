@@ -231,7 +231,7 @@ the Merkle–Damgård construction are vulnerable to message-length extension at
 standardized by NIST [SHA3 hash standard](https://csrc.nist.gov/publications/detail/fips/202/final) uses the sponge
 construction instead of Merkle–Damgård. Using SHA3 for making commitments is immune from this attack. So would be using
 HMAC<sub>0</sub> with SHA256 as the underlying hash:
-HMAC<sub>0</sub>(m) := HMAC(0<sup>l</sup>, m) = H(opad || H(ipad || m)
+HMAC<sub>0</sub>(m) := HMAC(0<sup>l</sup>, m) = H(opad || H(ipad || m))
 
 How feasible would mounting this attack be against SHA256? In their original paper the authors indicate that it reduces
 the effort required for finding a collision with the target hash from O(2<sup>256</sup>) to O(2<sup>172</sup>) when
