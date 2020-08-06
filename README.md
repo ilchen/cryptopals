@@ -244,7 +244,7 @@ against SHA-256 in my opinion. Using shorter hashes from the MD family for makin
 ### Challenge 55. MD4 Collisions
 [Challenge 55](https://cryptopals.com/sets/7/challenges/55) is probably one of the most interesting to work on in the first
 7 sets. I succeeded in implementing it in a uniform Object-Oriented way, which aids readability and maintainability.
-The implementation is also blazingly fast -- it finds a collison within a few seconds. Here is one found with it:
+The implementation is also blazingly fast &mdash; it finds a collison within a few seconds. Here is one found with it:
 ```$xslt
 Collision found between
 	683E10B651E9185B4D9886D90B7634AE7C4D753533F75041C388E6ACF20CF8B12BA9C27368F09B22EDCE3445BBFED7E8636EDB70070DF0EB7449FA54E421D246
@@ -273,7 +273,7 @@ This challenge is based on the attack outlined in Section 4.1 of [this paper](ht
 In my solution I used the biases in the 16<sup>th</sup> (Z<sub>16</sub>) and 32<sup>nd</sup> (Z<sub>32</sub>) bytes of RC4's keystream,
 which are elucidated in Section 3.1 of the paper.
 
-The essence of this attack is fairly simple -- the biases in the distributions of Z<sub>16</sub> and Z<sub>32</sub> make
+The essence of this attack is fairly simple &mdash; the biases in the distributions of Z<sub>16</sub> and Z<sub>32</sub> make
 the frequency of a few values much higher than 1/256 (`0x00`, `0xF0`, `0x10` for Z<sub>16</sub>;
 and `0x00`, `0xE0`, `0x20` for Z<sub>32</sub>). If we ensure that we encrypt the same plaintext bytes in these positions
 repeatedly, certain ciphertext values for C<sub>16</sub> and C<sub>32</sub> will also occur more frequently than others.
