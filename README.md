@@ -252,14 +252,14 @@ Collision found between
 MD4: B9B0031B30D53E826B80CBDDBE7354D9
 ```
 I succeeded in fully enforcing all constraints from the first round of MD4 as well as all constraints from the first two steps of the second round.
-I didn't figure out how to apply the constraints from the 3rd step of the second round of MD4. X. Wang et al. give some
+I didn't figure out how to apply the constraints from the 3<sup>rd</sup> step of the second round of MD4. X. Wang et al. give some
 hints in their paper, yet they are not easy to follow
 > Utilize more precise modification to correct some other conditions. For example, we can use the internal collision in Table 2 in which there are three message words are changed to correct c5,i, i = 26, 27, 29, 32. The precise modification should add some extra conditions in the first rounds (see Table 2) in advance. There are many other precise modifications.
 c5,30 can be corrected by other modification. By various modifications, besides two conditions in the third round, almost all the conditions in rounds 1-2 will be corrected. The probability can be among 2^6 ∼ 2^2.
 
 It is interesting to note that X. Wang et al. used differential cryptanalysis to discover the conditions that lead
 to collisions in MD4. MD4 was developed in 1990 by Ron Rivest, which is also the year in which Eli Biham and Adi Shamir introduced
-differential cryptanalysis. Obviously the designer of MD4 didn't take it into account while desigming MD4. Interestingly, the NSA
+differential cryptanalysis. Obviously the designer of MD4 didn't take it into account while designing MD4. Interestingly, the NSA
 discovered differential cryptanalysis as early as in the 1970s, which is one of the reasons why DES is immune to it
 (see [this paper](https://ieeexplore.ieee.org/abstract/document/5389567) or Section 12.4 in Bruce Schneier's Applied Cryptography
 2<sup>nd</sup> edition for details).
