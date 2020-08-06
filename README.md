@@ -152,9 +152,9 @@ if the cipher's key and block sizes are the same. I opted for Blowfish, which is
 This way I needed to find 2<sup>16</sup> messages colliding in f to ensure there's a pair among them colliding in g. 
 
 ### Challenge 54. Kelsey and Kohno's Nostradamus Attack
-[Challenge 54](https://cryptopals.com/sets/7/challenges/54) shows an ingenious way of finding a collision between an MD
+[Challenge 54](https://cryptopals.com/sets/7/challenges/54) shows an ingenious way of finding a collision between a Merkle–Damgård
 hash of two messages m<sub>0</sub> and m<sub>1</sub>, where m<sub>0</sub> is chosen arbitrarily by the attacker while
-m<sub>1</sub> is not. The only requirement is that |m<sub>0</sub>| > |m<sub>1</sub>| by a few blocks. This number of blocks
+m<sub>1</sub> is not. The only requirement is that |m<sub>0</sub>| > |m<sub>1</sub>| by a few blocks. The number of blocks
 by which the length of m<sub>0</sub> exceeds the length of m<sub>1</sub> is referred to as `k`. The way this challenge
 is presented is in the form of using hashes to produce _commitments_.
 
@@ -213,15 +213,29 @@ void challenge54() throws NoSuchAlgorithmException, NoSuchPaddingException, BadP
 ```
 
 #### Conclusions
-This attack shows that producing a commitment just by hashing a secret message `m` with a collision resistant hash function
-doesn't guarantee the _binding_ property, which a cryptographically secure commitment must possess (in addition to that of
-_hiding_ `m`). Why does this attack work? For two reasons:
-1. Hash functions employing the Merkle–Damgård construction are vulnerable to message-length extension attacks.
-2. It is not safe to produce a commitment just by hashing a secret message `m` with a collision-resistant hash function. There's no
+It is not safe to produce a commitment just by hashing a secret message `m` with a collision-resistant hash function. There's no
 security proof that such a construction is safe. The correct way to produce a commitment for a secret message `m`
 is to generate a uniformly distributed random number `r` of, say 512 bits if SHA256 is used as a collision-resistant hash function.
 Then compute `h = SHA256(r || m)`. The commitment is a pair `(r, h)`, of which `h` is revealed while `r` is kept secret until
-it comes time to prove knowledge of `m`.
+it comes time to prove knowledge of `m`. However the attack presented in this challenge will still work with this correct setup
+as well since the person making the prediction is in control of `r`.
+
+This attack shows that producing a commitment by hashing a secret message `m` with a collision resistant hash function with a
+small output space doesn't guarantee the _binding_ property, which a cryptographically secure commitment must possess
+(in addition to that of _hiding_ `m`). Why does this attack work? The main reason is that hash functions employing
+the Merkle–Damgård construction are vulnerable to message-length extension attacks. That's the main reason the recently 
+standardized by NIST [SHA3 hash standard](https://csrc.nist.gov/publications/detail/fips/202/final) uses the sponge
+construction instead of Merkle–Damgård. Using SHA3 for making commitments is immune from this attack. So would be using
+HMAC<sub>0</sub> with SHA256 as the underlying hash:
+HMAC<sub>0</sub>(m) := HMAC(0<sup>l</sup>, m) = H(opad || H(ipad || m)
+
+How feasible would mounting this attack be against SHA256? In their original paper the authors indicate that it reduces
+the effort required for finding a collision with the target hash from O(2<sup>256</sup>) to O(2<sup>172</sup>) when
+`k=84`, i.e. |m<sub>0</sub>| is greater than |m<sub>1</sub>| by 84 512-bits blocks (or by 5.25 KiB). The space complexity
+of such a diamond structure would be huge. Just the 0 level would take up 2<sup>84</sup> * (64 + 32) bytes, which is
+1536 YiB yobibyte (1 yobibyte == 2<sup>80</sup> bytes) &mdash; a mind-boggling number. This makes this attack infeasible
+against SHA-256 in my opinion. Using shorter hashes from the MD family for making commitments is indeed risky.
+
 
 ### Challenge 55. MD4 Collisions
 [Challenge 55](https://cryptopals.com/sets/7/challenges/55) is probably one of the most interesting to work on in the first
