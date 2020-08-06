@@ -152,9 +152,10 @@ if the cipher's key and block sizes are the same. I opted for Blowfish, which is
 This way I needed to find 2<sup>16</sup> messages colliding in f to ensure there's a pair among them colliding in g. 
 
 ### Challenge 54. Kelsey and Kohno's Nostradamus Attack
-[Challenge 54](https://cryptopals.com/sets/7/challenges/54) shows an ingenious way of finding a collision between a Merkle–Damgård
+[Challenge 54](https://cryptopals.com/sets/7/challenges/54) shows an ingenious way of finding _a target collision_ between a Merkle–Damgård
 hash of two messages m<sub>0</sub> and m<sub>1</sub>, where m<sub>0</sub> is chosen arbitrarily by the attacker while
-m<sub>1</sub> is not. The only requirement is that |m<sub>0</sub>| > |m<sub>1</sub>| by a few blocks. The number of blocks
+m<sub>1</sub> is not and needs to be augmented with a suffix that would make its hash match that of m<sub>0</sub>.
+The only requirement is that |m<sub>0</sub>| > |m<sub>1</sub>| by a few blocks. The number of blocks
 by which the length of m<sub>0</sub> exceeds the length of m<sub>1</sub> is referred to as `k`. The way this challenge
 is presented is in the form of using hashes to produce _commitments_.
 
@@ -218,11 +219,14 @@ security proof that such a construction is safe. The correct way to produce a co
 is to generate a uniformly distributed random number `r` of, say 512 bits if SHA256 is used as a collision-resistant hash function.
 Then compute `h = SHA256(r || m)`. The commitment is a pair `(r, h)`, of which `h` is revealed while `r` is kept secret until
 it comes time to prove knowledge of `m`. However the attack presented in this challenge will still work with this correct setup
-as well since the person making the prediction is in control of `r`.
+since the person making the prediction is in control of `r`.
 
-This attack shows that producing a commitment by hashing a secret message `m` with a collision resistant hash function with a
-small output space doesn't guarantee the _binding_ property, which a cryptographically secure commitment must possess
-(in addition to that of _hiding_ `m`). Why does this attack work? The main reason is that hash functions employing
+This attack shows that producing a commitment by hashing a secret message `m` with a hash function that is built using
+the Merkle–Damgård construction may not guarantee the _binding_ property of the commitment, which a cryptographically secure
+commitment scheme must possess (in addition to that of _hiding_ `m`). If a hash function is _target collision resistant_,
+using it to produce commitments would be safe.
+
+Why does this attack work? The main reason is that hash functions employing
 the Merkle–Damgård construction are vulnerable to message-length extension attacks. That's the main reason the recently 
 standardized by NIST [SHA3 hash standard](https://csrc.nist.gov/publications/detail/fips/202/final) uses the sponge
 construction instead of Merkle–Damgård. Using SHA3 for making commitments is immune from this attack. So would be using
@@ -231,8 +235,8 @@ HMAC<sub>0</sub>(m) := HMAC(0<sup>l</sup>, m) = H(opad || H(ipad || m)
 
 How feasible would mounting this attack be against SHA256? In their original paper the authors indicate that it reduces
 the effort required for finding a collision with the target hash from O(2<sup>256</sup>) to O(2<sup>172</sup>) when
-`k=84`, i.e. |m<sub>0</sub>| is greater than |m<sub>1</sub>| by 84 512-bits blocks (or by 5.25 KiB). The space complexity
-of such a diamond structure would be huge. Just the 0 level would take up 2<sup>84</sup> * (64 + 32) bytes, which is
+`k=84`, i.e. |m<sub>0</sub>| is greater than |m<sub>1</sub>| by 84 512-bit blocks (or by 5.25 KiB). The space complexity
+of such a diamond structure would be huge. Level 0 alone would take up 2<sup>84</sup> * (64 + 32) bytes, which is
 1536 YiB yobibyte (1 yobibyte == 2<sup>80</sup> bytes) &mdash; a mind-boggling number. This makes this attack infeasible
 against SHA-256 in my opinion. Using shorter hashes from the MD family for making commitments is indeed risky.
 
@@ -1256,7 +1260,7 @@ for (boolean[] d : kernel) {
 This is by far the most interesting and gratifying part of the exercise where all the earlier building blocks come together.
 I start with generating random bytes of plaintext. How long should the plaintext be to mount an existential forgery on GHASH with a 32 bit tag?
 Ideally it should be 2<sup>33</sup> blocks long. This will however be too much, namely 128 GB. So we will need to go for
-2<sup>17</sup> blocks, which is 2 MB, this will let us assuredly zero out 16 bits of ciphertext differnces. We then expect
+2<sup>17</sup> blocks, which is 2 MiB, this will let us assuredly zero out 16 bits of ciphertext differnces. We then expect
 to zero out another 16 bits by trial and error. As Niels puts it:
 > This, in turn, ensures us that the first 16 bits of the authentication tag will not change if we apply the differences
   D<sub>i</sub> to the ciphertext. With only 16 effective authentication bits left, we have a 2<sup>−16</sup> chance of a successful
@@ -1345,7 +1349,7 @@ of tries &mdash; 65536.
 
 The relevant code [is here](https://github.com/ilchen/cryptopals/blob/788dbe6e75a9d97bcac32a45295e3592c47258ec/src/test/java/com/cryptopals/Set8Tests.java#L553-L582).
        
-Incredible, by getting hold of one 2MB-long ciphertext we are able to forge a new one that differs from the
+Incredible, by getting hold of one 2MiB-long ciphertext we are able to forge a new one that differs from the
 original in 17 blocks and that passes the authentication check during decryption. This is a total failure at CCA security
 that GCM is supposed to provide.
 
@@ -1505,7 +1509,7 @@ void  challenge64() throws NoSuchAlgorithmException, NoSuchPaddingException, Inv
     // Going for 2^21 bytes of plain text => 2^17 blocks
     // How long should be the plain text to mount an existential forgery on GHASH? Ideally it should be
     // 2^(tLen+1) blocks long. This will however be too much: 64 GB. So we will need to go for
-    // 2^17 blocks, which is 2 MB, and then expect to zero out another 16 bits by trial and error.
+    // 2^17 blocks, which is 2 MiB, and then expect to zero out another 16 bits by trial and error.
     byte[]   nonce = new byte[12],  plainText = Set8.getPlainText("plain", (tLen >> 1) + 5),  pTxt2,
              cTxt1,  cTxt2,  assocData = {};
     new SecureRandom().nextBytes(nonce);

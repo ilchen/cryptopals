@@ -579,7 +579,7 @@ class Set8Tests {
         // Going for 2^21 bytes of plain text => 2^17 blocks
         // How long should be the plain text to mount an existential forgery on GHASH? Ideally it should be
         // 2^(tLen+1) blocks long. This will however be too much: 64 GB. So we will need to go for
-        // 2^17 blocks, which is 2 MB, and then expect to zero out another 16 bits by trial and error.
+        // 2^17 blocks, which is 2 MiB, and then expect to zero out another 16 bits by trial and error.
         byte[]   nonce = new byte[12],  plainText = Set8.getPlainText("plain", (tLen >> 1) + 5, 0),  pTxt2,
                  cTxt1,  cTxt2,  assocData = {};
         new SecureRandom().nextBytes(nonce);
