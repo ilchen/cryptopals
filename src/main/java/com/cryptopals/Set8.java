@@ -500,7 +500,7 @@ public class Set8 {
     }
 
     /**
-     * Finds a DLog of {@code y} base {@code g} in group Zp* determined by prime {@code p}. The method
+     * Finds a DLog of {@code y} base {@code g} in group Z<sub>p</sub>* determined by prime {@code p}. The method
      * uses a combination of <a href="https://en.wikipedia.org/wiki/Pohlig–Hellman_algorithm">Pohlig-Hellman</a>
      * and Pollard's algorithms
      * @param y  an element of Zp* whose DLog base {@code g} needs to be found
@@ -511,24 +511,22 @@ public class Set8 {
     static BigInteger  findDLog(BigInteger y, BigInteger g, BigInteger p, List<BigInteger> factors) {
         List<BigInteger[]>   residues = new ArrayList<>();
         BigInteger   prod = ONE,  q;
-        int   n = factors.size();
         System.out.println(factors);
 
-        ANOTHER_MODULUS:
-        for (int i=0; i < n; i++) {
-            BigInteger   r = factors.get(i), otherOrder = p.subtract(ONE).divide(r),
+        for (BigInteger r : factors) {
+            BigInteger   otherOrder = p.subtract(ONE).divide(r),
                          gi = g.modPow(otherOrder, p),  hi = y.modPow(otherOrder, p);
-            for (BigInteger b=ZERO; b.compareTo(r) < 0; b=b.add(ONE)) {
+            for (BigInteger b = ZERO; b.compareTo(r) < 0; b = b.add(ONE)) {
                 if (gi.modPow(b, p).equals(hi)) {
                     System.out.printf("Found b mod %d: %d%n", r, b);
-                    residues.add(new BigInteger[] { b, r });
+                    residues.add(new BigInteger[]{b, r});
                     prod = prod.multiply(r);
                     break;
                 }
             }
-            if (prod.compareTo(p) >= 0)  {
+            if (prod.compareTo(p) >= 0) {
                 System.out.printf("Enough found%n\tQ: %d%n\tP: %d%n", p, prod);
-                break  ANOTHER_MODULUS;
+                break;
             }
         }
 
@@ -821,7 +819,7 @@ public class Set8 {
     }
 
     /**
-     * Generates a piece of plain text composed of random ASCII characters so that the resultant
+     * Generates a piece of plain text composed of random ASCII-32-95 characters so that the resultant
      * piece of text is 2<sup>exp</sup> characters long.
      */
     public static byte[]  getPlainText(int exp) {
@@ -829,7 +827,7 @@ public class Set8 {
         StringBuilder   res = new StringBuilder();
         int  i = 0,  n = 1 << exp;
         while (i++ < n) {
-            res.append((char) (32 + rnd.nextInt(94)));
+            res.append((char) (32 + rnd.nextInt(95)));
         }
         return  res.toString().getBytes();
     }

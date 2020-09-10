@@ -2,7 +2,6 @@ package com.cryptopals.set_8;
 
 import com.cryptopals.set_6.DSAHelper;
 
-import java.math.BigDecimal;
 import java.math.BigInteger;
 
 import static com.cryptopals.set_6.DSAHelper.hashAsBigInteger;
