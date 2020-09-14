@@ -49,7 +49,7 @@ public class RainbowTable {
                     do {
                         z = pw = getPlainText(numChars, rnd);
                         for (int j=0; j < tau; j++) {
-                            z = fi(j, md, z); // toAscii3295(prfs[i].doFinal(md.digest(z)), numChars, numBits);
+                            z = fi(j, md, z);
                         }
                         collision = rainbowTable.putIfAbsent(ByteBuffer.wrap(z), pw);
                     }  while (collision != null); // Takes on average 3 tries to obtain a non-merging chain
