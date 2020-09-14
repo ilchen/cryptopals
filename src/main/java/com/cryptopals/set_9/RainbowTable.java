@@ -3,8 +3,6 @@ package com.cryptopals.set_9;
 import sun.security.provider.MD4;
 
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -13,41 +11,33 @@ import java.util.Random;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
 import java.util.stream.IntStream;
-import javax.crypto.KeyGenerator;
-import javax.crypto.Mac;
-import javax.xml.bind.DatatypeConverter;
 
 /**
  * Constructs a rainbow table for passwords made up out of ascii-32-95 characters hashed with MD4 or any other
  * one-way hash function.
  */
 public class RainbowTable {
-    public static final String   HMAC_MD5 = "HmacMD5";
     public static final int   CHAR_SET_SIZE = 95;
     private final long   l;
-    private final int   tau,  numChars,  numBits;
-    private final Mac[]   prfs;
+    private final int   tau,  numChars;
     private final ConcurrentMap<ByteBuffer, byte[]>   rainbowTable;   /* z -> pw */
+    private final String   hashAlgoName;
 
     /**
      * Constructs a rainbow table for passwords made up out of {@code numChars} ascii-32-95 characters hashed with
      * {@code hashAlgorithmName} one-way hash function.
      */
-    public RainbowTable(int numChars, String hashAlgorithmName) throws NoSuchAlgorithmException, InvalidKeyException {
+    public RainbowTable(int numChars, String hashAlgorithmName) {
         l = (long) Math.ceil(Math.pow(CHAR_SET_SIZE, (numChars << 1) / 3.));
         tau = (int) Math.ceil(Math.pow(CHAR_SET_SIZE, numChars / 3.));
-        numBits = 64 - Long.numberOfLeadingZeros((long) Math.ceil(Math.pow(CHAR_SET_SIZE, numChars)) - 1);
         this.numChars = numChars;
-        System.out.printf("l: %d, \u03C4: %d, hash algorithm: %s%n", l, tau, hashAlgorithmName);
         rainbowTable = new ConcurrentHashMap<>();
-        KeyGenerator   prfKeyGen = KeyGenerator.getInstance(HMAC_MD5);
-        prfs = new Mac[tau];
-        for (int i=0; i < tau; i++) {
-            prfs[i] = Mac.getInstance(HMAC_MD5);  /* pw = toAscii3295(HMAC_MD5(y)) will do as a PRF */
-            prfs[i].init(prfKeyGen.generateKey());
-        }
-        System.out.printf("%d Y -> P PRFs constructed%n", tau);
+        hashAlgoName = hashAlgorithmName;
 
+        System.out.printf("N: %d, l: %d, \u03C4: %d, l*\u03C4: %d, hash algorithm: %s%n",
+                (long) Math.pow(CHAR_SET_SIZE, numChars), l, tau, l*tau, hashAlgorithmName);
+
+        // Task that will be run in parallel to populate rows [range[0], range[1]) of the rainbow table
         Consumer<long[]> task = (range) -> {
             System.out.printf("%s is populating rows %s of the rainbow table%n", Thread.currentThread(), Arrays.toString(range));
             try {
@@ -62,40 +52,34 @@ public class RainbowTable {
                             z = fi(j, md, z); // toAscii3295(prfs[i].doFinal(md.digest(z)), numChars, numBits);
                         }
                         collision = rainbowTable.putIfAbsent(ByteBuffer.wrap(z), pw);
-//                        if (collision != null) {
-//                            System.out.printf("Collision for %s, preimages (%s, %s)%n",
-//                                    new String(z), new String(pw), new String(collision));
-//                        }
-                    }  while (collision != null);
-//                    if (i % 100000 == 0) {
-//                        System.out.printf("%s just populated row %d of the rainbow table%n", Thread.currentThread(), i);
-//                    }
+                    }  while (collision != null); // Takes on average 3 tries to obtain a non-merging chain
+
                 }
             } catch (Exception e) {
                 // ignore
             }
         };
+
+        // To speed things up, constructing rows in the rainbow table in parallel using all cores.
         int   concurrency = Runtime.getRuntime().availableProcessors();
         ExecutorService executor = Executors.newFixedThreadPool(concurrency);
         long   step = l / concurrency;
 
-//        IntStream.range(0, concurrency).mapToObj(
-//                x -> new int[] { x * step, x + 1 == concurrency ?  l : (x + 1) * step }).map(Arrays::toString).forEach(System.out::println);
-
         CompletableFuture<?>[] res = IntStream.range(0, concurrency).mapToObj(
                 x -> CompletableFuture.completedFuture(
-                        new long[] { x * step, x + 1 == concurrency ?  l : (x + 1) * step })).map(x -> x.thenAcceptAsync(task, executor)).toArray(CompletableFuture<?>[]::new);
+                        new long[] { x * step, x + 1 == concurrency ?  l : (x + 1) * step }))
+                .map(x -> x.thenAcceptAsync(task, executor)).toArray(CompletableFuture<?>[]::new);
         CompletableFuture.allOf(res).join();
     }
 
-    public byte[]  crackPassword(byte[] hash) {
+    public byte[]  crackPassword(byte[] hash) throws NoSuchAlgorithmException {
         byte[]   z = gi(tau-1, hash);
-        MessageDigest   md = MD4.getInstance();
+        MessageDigest   md = hashAlgoName.equals("MD4")  ?  MD4.getInstance()
+                                                         :  MessageDigest.getInstance(hashAlgoName);
         byte[]   pw;
         for (int i=tau-2; i >= 0; i--) {
-            //  assert  isAscii3295(z)  &&  z.length == numChars;
             if (null != (pw = rainbowTable.get(ByteBuffer.wrap(z)))) {
-                System.out.printf("Match for z: %s -> corresponding pw: %s%n", new String(z), new String(pw));
+                //System.out.printf("Match for z: %s -> corresponding pw: %s%n", new String(z), new String(pw));
                 for (int j=0; j <= i; j++) {
                     pw = fi(j, md, pw);
                 }
@@ -116,45 +100,18 @@ public class RainbowTable {
     }
 
     private byte[]  gi(int i, byte[] hash) {
-        return  toAscii3295(prfs[i].doFinal(hash), numChars, numBits);
+        return  toAscii3295((ByteBuffer.wrap(hash).getLong() & 0x7fffffffffffffffL) + i, numChars);
     }
 
     /**
      * Converts an arbitrary string of bits represented by {@code m} into {@code numChars} ascii-32-95 symbols.
-     * @param numBits the minimum number of bits required to store {@code numChars} ascii-32-95 symbols
      */
-    public static byte[]  toAscii3295(byte[] m, int numChars, int numBits) {
-        assert  numChars <= 8  &&  numChars > 2;
-/*        if (m.length != 8)  m = Arrays.copyOf(m, 8);
-        int   numBitsRoundedUp = numBits + 7 & -8,  i;
-        for (i=0; i < 64 - numBitsRoundedUp >> 3; i++) {
-            m[i] = 0;
-        }
-
-        int  numBitsToZeroOut = (8 - i >> 3) - numBits;
-        if (numBitsToZeroOut > 0) {
-            m[i] &= (1 << 8 - numBitsToZeroOut) - 1;
-        }
-        long     resAsLong = ByteBuffer.wrap(m).getLong();*/
-        long     resAsLong = toLong(m, numBits);
+    private static byte[]  toAscii3295(long m, int numChars) {
+        if (m < 0)  m &= 0x7fffffffffffffffL;
         byte[]   res = new byte[numChars];
         for (int i=res.length-1; i >= 0; i--) {
-            res[i] = (byte) (resAsLong % CHAR_SET_SIZE + 32);
-            resAsLong /= CHAR_SET_SIZE;
-        }
-        return  res;
-    }
-
-    /**
-     * Converts an arbitrary string of bits represented by {@code m} into a {@code long} value
-     */
-    private static long  toLong(byte[] m, int numBits) {
-        int      numBitsRoundedUp = numBits + 7 & -8,  numBytes = numBitsRoundedUp / 8;
-        long     res = 0;
-        byte[]   buf = new byte[8];
-        for (int j=0; j < m.length; j+=numBytes) {
-            System.arraycopy(m, j, buf, 8-numBytes, numBytes);
-            res ^= ByteBuffer.wrap(buf).getLong();
+            res[i] = (byte) (m % CHAR_SET_SIZE + 32);
+            m /= CHAR_SET_SIZE;
         }
         return  res;
     }
