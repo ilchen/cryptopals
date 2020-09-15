@@ -47,5 +47,5 @@ KTlpMGg=
 Il44LC4=
 ```
 
-Remember that the probability of the rainbow table containing the password you are looking for is around 66% so you
+Remember that the probability of the rainbow table containing the password you are looking for is around 63% so you
 might need to build a couple of different rainbow tables to recover them.
