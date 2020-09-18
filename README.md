@@ -46,6 +46,8 @@ can find in the Table of Contents below.
   * [Challenge 65. Truncated-MAC GCM Revisited: Improving the Key-Recovery Attack via Ciphertext Length Extension](https://github.com/ilchen/cryptopals#challenge-65-truncated-mac-gcm-revisited-improving-the-key-recovery-attack-via-ciphertext-length-extension)
   * [Challenge 66. Exploiting Implementation Errors in Diffie-Hellman](https://github.com/ilchen/cryptopals#challenge-66-exploiting-implementation-errors-in-diffie-hellman)
 
+* [Additional problems](https://github.com/ilchen/cryptopals/blob/master/src/docs/newproblems.md)
+
 ## [Set 6: RSA and DSA](https://cryptopals.com/sets/6)
 ### Challenge 48. Bleichenbacher's PKCS 1.5 Padding Oracle (Complete Case)
 [Challenge 48](https://cryptopals.com/sets/6/challenges/48) is fairly straightforward to implement by following the steps
