@@ -41,11 +41,11 @@ The next step is to come up with a way to make multiple such y functions, each o
 an index so that we refer to them as y<sub>i</sub>. How do you make them behave differently from the original y function
 in the previous paragraph? You can generate a unique random pad for each i and then define y<sub>i</sub>(hash) as:
 
-`y(i) := to_ascii_array(most_significant_bits_of(hash) ^ random_pads[i])`
+`y(i, hash) := to_ascii_array(most_significant_bits_of(hash) ^ random_pads[i])`
 
 Or you can make it even simpler and do something along the following lines:
 
-`y(i) := to_ascii_array(to_long(most_significant_bits_of(hash) + i))`
+`y(i, hash) := to_ascii_array(to_long(most_significant_bits_of(hash) + i))`
 
 this way no storage for random pads is called for.
 
@@ -80,24 +80,24 @@ their SHA-256 hashes is just a few hundred GiB. Contrast this with a few PiB of 
 to build a table for mapping all 8 character passwords to their SHA-256 hashes.
 
 With you hash map for the rainbow table constructed, you are now ready to intercept password hashes and quickly recover
-their passwords. The algorithm to do it is fairly simple:
+their passwords. The algorithm to do it is fairly simple. _Therein `L_hash_map` refers to the hash map that was introduced above,
+y<sub>i</sub>(h) is denoted as y(i, h), likewise f<sub>i</sub>(z) is designated as f(i, z)_:
 ```
-recover_password(y):
-  z := yτ(y)
+recover_password(h):
+  z := y(τ, h)
   for i from τ-1 to 1:
     pw := L_hash_map[z]
     if pw != None:
       for j from 1 to i:
-        pw := fj(pw)
+        pw := f(j, pw)
         if hash(pw) == y:
            return  pw 
     else:
-      z = gi(hash);
+      z = g(i, h);
       for j from i+1 to τ:
-        z = fj(z);
+        z = f(j, z);
   return None
 ```
-
 
 Assuming a system that uses 5 character long ascii passwords, given the following three MD4 hashes:
 ```
@@ -114,7 +114,6 @@ Il44LC4=
 
 Keep in mind that the probability of the rainbow table containing the password you are looking for is around 63% so you
 might need to build a couple of different rainbow tables to recover all the three passwords.
-
 
 How do you protect your system from being vulnerable to such attacks? By ensuring that for each password there's also
 a unique _salt_ value created from a large enough space. The identification system will then use a table with an additional column

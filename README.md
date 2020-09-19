@@ -1,5 +1,5 @@
 # cryptopals
-Solutions to https://cryptopals.com problems
+Solutions to all cryptopals problems: [Sets 1-7](https://cryptopals.com), [Set 8](https://toadstyle.org/cryptopals/).
 
 The only dependency on top of standard JRE 8 runtime is that on [Lombok](https://projectlombok.org).
 
@@ -13,7 +13,7 @@ Some challenges ([31](https://cryptopals.com/sets/4/challenges/31),
 [37](https://cryptopals.com/sets/5/challenges/37), [49](https://cryptopals.com/sets/7/challenges/49),
 [57](https://toadstyle.org/cryptopals/57.txt), [58](https://toadstyle.org/cryptopals/58.txt),
 [59](https://toadstyle.org/cryptopals/59.txt), [60](https://toadstyle.org/cryptopals/60.txt),
-[66](https://toadstyle.org/cryptopals/66.txt) require a server-side application.
+[66](https://toadstyle.org/cryptopals/66.txt)) require a server-side application.
 This can be produced with `mvn install` and executed with
 ```
 java -jar cryptopals_server-0.2.0.jar
