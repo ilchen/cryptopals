@@ -25,7 +25,7 @@ For the more advanced problems I created a proper explanation about the implemen
 can find in the Table of Contents below.
 
 ## Table of Contents
-* [Set 6: RSA and DSA](https://cryptopals.com/sets/6)
+* [Set 6: RSA and DSA](https://github.com/ilchen/cryptopals#set-6-rsa-and-dsa)
   * [Challenge 48. Bleichenbacher's PKCS 1.5 Padding Oracle (Complete Case)](https://github.com/ilchen/cryptopals#challenge-48-bleichenbachers-pkcs-15-padding-oracle-complete-case)
   
 * [Set 7: Hashes](https://github.com/ilchen/cryptopals#set-7-hashes)
