@@ -141,6 +141,26 @@ class Set8Tests {
         assertEquals(exponent, mbase.dlog(mbase.scale(exponent), valueOf(1110000), ECGroupElement::f));
     }
 
+    @DisplayName("https://toadstyle.org/cryptopals/60.txt")
+    @ParameterizedTest @ValueSource(strings = { "rmi://localhost/ECDiffieHellmanBobService" })
+    // The corresponding SpringBoot server application must be running.
+    void challenge60(String bobUrl) throws RemoteException, NotBoundException, MalformedURLException, InvalidKeyException, NoSuchAlgorithmException {
+        MontgomeryECGroup   mgroup = new MontgomeryECGroup(new BigInteger("233970423115425145524320034830162017933"),
+                valueOf(534), ONE, new BigInteger("233970423115425145498902418297807005944"));
+        MontgomeryECGroup.ECGroupElement   mbase = mgroup.createPoint(
+                valueOf(4), new BigInteger("85518893674295321206118380980485522083"));
+        BigInteger   q = new BigInteger("29246302889428143187362802287225875743");
+
+        ECDiffieHellman   ecBob = (ECDiffieHellman) Naming.lookup(bobUrl);
+        boolean   recovered = false;
+        for (BigInteger b : breakChallenge60(mbase, q, bobUrl)) {
+            boolean  isValid = ecBob.isValidPrivateKey(b);
+            System.out.printf("Recovered Bob's secret key: %d? %b%n", b, isValid);
+            recovered |= isValid;
+        }
+        assertTrue(recovered, "Didn't succeed in recovering Bob's secret key :-(");
+    }
+
     @DisplayName("https://toadstyle.org/cryptopals/61.txt")
     @Test
     void challenge61ECDSA() {

@@ -21,7 +21,6 @@ import java.util.concurrent.*;
  */
 public class DiamondStructure {
     private class LevelRangeBuilder implements Callable<Void> {
-        private final Random SECURE_RANDOM = new Random();   /* No need to use SecureRandom here */
         private final int  start,  end,  i;
         private final MDHelper   mdh;
 
@@ -42,7 +41,7 @@ public class DiamondStructure {
             for (int j=start; j < end; j++) {
                 if (j % 2 == 0) {
                     diamondStructure[i][j][1] = new byte[keyLen];
-                    SECURE_RANDOM.nextBytes(diamondStructure[i][j][1]);
+                    ThreadLocalRandom.current().nextBytes(diamondStructure[i][j][1]); // No need for SecureRandom here
                     diamondStructure[i+1][j >> 1] = new byte[2][];
                     diamondStructure[i+1][j >> 1][0] =
                             mdh.mdOneBlock(diamondStructure[i][j][1], diamondStructure[i][j][0]);

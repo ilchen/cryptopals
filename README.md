@@ -4,7 +4,8 @@ Solutions to all cryptopals problems: [Sets 1-7](https://cryptopals.com), [Set 8
 The only dependency on top of standard JRE 8 runtime is that on [Lombok](https://projectlombok.org).
 
 ## How to run
-The majority of the challenges of a set can be run by executing the `com.cryptopals.Setx.main` method of the set.
+The majority of the challenges of a set can be run by executing the `com.cryptopals.Setx.main` method of the set or
+by running the JUnit5 tets found under [src/test/java/com/cryptopals/SetXTests](https://github.com/ilchen/cryptopals/tree/master/src/test/java/com/cryptopals).
 Required dependencies are defined in the project's `pom.xml`.
 
 Some challenges ([31](https://cryptopals.com/sets/4/challenges/31), 
@@ -564,26 +565,33 @@ Found b mod 105143: 6979 or 105143-6979=98164
 You thus have 2<sup>7</sup>=128 combinations of Bob's private key modulo the product of the
 [11, 107, 197, 1621, 105143, 405373, 2323367] moduli. And then you'll need to take a DLog for each of these combinations
 to end up with 128 guesses of Bob's private key. This will probably take a few days to compute on a typical laptop. 
-Can we do better? Yes, it is possible to ensure that the amount of combinations grows not exponentially but linearly
-in the number of subgroups. The solution I came up with works as follows. After finding the next pair of possible
-b mod r<sub>n</sub> = k<sub>n</sub> or r<sub>n</sub>-k<sub>n</sub> combinations, find a generator of order
-comp=r<sub>n-1</sub>*r<sub>n</sub> and discover two possibilities for b mod comp = kk or comp-kk.
+Can we do better? Yes, it is possible to whittle down the number of combinations to just two with one additional 
+call to Bob. What you need to do is find a generator on the twist curve of order which is the composite of these
+small moduli. Staying with the above example, it would mean finding a generator of order 
 
-Then using Garner's formula with
+11 · 107 · 197 · 1621 · 105143 · 405373 · 2323367 = 37220200115549684379403037
 
-garnersFormula(k<sub>n-1</sub>, r<sub>n-1</sub>, k<sub>n</sub>, r<sub>n</sub>)<br>
-garnersFormula(k<sub>n-1</sub>, r<sub>n-1</sub>, r<sub>n</sub>-k<sub>n</sub>, r<sub>n</sub>)<br>
-garnersFormula(r<sub>n-1</sub>-k<sub>n-1</sub>, r<sub>n-1</sub>, k<sub>n</sub>, r<sub>n</sub>)<br>
-garnersFormula(r<sub>n-1</sub>-k<sub>n-1</sub>, r<sub>n-1</sub>, r<sub>n</sub>-k<sub>n</sub>, r<sub>n</sub>)
+and then initiating a DH exchange with Bob giving him this generator as Alice's public key. Poor Bob will then
+calculate a symmetric key (i.e. the mac key in the context of this challenge) by raising this generator to his
+private key exponent and send his Mac response. 
 
-you narrow the four combinations to just two that match kk or comp-kk. Implementation details are a bit more messy
-than this explanation. I ended up creating [a class dedicated to tracking different allowed combinations of residues](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/CRTCombinations.java)
-moduli [11, 107, 197, 1621, 105143, 405373, 2323367]. The class implements
-[Iterable<BigInteger[][]>](https://docs.oracle.com/javase/8/docs/api/java/lang/Iterable.html) and thus allows iterating
-through all legit combinations of possible residues to try. Another complication is that finding `b mod comp` requires
-ploughing through large ranges for the bigger subgroups. For example to find b mod (1621*105143) requires wading through
-the [0, 1621*105143/2] range, and for each element of the range you need to calculate a DH key and derive a MAC.
-Without parallelizing this easily takes an hour. I therefore implemented [logic to carry such scans in parallel](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L309-L355).
+We will then try to calculate 2^127 different symmetric keys ourselves each based on one of the 2^127 combinations 
+of Bob's private key modulo 37220200115549684379403037. Those combinations that
+result in the identical Mac are the ones that are worth taking a DLog on to recover Bob's full private key. There'll
+be only two unique candidates of Bob's private key modulo 37220200115549684379403037 to try:
+k and 37220200115549684379403037 - k. Initially I had a less elegant way of going about this wrinkle. The current
+implementation is thanks to the idea shared with me by [Gregory Morse](https://github.com/GregoryMorse).
+
+I ended up creating [a class dedicated to generating different possible values of Bob's private key](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/CRTCombinations.java)
+modulo the product of the small prime factors (i.e. modulo 11 · 107 · 197 · 1621 · 105143 · 405373 · 2323367 = 37220200115549684379403037 in the example being used).
+The class implements [Iterable<BigInteger>](https://docs.oracle.com/javase/8/docs/api/java/lang/Iterable.html) and thus allows iterating
+through all possible combinations of the private key modulo the product of the small primes. Each candidate is constructed using 
+Garner's formula.
+ 
+Another complication is that finding `b mod small-prime` requires
+ploughing through large ranges for the bigger subgroups. For example to find b mod 2323367 requires wading through
+the [0, 2323367/2] range, and for each element of the range you need to calculate a DH key and derive a MAC.
+Without parallelizing this easily takes time. I therefore implemented [logic to carry such scans in parallel](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L309-L355).
 
 This challenge is an excellent demonstration of the extra safety that one obtains by using only the x-coordinates
 of Alice's and Bob's public keys when implementing DH on an elliptic curve group. If Alice and Bob go a step further
@@ -597,7 +605,7 @@ small subgroups.
 The first part of [Challenge 61](https://toadstyle.org/cryptopals/61.txt) that concerns itself with Duplicate Signature
 Key Selection (DSKS) for ECDSA is almost trivial compared to anything else in Sets 7 and 8.
 [The implementation is quite compact](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/ECDSA.java#L15-L63)
-and simpler than DSA atop of Zp* since there's only group E(F<sub>p</sub>) to deal with rather than two groups
+and simpler than DSA atop of Z<sub>p</sub><sup>\*</sup> since there's only group E(F<sub>p</sub>) to deal with rather than two groups
 Z<sub>p</sub><sup>\*</sup> and Z<sub>q</sub><sup>\*</sup> as is the case in the
 classical DSA. [The effort to produce a DSKS for ECDSA is negligible](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L468-L482),
 even for an industry standard curve such as [the curve 25519](https://en.wikipedia.org/wiki/Curve25519):

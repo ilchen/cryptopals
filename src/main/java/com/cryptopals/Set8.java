@@ -94,7 +94,7 @@ public class Set8 {
      * Finds &radic;n mod p using <a href="https://en.wikipedia.org/wiki/Tonelli–Shanks_algorithm">the Tonelli–Shanks algorithm</a>
      * @return  &radic;n mod p if n is a quadratic residue, {@link #NON_RESIDUE} otherwise
      */
-    static public BigInteger  squareRoot(BigInteger n, BigInteger p) {
+    public static BigInteger  squareRoot(BigInteger n, BigInteger p) {
         BiFunction<BigInteger, BigInteger, BigInteger>   powModP = (BigInteger a, BigInteger e) -> a.modPow(e, p);
         Function<BigInteger, BigInteger>   ls = (BigInteger a) -> powModP.apply(a, p.subtract(ONE).divide(TWO));
         if (!ls.apply(n).equals(ONE))   return  NON_RESIDUE;
@@ -144,7 +144,7 @@ public class Set8 {
      *                  pairs
      * @return  the unique x as represented by the input parameter
      */
-    static BigInteger  garnersAlgorithm(List<BigInteger[]> residues) {
+    public static BigInteger  garnersAlgorithm(List<BigInteger[]> residues) {
         int   n = residues.size();
         BigInteger   cVec[] = new BigInteger[n],  u,  x,  prd;
         for (int i=1; i < n; i++) {
@@ -360,14 +360,12 @@ public class Set8 {
      * @param url  the URL of Bob's RMI service
      * @return  Bob's private key
      */
-    static List<BigInteger>  breakChallenge60(MontgomeryECGroup.ECGroupElement base, BigInteger order, String url) throws RemoteException, NotBoundException, MalformedURLException,
+    public static List<BigInteger>  breakChallenge60(MontgomeryECGroup.ECGroupElement base, BigInteger order, String url) throws RemoteException, NotBoundException, MalformedURLException,
             NoSuchAlgorithmException, InvalidKeyException {
         ECDiffieHellman   bob = (ECDiffieHellman) Naming.lookup(url);
-
-        BigInteger prod = ONE,  x[] = new BigInteger[4];
+        BigInteger   prod = ONE;
         List<BigInteger[]> residues = new ArrayList<>();
         Mac mac = Mac.getInstance(Set8.MAC_ALGORITHM_NAME);
-
 
         List<BigInteger> factors = DiffieHellmanUtils.findSmallFactors(base.group().getTwistOrder(), 1 << 25);
         if (factors.isEmpty()) {
@@ -376,89 +374,64 @@ public class Set8 {
         if (factors.get(0).equals(TWO)) {
             factors.remove(0);      // Handy in case the twist is not a cyclic group
         }
-
-        ExecutorService   executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-        CRTCombinations   crtCombs = new CRTCombinations(factors.size());
-        Challenge60ECDHBobResponse   resp = null;
-
         System.out.println(factors);
 
-        ANOTHER_MODULUS:
-        for (int i=0; i < factors.size(); i++) {
-            BigInteger r = factors.get(i);
-            BigInteger h = base.group().findTwistGenerator(r);
-            System.out.printf("Generator of order %d found: %d%n", r, h);
-            resp = bob.initiate(base, order, h);
-            for (BigInteger b = ZERO; b.compareTo(r) < 0; b = b.add(ONE)) {  /* searching for Bob's secret key b modulo r */
-                mac.init(generateSymmetricKey(base.group(), h, b, 32, MAC_ALGORITHM_NAME));
-                if (Arrays.equals(resp.mac, mac.doFinal(resp.msg.getBytes()))) {
+        ExecutorService   executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        Challenge60ECDHBobResponse   resp;
+        try {
+            for (BigInteger r : factors) {
+                BigInteger h = base.group().findTwistGenerator(r);
+                System.out.printf("Generator of order %d found: %d%n", r, h);
+                resp = bob.initiate(base, order, h);
+
+                // Searching for Bob's secret key b modulo r in parallel
+                BigInteger b = scanRangeForPrivateKeyPar(executor, r.divide(TWO), base.group(), h, resp);
+                if (b != null) {
                     System.out.printf("Found b mod %d: %d or %d%n", r, b, r.subtract(b));
                     residues.add(new BigInteger[]{b, r});
-                    crtCombs.addResidue(i, b, r);
                     prod = prod.multiply(r);
 
-                    if (residues.size() > 1) {
-                        int   _i = residues.size() - 2;
-                        BigInteger   _b = residues.get(_i)[0],
-                                     _r = residues.get(_i)[1],
-                                     comp = r.multiply(_r),  bb;
-
-                        if (_r.compareTo(CHALLENGE60_COMPOSITE_MODULI_THREASHOLD) > 0
-                                &&  r.compareTo(CHALLENGE60_COMPOSITE_MODULI_THREASHOLD) > 0) {
-                            // It will be too computationally intensive to find the b mod comp
-                            crtCombs.addMutation(i, CRTCombinations.MutationType.ONE);
-                            break;
-                        }
-
-                        h = base.group().findTwistGenerator(comp);
-                        resp = bob.initiate(base, order, h);
-                        bb = scanRangeForPrivateKeyPar(executor, comp.divide(TWO), base.group(), h, resp);
-
-                        //System.out.printf("Found b mod %d: %d or %d%n", comp, bb, comp.subtract(bb));
-                        x[0] = garnersFormula(_b, _r, b, r);
-                        x[1] = garnersFormula(_b, _r, r.subtract(b), r);
-//                        x[2] = garnersFormula(_r.subtract(_b), _r, b, r);
-//                        x[3] = garnersFormula(_r.subtract(_b), _r, r.subtract(b), r);
-
-                        if (b.equals(ZERO)  &&  !_b.equals(ZERO)) {
-                            crtCombs.addMutation(i - 1, CRTCombinations.MutationType.ONE);
-                        } else if (_b.equals(ZERO)  &&  !b.equals(ZERO)) {
-                            crtCombs.addMutation(i, CRTCombinations.MutationType.ONE);
-                        } else if (x[0].equals(bb) || x[0].equals(comp.subtract(bb))) {
-                            crtCombs.addMutation(i - 1, CRTCombinations.MutationType.BOTH);
-                        } else if (x[1].equals(bb) || x[1].equals(comp.subtract(bb))) {
-                            crtCombs.addMutation(i - 1, CRTCombinations.MutationType.EITHER);
-                        } else {
-                            System.out.printf("No match: _b=%d, _r=%d, b=%d, r=%d, bb=%d, comp=%d%n", _b, _r, b, r, bb, comp);
-                        }
-                        break;
-                    }
                     if (prod.compareTo(order) >= 0) {
                         System.out.printf("Enough found%n\tQ: %d%n\tP: %d%n", order, prod);
-                        break ANOTHER_MODULUS;
+                        break;
                     }
-                    break;
                 }
+            }
+        } finally {
+            executor.shutdown();
+        }
+
+        CRTCombinations   crtCombs = new CRTCombinations(residues.toArray(new BigInteger[residues.size()][]));
+        BigInteger   h = base.group().findTwistGenerator(prod);
+        System.out.printf("Generator of order %d found: %d%n", prod, h);
+        resp = bob.initiate(base, order, h);
+
+        // We now have 2^residues.size() possible values of Bob's private key mod 'prod'. We need to whittle it down to just 2.
+        List<BigInteger>   cands = new ArrayList<>();
+        for (BigInteger b : crtCombs) {
+            System.out.printf("Trying %d mod %d as Bob's private key candidate. ", b, prod);
+            mac.init(generateSymmetricKey(base.group(), h, b, 32, MAC_ALGORITHM_NAME));
+            if (Arrays.equals(resp.mac, mac.doFinal(resp.msg.getBytes()))) {
+                cands.add(b);
+                System.out.printf("Match%n");
+            } else {
+                System.out.printf("No match%n");
             }
         }
 
-        executor.shutdown();
+        // If Bob's private key == 0 mod some of the small primes, we may end up with duplicate candidates. Let's
+        // get rid of them if there are any.
+        if (cands.size() > 2)  cands = cands.stream().distinct().collect(Collectors.toList());
+        assert  cands.size() == 2 : "Unexpected number of private key candidates";
+
         List<BigInteger>   ret = new ArrayList<>();
-        for (BigInteger[][] _residues : crtCombs) {
-            System.out.println(Arrays.deepToString(_residues));
-        }
-
-        for (BigInteger[][] _residues : crtCombs) {
-            if (_residues == null)  break;
-            System.out.println(Arrays.deepToString(_residues));
-            BigInteger   res = garnersAlgorithm(Arrays.asList(_residues));
-            System.out.printf("b mod %d = %d%n", prod, res);
-
+        for (BigInteger res : cands) {
+            System.out.printf("Trying b mod %d = %d%n as Bob's private key%n", prod, res);
             if (prod.compareTo(order) < 0) {   // Not enough moduli, need to take DLog in E(GF(p))
                 ECGroupElement gPrime = base.scale(prod),
                         yPrime = base.group().createPoint(resp.xB, base.group().mapToY(resp.xB)).combine(base.scale(order.subtract(res)));
-                BigInteger m = base.dlog(yPrime, order.subtract(ONE).divide(prod), ECGroupElement::f);
-                res.add(m.multiply(prod));
+                BigInteger m = gPrime.dlog(yPrime, order.subtract(ONE).divide(prod), ECGroupElement::f);
+                res = res.add(m.multiply(prod));
             }
             ret.add(res);
             System.out.println("Possible private key: " + res);
@@ -911,7 +884,7 @@ public class Set8 {
             System.out.println("base^q+1 = " + mbase.scale(q.add(ONE)));
 
             for (BigInteger bb : breakChallenge60(mbase, q, bobUrl)) {
-                System.out.printf("Recovered Bob's secret key: %d? %b%n", bb, ecBob.isValidPrivateKey(b));
+                System.out.printf("Recovered Bob's secret key: %d? %b%n", bb, ecBob.isValidPrivateKey(bb));
             }
 
             System.out.println("\nChallenge 61");
