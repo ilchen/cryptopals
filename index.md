@@ -574,7 +574,7 @@ and then initiating a DH exchange with Bob giving him this generator as Alice's 
 calculate a symmetric key (i.e. the mac key in the context of this challenge) by raising this generator to his
 private key exponent and send his Mac response. 
 
-We will then try to calculate 2^127 different symmetric keys ourselves each based on one of the 2^127 combinations 
+We will then try to calculate 2<sup>7</sup> different symmetric keys ourselves each based on one of the 2<sup>7</sup> combinations 
 of Bob's private key modulo 37220200115549684379403037. Those combinations that
 result in the identical Mac are the ones that are worth taking a DLog on to recover Bob's full private key. There'll
 be only two unique candidates of Bob's private key modulo 37220200115549684379403037 to try:
