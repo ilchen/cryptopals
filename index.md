@@ -4,8 +4,9 @@ Solutions to all cryptopals problems: [Sets 1-7](https://cryptopals.com), [Set 8
 The only dependency on top of standard JRE 8 runtime is that on [Lombok](https://projectlombok.org).
 
 ## How to run
-The majority of the challenges of a set can be run by executing the `com.cryptopals.Setx.main` method of the set or by running the JUnit5 tets found under
-[src/test/java/com/cryptopals/SetXTests](https://github.com/ilchen/cryptopals/tree/master/src/test/java/com/cryptopals). Required dependencies are defined in the project's `pom.xml`.
+The majority of the challenges of a set can be run by executing the `com.cryptopals.Setx.main` method of the set or
+by running the JUnit5 tets found under [src/test/java/com/cryptopals/SetXTests](https://github.com/ilchen/cryptopals/tree/master/src/test/java/com/cryptopals).
+Required dependencies are defined in the project's `pom.xml`.
 
 Some challenges ([31](https://cryptopals.com/sets/4/challenges/31), 
 [32](https://cryptopals.com/sets/4/challenges/32), [34](https://cryptopals.com/sets/5/challenges/34),
@@ -25,28 +26,28 @@ For the more advanced problems I created a proper explanation about the implemen
 can find in the Table of Contents below.
 
 ## Table of Contents
-* [Set 6: RSA and DSA](https://ilchen.github.io/cryptopals#set-6-rsa-and-dsa)
-  * [Challenge 48. Bleichenbacher's PKCS 1.5 Padding Oracle (Complete Case)](https://ilchen.github.io/cryptopals#challenge-48-bleichenbachers-pkcs-15-padding-oracle-complete-case)
+* [Set 6: RSA and DSA](https://github.com/ilchen/cryptopals#set-6-rsa-and-dsa)
+  * [Challenge 48. Bleichenbacher's PKCS 1.5 Padding Oracle (Complete Case)](https://github.com/ilchen/cryptopals#challenge-48-bleichenbachers-pkcs-15-padding-oracle-complete-case)
   
-* [Set 7: Hashes](https://ilchen.github.io/cryptopals#set-7-hashes)
-  * [Challenge 52. Iterated Hash Function Multicollisions](https://ilchen.github.io/cryptopals#challenge-52-iterated-hash-function-multicollisions)
-  * [Challenge 54. Kelsey and Kohno's Nostradamus Attack](https://ilchen.github.io/cryptopals#challenge-54-kelsey-and-kohnos-nostradamus-attack)
-  * [Challenge 55. MD4 Collisions](https://ilchen.github.io/cryptopals#challenge-55-md4-collisions)
-  * [Challenge 56. RC4 Single-Byte Biases](https://ilchen.github.io/cryptopals#challenge-56-rc4-single-byte-biases)
+* [Set 7: Hashes](https://github.com/ilchen/cryptopals#set-7-hashes)
+  * [Challenge 52. Iterated Hash Function Multicollisions](https://github.com/ilchen/cryptopals#challenge-52-iterated-hash-function-multicollisions)
+  * [Challenge 54. Kelsey and Kohno's Nostradamus Attack](https://github.com/ilchen/cryptopals#challenge-54-kelsey-and-kohnos-nostradamus-attack)
+  * [Challenge 55. MD4 Collisions](https://github.com/ilchen/cryptopals#challenge-55-md4-collisions)
+  * [Challenge 56. RC4 Single-Byte Biases](https://github.com/ilchen/cryptopals#challenge-56-rc4-single-byte-biases)
   
-* [Set 8: Abstract Algebra](https://ilchen.github.io/cryptopals#set-8-abstract-algebra)
-  * [Challenge 57. Diffie-Hellman Revisited: Small Subgroup Confinement](https://ilchen.github.io/cryptopals#challenge-57-diffie-hellman-revisited-small-subgroup-confinement)
-  * [Challenge 58. Pollard's Method for Catching Kangaroos](https://ilchen.github.io/cryptopals#challenge-58-pollards-method-for-catching-kangaroos)
-  * [Challenge 59. Elliptic Curve Diffie-Hellman and Invalid-Curve Attacks](https://ilchen.github.io/cryptopals#challenge-59-elliptic-curve-diffie-hellman-and-invalid-curve-attacks)
-  * [Challenge 60. Single-Coordinate Ladders and Insecure Twists](https://ilchen.github.io/cryptopals#challenge-60-single-coordinate-ladders-and-insecure-twists)
-  * [Challenge 61. Duplicate-Signature Key Selection in ECDSA (and RSA)](https://ilchen.github.io/cryptopals#challenge-61-duplicate-signature-key-selection-in-ecdsa-and-rsa)
-  * [Challenge 62. Key-Recovery Attacks on ECDSA with Biased Nonces](https://ilchen.github.io/cryptopals#challenge-62-key-recovery-attacks-on-ecdsa-with-biased-nonces)
-  * [Challenge 63. Key-Recovery Attacks on GCM with Repeated Nonces](https://ilchen.github.io/cryptopals#challenge-63-key-recovery-attacks-on-gcm-with-repeated-nonces)
-  * [Challenge 64. Key-Recovery Attacks on GCM with a Truncated MAC](https://ilchen.github.io/cryptopals#challenge-64-key-recovery-attacks-on-gcm-with-a-truncated-mac)
-  * [Challenge 65. Truncated-MAC GCM Revisited: Improving the Key-Recovery Attack via Ciphertext Length Extension](https://ilchen.github.io/cryptopals#challenge-65-truncated-mac-gcm-revisited-improving-the-key-recovery-attack-via-ciphertext-length-extension)
-  * [Challenge 66. Exploiting Implementation Errors in Diffie-Hellman](https://ilchen.github.io/cryptopals#challenge-66-exploiting-implementation-errors-in-diffie-hellman)
+* [Set 8: Abstract Algebra](https://github.com/ilchen/cryptopals#set-8-abstract-algebra)
+  * [Challenge 57. Diffie-Hellman Revisited: Small Subgroup Confinement](https://github.com/ilchen/cryptopals#challenge-57-diffie-hellman-revisited-small-subgroup-confinement)
+  * [Challenge 58. Pollard's Method for Catching Kangaroos](https://github.com/ilchen/cryptopals#challenge-58-pollards-method-for-catching-kangaroos)
+  * [Challenge 59. Elliptic Curve Diffie-Hellman and Invalid-Curve Attacks](https://github.com/ilchen/cryptopals#challenge-59-elliptic-curve-diffie-hellman-and-invalid-curve-attacks)
+  * [Challenge 60. Single-Coordinate Ladders and Insecure Twists](https://github.com/ilchen/cryptopals#challenge-60-single-coordinate-ladders-and-insecure-twists)
+  * [Challenge 61. Duplicate-Signature Key Selection in ECDSA (and RSA)](https://github.com/ilchen/cryptopals#challenge-61-duplicate-signature-key-selection-in-ecdsa-and-rsa)
+  * [Challenge 62. Key-Recovery Attacks on ECDSA with Biased Nonces](https://github.com/ilchen/cryptopals#challenge-62-key-recovery-attacks-on-ecdsa-with-biased-nonces)
+  * [Challenge 63. Key-Recovery Attacks on GCM with Repeated Nonces](https://github.com/ilchen/cryptopals#challenge-63-key-recovery-attacks-on-gcm-with-repeated-nonces)
+  * [Challenge 64. Key-Recovery Attacks on GCM with a Truncated MAC](https://github.com/ilchen/cryptopals#challenge-64-key-recovery-attacks-on-gcm-with-a-truncated-mac)
+  * [Challenge 65. Truncated-MAC GCM Revisited: Improving the Key-Recovery Attack via Ciphertext Length Extension](https://github.com/ilchen/cryptopals#challenge-65-truncated-mac-gcm-revisited-improving-the-key-recovery-attack-via-ciphertext-length-extension)
+  * [Challenge 66. Exploiting Implementation Errors in Diffie-Hellman](https://github.com/ilchen/cryptopals#challenge-66-exploiting-implementation-errors-in-diffie-hellman)
 
-* [Additional problems](https://ilchen.github.io/cryptopals#new-problems)
+* [Additional problems](https://github.com/ilchen/cryptopals/blob/master/src/docs/newproblems.md)
 
 ## [Set 6: RSA and DSA](https://cryptopals.com/sets/6)
 ### Challenge 48. Bleichenbacher's PKCS 1.5 Padding Oracle (Complete Case)
@@ -545,9 +546,26 @@ are in fact generators of small subgroups. @spdevlin, the author of the challeng
   combinatorial explosion of potential CRT outputs. Try sending extra
   queries to narrow the range of possibilities.
   
-By way of illustration, based on an arbitrarily generated Bob's private key. The twist of the curve has small subgroups of
-the following orders [11, 107, 197, 1621, 105143, 405373, 2323367]. Sending the generators of these subgroups disguised as Alice's public
-keys, gives you the following facts about Bob's private key b:
+By way of illustration. In this challenge we work with a Montgomery curve
+```
+MontgomeryECGroup(modulus=233970423115425145524320034830162017933, A=534, B=1, order=233970423115425145498902418297807005944, cyclicOrder=233970423115425145498902418297807005944)
+```
+which is isomorphic to 
+```
+WeierstrassECGroup(modulus=233970423115425145524320034830162017933, a=-95051, b=11279326, order=233970423115425145498902418297807005944, cyclicOrder=233970423115425145498902418297807005944)
+```
+from the previous challenge.
+
+The twist of our Montgomery curve has order
+2·modulus + 2 - order-of-curve = 2233970423115425145549737651362517029924. The first gotcha is that the twist is
+not a cyclic curve and just taking small factors of its order will not do. @spdevlin says:
+> Calculate the order of the twist and find its small factors. This one should have a bunch under 2^24.
+
+Well, the small factors are [2, 11, 107, 197, 1621, 105143, 405373, 2323367]. However you will not be able to find
+a generator of order 2 as there's no subgroup of this order on the twist. You will be able to find generators for 
+the other small factors. I.e. the twist of the curve has small subgroups of
+the following orders [11, 107, 197, 1621, 105143, 405373, 2323367]. For a randomly generated Bob's private key, sending
+the generators of these subgroups disguised as Alice's public keys, reveals the following facts about Bob's private key b:
 ```
 Generator of order 11 found: 76600469441198017145391791613091732004
 Found b mod 11: 4 or 11-4=7
@@ -568,42 +586,139 @@ Can we do better? Yes, it is possible to whittle down the number of combinations
 call to Bob. What you need to do is find a generator on the twist curve of order which is the composite of these
 small moduli. Staying with the above example, it would mean finding a generator of order 
 
-11 · 107 · 197 · 1621 · 105143 · 405373 · 2323367 = 37220200115549684379403037
+r = 11 · 107 · 197 · 1621 · 105143 · 405373 · 2323367 = 37220200115549684379403037
 
 and then initiating a DH exchange with Bob giving him this generator as Alice's public key. Poor Bob will then
 calculate a symmetric key (i.e. the mac key in the context of this challenge) by raising this generator to his
 private key exponent and send his Mac response. 
 
 We will then try to calculate 2<sup>7</sup> different symmetric keys ourselves each based on one of the 2<sup>7</sup> combinations 
-of Bob's private key modulo 37220200115549684379403037. Those combinations that
-result in the identical Mac are the ones that are worth taking a DLog on to recover Bob's full private key. There'll
-be only two unique candidates of Bob's private key modulo 37220200115549684379403037 to try:
+of Bob's private key modulo `r` = 37220200115549684379403037. Those combinations that
+result in the identical Mac to that returned by Bob are the ones that are worth taking a DLog on to recover Bob's full private key. There'll
+be only two unique candidates of Bob's private key modulo `r` = 37220200115549684379403037 to try:
 k and 37220200115549684379403037 - k. Initially I had a less elegant way of going about this wrinkle. The current
 implementation is thanks to the idea shared with me by [Gregory Morse](https://github.com/GregoryMorse).
 
 I ended up creating [a class dedicated to generating different possible values of Bob's private key](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/CRTCombinations.java)
-modulo the product of the small prime factors (i.e. modulo 11 · 107 · 197 · 1621 · 105143 · 405373 · 2323367 = 37220200115549684379403037 in the example I'm using). The class implements [Iterable<BigInteger>](https://docs.oracle.com/javase/8/docs/api/java/lang/Iterable.html) and thus allows iterating
-through all possible combinations of the private key modulo the product of the small primes. Each candidate is constructed using 
+modulo `r` (i.e. modulo 11 · 107 · 197 · 1621 · 105143 · 405373 · 2323367 = 37220200115549684379403037).
+The class implements [Iterable<BigInteger>](https://docs.oracle.com/javase/8/docs/api/java/lang/Iterable.html) and thus allows iterating
+through all possible combinations of the private key modulo `r`. Each candidate is constructed using 
 Garner's formula.
- 
-Another complication is that finding `b mod small-prime` requires
+
+There are more intricacies to tackle along the way. Some small, others bigger:
+
+1. A fairly small complication is that finding `b mod small-prime` requires
 ploughing through large ranges for the bigger subgroups. For example to find b mod 2323367 requires wading through
 the [0, 2323367/2] range, and for each element of the range you need to calculate a DH key and derive a MAC.
-Without parallelizing this easily takes time. I therefore implemented [logic to carry such scans in parallel](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L309-L355).
+Without parallelizing this easily take a few minutes. I implemented [logic to carry such scans in parallel](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L309-L355)
+to save time.
+
+2. Once you know Bob's private key b modulo the product of small primes `r` = 37220200115549684379403037 (b mod r = n),
+taking a DLog in E(GF(p)) to recover the full private ket will take a few hours of time. The larger `r`, the less effort DLog will take.
+Are there any other small factors to use? I searched up to 2<sup>32</sup>
+and didn't find any. However there's a small improvement possible. Remember that the order of the twist has a divisor of 2
+but no subgroup of order 2? Its smallest subgroup has order 11. However the twist has a subgroup of order 22. So instead of
+finding residues of Bob's private key modulo these primes [11, 107, 197, 1621, 105143, 405373, 2323367] I switched to
+searching for residues of moduli [22, 107, 197, 1621, 105143, 405373, 2323367] instead. Garner's algorithm still
+works fine as its only requirement is that moduli be pairwise co-prime. This let me learn Bob's key modulo 
+`r` = 74440400231099368758806074 instead of modulo 37220200115549684379403037, roughly halving the time needed to take DLog later on.
+
+3. Applying the the kangaroo attack from Challenge 58 is also non-trivial and I made a couple of mistakes initially. One
+can get away with them if Bob's private key is small. Yet if Bob's private key is the same number of bits as the legit generator
+of the curve, you might easily trip up. In this problem the generator is 
+   ```
+   MontgomeryECGroup.ECGroupElement(u=4, v=85518893674295321206118380980485522083, order=29246302889428143187362802287225875743)
+   ```
+   I implemented Bob so that it [ensures that its private key has the same number of bits as the generator](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/ECDiffieHellmanBobService.java#L24-L33). This surfaced bugs that
+I describe how to avoid in this paragraph. By now we know Bob's private key `b` mod `r` is equal `n`. That means that
+b = n + m·r and the only thing we miss to reconstruct Bob's pk `b` is finding `m`. Applying the maths of the kangaroo attack from Challenge 58:
+   ```
+   y = g^b = g^(n + m·r)
+   y = g^n · g^(m·r)
+   y' = y · g^-n = g^(m·r)
+   g' = g^r
+   y' = (g')^m
+   ```
+   shows that we have everything needed to calculate `m` except for `y`. How do we find `y` _correctly_? The reason
+   I stress the adverb correctly is because we need to find its value using a generator `g` whose order must be the
+   same as the order of the legit generator of the curve, otherwise we'll trip up when Bob's private key is large.
+   ```java
+   // Now let's get Bob's response proper using the legit curve and a legit base point in order to get 'y'.
+   // We need to ensure that Alice's public key 'A' is also a generator of the same order as the base point,
+   // otherwise we will not learn enough about Bob's private key 'b'
+   ECGroupElement   A = base.group().findGenerator(order);
+   Challenge60ECDHBobResponse   resp = bob.initiate(base, order, A.getX());
+   ```
+   
+   Now we can do the rest:
+   ```java
+    ECGroupElement   gPrime = base.scale(r),
+                     y = base.group().createPoint(resp.xB, base.group().mapToY(resp.xB));
+    List<BigInteger>   ret = new ArrayList<>();
+
+    for (BigInteger n : cands) {
+        System.out.printf("Trying b mod %d = %d as Bob's private key%n", r, n);
+        ECGroupElement   yPrime = y.combine(base.scale(order.subtract(n)));
+        BigInteger   m = gPrime.dlog(yPrime, order.subtract(ONE).divide(r), ECGroupElement::f);
+        n = n.add(m.multiply(r));
+        ret.add(n);
+        System.out.println("Possible private key: " + n);
+    }
+   ```
+
+And now the final run of the test:
+```java
+@ParameterizedTest @ValueSource(strings = { "rmi://localhost/ECDiffieHellmanBobService" })
+void challenge60(String bobUrl) throws RemoteException, ... {
+    MontgomeryECGroup   mgroup = new MontgomeryECGroup(new BigInteger("233970423115425145524320034830162017933"),
+            valueOf(534), ONE, new BigInteger("233970423115425145498902418297807005944"));
+    MontgomeryECGroup.ECGroupElement   mbase = mgroup.createPoint( // The base point, aka the generator
+            valueOf(4), new BigInteger("85518893674295321206118380980485522083"));
+    BigInteger   q = new BigInteger("29246302889428143187362802287225875743"); // Order of the base point.
+
+    ECDiffieHellman   ecBob = (ECDiffieHellman) Naming.lookup(bobUrl);
+    boolean   recovered = false;
+    for (BigInteger b : breakChallenge60(mbase, q, bobUrl)) {
+        boolean  isValid = ecBob.isValidPrivateKey(b);
+        System.out.printf("Recovered Bob's secret key: %d? %b%n", b, isValid);
+        recovered |= isValid;
+    }
+    assertTrue(recovered, "Didn't succeed in recovering Bob's secret key :-(");
+}
+```
+
+Recall that we have two candidates of Bob's private key modulo 74440400231099368758806074:
+```
+Trying b mod 74440400231099368758806074 = 23977054913240415887527048 as Bob's private key
+k=26, N=11184810
+xt=28871456718421, upperBound=29264338846924
+yt=MontgomeryECGroup.ECGroupElement(u=66018503796393609535400154879727009901, v=75220517950417414937371017845721779515)
+Possible private key: 28218217810951813013557371685215994592
+
+Trying b mod 74440400231099368758806074 = 50463345317858952871279026 as Bob's private key
+k=26, N=11184810
+xt=28871456718421, upperBound=29264338846924
+yt=MontgomeryECGroup.ECGroupElement(u=66018503796393609535400154879727009901, v=75220517950417414937371017845721779515)
+Possible private key: 50463345317858952871279026
+
+Recovered Bob's secret key: 28218217810951813013557371685215994592? true
+Recovered Bob's secret key: 50463345317858952871279026? false
+```
 
 This challenge is an excellent demonstration of the extra safety that one obtains by using only the x-coordinates
 of Alice's and Bob's public keys when implementing DH on an elliptic curve group. If Alice and Bob go a step further
 and also ensure that they use a twist secure elliptic curve group E(GF(p)) such as
 [the curve 25519](https://en.wikipedia.org/wiki/Curve25519), their implementation will be almost bullet-proof. E.g.
 a twist secure elliptic curve group is one whose quadratic twist Ē(GF(p)) has a prime order or an order without any
-small subgroups.
+small subgroups. The challenge also highlights the importance of choosing large private keys, ideally the same number
+of bits as the order of the generator.
 
 
 ### Challenge 61. Duplicate-Signature Key Selection in ECDSA (and RSA)
 The first part of [Challenge 61](https://toadstyle.org/cryptopals/61.txt) that concerns itself with Duplicate Signature
 Key Selection (DSKS) for ECDSA is almost trivial compared to anything else in Sets 7 and 8.
 [The implementation is quite compact](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/ECDSA.java#L15-L63)
-and simpler than DSA atop of Zp* since there's only group E(F<sub>p</sub>) to deal with rather than two groups
+and simpler than DSA atop of Z<sub>p</sub><sup>\*</sup> since there's only group E(F<sub>p</sub>) to deal with rather than two groups
 Z<sub>p</sub><sup>\*</sup> and Z<sub>q</sub><sup>\*</sup> as is the case in the
 classical DSA. [The effort to produce a DSKS for ECDSA is negligible](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L468-L482),
 even for an industry standard curve such as [the curve 25519](https://en.wikipedia.org/wiki/Curve25519):
@@ -1985,133 +2100,3 @@ As a final note, the challenge does make two assumptions apart from a faulty imp
 namely that:
 * Bob will naively hang on to the same private key across all new sessions with Alice.
 * Bob will ensure his private key is always of the same bit length and that this length is known to Alice.
-
-## New problems
-I've been missing a continuation of Cryptopals after I finished Set 8. Here I make a humble attempt at starting to define new problems and solving them. 
-I hope you enjoy them.
-
-### Challenge 67. Rainbow tables: space efficient recovery of passwords from their hashes
-In addition to the properties of second preimage resistance and target collision-resistance, which we looked at in
-Challenges 53 and 54, another popular use for hash functions relies on their one-way property.
-Namely  given `y = H(x)` it should be computationally infeasible to derive `x`. This property of cryptographic
-hash functions is used in identification and login protocols such as those found in various Unix systems.
-
-In the simplest form the identification system will use a table such as one shown below to verify that the user logging in 
-indeed knows their password.
-
-| user-id | Hash |
-|---------|------|
-| id<sub>1</sub>| H(password<sub>1</sub>) |
-| id<sub>2</sub>| H(password<sub>2</sub>) |
-| ...|...|
-| id<sub>n</sub>| H(password<sub>n</sub>) |
-
-Not storing a password in plaintext presumably makes it harder to figure it out by coming
-in possession of the passwords file. Assuming passwords are `n` characters long where each character is one of the 95
-printable ascii characters, one would think that an attacker getting hold of such a file will need to do an exhaustive
-search on each user's password to discover it, which requires an effort of O(95<sup>n</sup>) per password.
-
-For such a primitive system an active attacker can even pre-compute hashes for all `n` characters passwords and store them
-in an dictionary table `L`. Then, every time the attacker intercepts a user's login password hash, they are able to immediately
-look up their password in table `L` by the hash. This is known as an _offline dictionary attack_. The total effort required to build 
-such a table is O(95<sup>n</sup>). The total space will be 95<sup>n</sup> · (32 + n) bytes. For 8 character passwords hashed with
-SHA-256 this will take up around 32 PiB, which is not practical. Can we do better? It turns out we can thanks to 
-Hellman’s basic time-space trade-off, which was later evolved into what is now known as _rainbow tables_.
-
-The idea of a rainbow table is fairly simple. Say your passwords occupy space &#x3A1; and their hashes space &#x3D2;.
-The hash function h, e.g. SHA-256, then maps elements in &#x3A1; to those in &#x3D2; &mdash; h: &#x3A1; &#x2192; &#x3D2;.
-Note that the size of &#x3D2; (2<sup>256</sup> bits for SHA-256) is larger than the size of &#x3A1; (< 2<sup>64</sup> for 8 character passwords).
-The first thing to do to build a rainbow table is to come up with a function that provides an inverse mapping, i.e.
-a mapping from elements in &#x3D2; to &#x3A1;. Let's call this function y: &#x3D2; &#x2192; &#x3A1;. The simplest way to construct it 
-is to take the minimum number of the most-significant bits from a SHA-256 hash that are required to represent 8 ascii symbolds and
-convert these bits into ascii symbols.
-
-The next step is to come up with a way to make multiple such y functions, each one behaving differently. Let's assign them
-an index so that we refer to them as y<sub>i</sub>. How do you make them behave differently from the original y function
-in the previous paragraph? You can generate a unique random pad for each i and then define y<sub>i</sub>(hash) as:
-
-`y(i, hash) := to_ascii_array(most_significant_bits_of(hash) ^ random_pads[i])`
-
-Or you can make it even simpler and do something along the following lines:
-
-`y(i, hash) := to_ascii_array(to_long(most_significant_bits_of(hash) + i))`
-
-this way no storage for random pads is called for.
-
-With our y<sub>i</sub>: &#x3D2; &#x2192; &#x3A1; ready let's define another group of functions called f<sub>i</sub> as
-follows: f<sub>i</sub>(x) := g<sub>i</sub>(hash(x)). If you've been paying attention, you've noticed that f<sub>i</sub>
-map elements in &#x3A1; to elements in &#x3A1; (e.g. from 8 character ascii passwords to 8 character ascii passwords).
-
-
-The next thing we do is define the number of rows (l) and columns (τ) in our rainbow table `L`. If |&#x3A1;| = N,
-then we define l = N<sup>2/3</sup> and τ = N<sup>1/3</sup>. You might want to take a ceiling of these exponentiations to ensure that l·τ >= N.
-Now we are ready to build our rainbow table `L`. For each row you generate a random 8 character password and then
-map it to another password with f<sub>1</sub>, which you then map with f<sub>2</sub> into yet another password, etc. until after applying f<sub>τ</sub> you get the
-final password for the first row which I call z<sub>1</sub>. Then you put the pair (z<sub>1</sub>, pw<sub>1</sub>) into a hash map (you don't need to store
-all elements of the rainbow table, for each row it suffices to represent the first and last only so a hash map is a good fit).
-Then you proceed with the second row and do exactly the same as for the first. Before putting (z<sub>2</sub>, pw<sub>2</sub>) into your hash map,
-you need to check if there's already an element with the same key value as z<sub>2</sub>  there. If not, all is well and you just proceed
-to store (z<sub>2</sub>, pw<sub>2</sub>) in the hash map. if there's already a key with the same value as z<sub>2</sub>, you generate another value for pw<sub>2</sub> and try
-deriving all passwords from the second row again. Repeat until you get to (z<sub>2</sub>, pw<sub>2</sub>) where z<sub>2</sub> is not present in the hash map.
-Do the same for the remaining rows. At the end your hash map will contain l (z<sub>i</sub>, pw<sub>i</sub>) pairs where
-each z<sub>i</sub> is unique. Actually, if you give it some thought, you will notice that the above also ensures that
-all pw<sub>i</sub>'s are also unique. The below picture illustrates the process:
-
-```
-pw1 * f1 -> * f2 -> * f3 -> ... fτ * z1
-pw2 * f1 -> * f2 -> * f3 -> ... fτ * z2
-...
-pwl * f1 -> * f2 -> * f3 -> ... fτ * zl
-```
-
-The total space required to store the hash map for the rainbow table to recover 8 character ascii passwords from
-their SHA-256 hashes is just a few hundred GiB. Contrast this with a few PiB of storage one would need if they tried
-to build a table for mapping all 8 character passwords to their SHA-256 hashes.
-
-With you hash map for the rainbow table constructed, you are now ready to intercept password hashes and quickly recover
-their passwords. The algorithm to do it is fairly simple. _Therein `L_hash_map` refers to the hash map that was introduced above,
-y<sub>i</sub>(h) is denoted as y(i, h), likewise f<sub>i</sub>(z) is designated as f(i, z)_:
-```
-recover_password(h):
-  z := y(τ, h)
-  for i from τ-1 to 1:
-    pw := L_hash_map[z]
-    if pw != None:
-      for j from 1 to i:
-        pw := f(j, pw)
-        if hash(pw) == y:
-           return  pw 
-    else:
-      z = g(i, h);
-      for j from i+1 to τ:
-        z = f(j, z);
-  return None
-```
-
-Assuming a system that uses 5 character long ascii passwords, given the following three MD4 hashes:
-```
-C89F2A956A8C8AE1F3D2B547BDA4498F
-27300880ECECAAF7FF6705F10C6BC35F
-8D850E3B2E28233C24432FCF45372B74
-```
-build a rainbow table and recover the original passwords. The base64 encodings of the original passwords are as follows (no peeking please):
-```
-clx4IDw=
-KTlpMGg=
-Il44LC4=
-```
-
-Keep in mind that the probability of the rainbow table containing the password you are looking for is around 63% so you
-might need to build a couple of different rainbow tables to recover all the three passwords.
-
-How do you protect your system from being vulnerable to such attacks? By ensuring that for each password there's also
-a unique _salt_ value created from a large enough space. The identification system will then use a table with an additional column
-to authenticate  the user logging in:
-                                                         
- | user-id | Salt | Hash |
- |---------|------|------|
- | id<sub>1</sub>| salt<sub>1</sub> | H(salt<sub>1</sub> &#124;&#124; password<sub>1</sub>) |
- | id<sub>2</sub>| salt<sub>2</sub> | H(salt<sub>2</sub> &#124;&#124; password<sub>2</sub>) |
- | ...|...|...|
- | id<sub>n</sub>| salt<sub>n</sub> | H(salt<sub>n</sub> &#124;&#124; password<sub>n</sub>) |
-
