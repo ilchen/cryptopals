@@ -7,7 +7,6 @@ import lombok.SneakyThrows;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.math.BigInteger;
-import java.rmi.RemoteException;
 
 
 public class ECDiffieHellmanBobService implements ECDiffieHellman {
@@ -56,7 +55,7 @@ public class ECDiffieHellmanBobService implements ECDiffieHellman {
         // Challenge 60 calls for.
         init(g, q);
 
-        System.out.printf("b mod 11 = %d%n", privateKey.mod(BigInteger.valueOf(11)));
+/*        System.out.printf("b mod 22 = %d%n", privateKey.mod(BigInteger.valueOf(22)));
         System.out.printf("b mod 107 = %d%n", privateKey.mod(BigInteger.valueOf(107)));
         System.out.printf("b mod 197 = %d%n", privateKey.mod(BigInteger.valueOf(197)));
         System.out.printf("b mod 1621 = %d%n", privateKey.mod(BigInteger.valueOf(1621)));
@@ -65,8 +64,10 @@ public class ECDiffieHellmanBobService implements ECDiffieHellman {
         System.out.printf("b mod 2323367 = %d%n", privateKey.mod(BigInteger.valueOf(2323367)));
         System.out.printf("b mod 1177 = %d%n", privateKey.mod(BigInteger.valueOf(1177)));
         System.out.printf("b mod 21079 = %d%n", privateKey.mod(BigInteger.valueOf(21079)));
+        System.out.printf("b mod 74440400231099368758806074 = %d%n",
+                privateKey.mod(new BigInteger("74440400231099368758806074")));*/
         macKey = Set8.generateSymmetricKey(g.group(), xA, privateKey, 32, Set8.MAC_ALGORITHM_NAME);
-        System.out.printf("%d^b = %d%n", xA, g.group().ladder(xA, privateKey));
+        // System.out.printf("%d^b = %d%n", xA, g.group().ladder(xA, privateKey));
         mac.init(macKey);
         return  new Set8.Challenge60ECDHBobResponse(g.ladder(privateKey), Set8.CHALLENGE56_MSG,
                 mac.doFinal(Set8.CHALLENGE56_MSG.getBytes()) );

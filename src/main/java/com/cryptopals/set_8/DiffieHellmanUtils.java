@@ -7,7 +7,6 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.stream.IntStream;
 
 import static java.math.BigInteger.*;
 
@@ -35,6 +34,9 @@ final public class DiffieHellmanUtils {
 //        List<BigInteger>   factors = IntStream.range(2, upperBound) /* Finding all divisors of r */
 //                .filter(i -> r.remainder(BigInteger.valueOf(i)).equals(ZERO))
 //                .boxed().map(BigInteger::valueOf).collect(Collectors.toCollection(ArrayList::new));
+//        return  LongStream.range(2, upperBound).parallel().mapToObj(BigInteger::valueOf)
+//                .filter(i -> i.isProbablePrime(64)  &&  r.remainder(i).equals(ZERO))
+//                .collect(Collectors.toList());
 
         for (int i=0; i < factors.size() - 1; i++) {       /* Getting rid of non-prime divisors */
             BigInteger   f = factors.get(i);

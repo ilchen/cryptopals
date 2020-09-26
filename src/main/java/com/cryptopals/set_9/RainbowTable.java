@@ -5,7 +5,6 @@ import sun.security.provider.MD4;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.*;
@@ -43,7 +42,7 @@ public class RainbowTable {
             try {
                 MessageDigest   md = hashAlgorithmName.equals("MD4")  ?  MD4.getInstance()
                                                                       :  MessageDigest.getInstance(hashAlgorithmName);
-                Random         rnd = new SecureRandom();
+                Random         rnd = ThreadLocalRandom.current();
                 byte[]   pw,  z,  collision;
                 for (long i=range[0]; i < range[1]; i++) {
                     do {

@@ -140,7 +140,7 @@ public class Set8 {
     /**
      * Reconstructs the original composite integer based on its moduli using Garner's algorithm as elucidated
      * in Section 14.5.2 of "Handbook of Applied Cryptography" by A. Menezes, P. van Oorschot and S. Vanstone.
-     * @param residues  an {@link List} each element i of which is a two element array consisting of residue, modulus
+     * @param residues  a {@link List} each element i of which is a two element array consisting of residue, modulus
      *                  pairs
      * @return  the unique x as represented by the input parameter
      */
@@ -360,10 +360,10 @@ public class Set8 {
      * @param url  the URL of Bob's RMI service
      * @return  Bob's private key
      */
-    public static List<BigInteger>  breakChallenge60(MontgomeryECGroup.ECGroupElement base, BigInteger order, String url) throws RemoteException, NotBoundException, MalformedURLException,
+    static List<BigInteger>  breakChallenge60(MontgomeryECGroup.ECGroupElement base, BigInteger order, String url) throws RemoteException, NotBoundException, MalformedURLException,
             NoSuchAlgorithmException, InvalidKeyException {
         ECDiffieHellman   bob = (ECDiffieHellman) Naming.lookup(url);
-        BigInteger   prod = ONE;
+        BigInteger   rComp = ONE;
         List<BigInteger[]> residues = new ArrayList<>();
         Mac mac = Mac.getInstance(Set8.MAC_ALGORITHM_NAME);
 
@@ -373,6 +373,7 @@ public class Set8 {
         }
         if (factors.get(0).equals(TWO)) {
             factors.remove(0);      // Handy in case the twist is not a cyclic group
+            factors.set(0, factors.get(0).multiply(TWO));
         }
         System.out.println(factors);
 
@@ -389,10 +390,10 @@ public class Set8 {
                 if (b != null) {
                     System.out.printf("Found b mod %d: %d or %d%n", r, b, r.subtract(b));
                     residues.add(new BigInteger[]{b, r});
-                    prod = prod.multiply(r);
+                    rComp = rComp.multiply(r);
 
-                    if (prod.compareTo(order) >= 0) {
-                        System.out.printf("Enough found%n\tQ: %d%n\tP: %d%n", order, prod);
+                    if (rComp.compareTo(order) >= 0) {
+                        System.out.printf("Enough found%n\tQ: %d%n\tP: %d%n", order, rComp);
                         break;
                     }
                 }
@@ -402,14 +403,14 @@ public class Set8 {
         }
 
         CRTCombinations   crtCombs = new CRTCombinations(residues.toArray(new BigInteger[residues.size()][]));
-        BigInteger   h = base.group().findTwistGenerator(prod);
-        System.out.printf("Generator of order %d found: %d%n", prod, h);
+        BigInteger   h = base.group().findTwistGenerator(rComp);
+        System.out.printf("Generator of order %d found: %d%n", rComp, h);
         resp = bob.initiate(base, order, h);
 
-        // We now have 2^residues.size() possible values of Bob's private key mod 'prod'. We need to whittle it down to just 2.
+        // We now have 2^residues.size() possible values of Bob's private key mod 'rComp'. We need to whittle it down to just 2.
         List<BigInteger>   cands = new ArrayList<>();
         for (BigInteger b : crtCombs) {
-            System.out.printf("Trying %d mod %d as Bob's private key candidate. ", b, prod);
+            System.out.printf("Trying %d mod %d as Bob's private key candidate. ", b, rComp);
             mac.init(generateSymmetricKey(base.group(), h, b, 32, MAC_ALGORITHM_NAME));
             if (Arrays.equals(resp.mac, mac.doFinal(resp.msg.getBytes()))) {
                 cands.add(b);
@@ -424,17 +425,25 @@ public class Set8 {
         if (cands.size() > 2)  cands = cands.stream().distinct().collect(Collectors.toList());
         assert  cands.size() == 2 : "Unexpected number of private key candidates";
 
+        if (rComp.compareTo(order) >= 0)  return  cands; // Enough moduli, no need to take DLog in E(GF(p))
+
+        // Now let's get Bob's response proper using the legit curve and a legit base point in order to get 'y'.
+        // We need to ensure that Alice's public key 'a' is also a generator of the same order as the base point,
+        // otherwise we will not learn enough about Bob's private key 'b'
+        ECGroupElement   A = base.group().findGenerator(order);
+        resp = bob.initiate(base, order, A.getX());
+
+        ECGroupElement   gPrime = base.scale(rComp),
+                         y = base.group().createPoint(resp.xB, base.group().mapToY(resp.xB));
         List<BigInteger>   ret = new ArrayList<>();
-        for (BigInteger res : cands) {
-            System.out.printf("Trying b mod %d = %d%n as Bob's private key%n", prod, res);
-            if (prod.compareTo(order) < 0) {   // Not enough moduli, need to take DLog in E(GF(p))
-                ECGroupElement gPrime = base.scale(prod),
-                        yPrime = base.group().createPoint(resp.xB, base.group().mapToY(resp.xB)).combine(base.scale(order.subtract(res)));
-                BigInteger m = gPrime.dlog(yPrime, order.subtract(ONE).divide(prod), ECGroupElement::f);
-                res = res.add(m.multiply(prod));
-            }
-            ret.add(res);
-            System.out.println("Possible private key: " + res);
+
+        for (BigInteger n : cands) {
+            System.out.printf("Trying b mod %d = %d as Bob's private key%n", rComp, n);
+            ECGroupElement   yPrime = y.combine(base.scale(order.subtract(n)));
+            BigInteger   m = gPrime.dlog(yPrime, order.subtract(ONE).divide(rComp), ECGroupElement::f);
+            n = n.add(m.multiply(rComp));
+            ret.add(n);
+            System.out.println("Possible private key: " + n);
         }
         return  ret;
 

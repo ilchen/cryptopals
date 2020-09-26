@@ -4,6 +4,7 @@ import com.cryptopals.Set8;
 
 import java.math.BigInteger;
 import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static com.cryptopals.Set8.NON_RESIDUE;
 import static com.cryptopals.set_8.WeierstrassECGroup.TWO;
@@ -42,7 +43,7 @@ public interface ECGroup {
     boolean  containsPoint(ECGroupElement elem);
 
     /** Creates a point on this curve with designated coordinates */
-    ECGroupElement createPoint(BigInteger x, BigInteger y);
+    ECGroupElement  createPoint(BigInteger x, BigInteger y);
 
     BigInteger  ladder(BigInteger x, BigInteger k);
 
@@ -52,7 +53,7 @@ public interface ECGroup {
      * @return a generator satisfying the order given
      */
     default ECGroupElement  findGenerator(BigInteger order) {
-        Random rnd = new Random();
+        Random   rnd = ThreadLocalRandom.current();
         BigInteger   otherOrder = getCyclicOrder().divide(order),  x,  y;
         ECGroupElement   possibleGen = getIdentity();
         do {
@@ -71,7 +72,7 @@ public interface ECGroup {
      * @return the x coordinate of a generator of the twist curve satisfying the order given
      */
     default BigInteger  findTwistGenerator(BigInteger order) {
-        Random rnd = new Random();
+        Random   rnd = ThreadLocalRandom.current();
         BigInteger   otherOrder = getTwistOrder().divide(order),  x,  y,  possibleGen = getIdentity().getX();
         do {
             x = new BigInteger(getModulus().bitLength(), rnd);
