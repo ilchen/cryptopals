@@ -12,7 +12,6 @@ import javax.crypto.Mac;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.Serializable;
-import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.MalformedURLException;
 import java.rmi.Naming;
@@ -428,7 +427,7 @@ public class Set8 {
         if (rComp.compareTo(order) >= 0)  return  cands; // Enough moduli, no need to take DLog in E(GF(p))
 
         // Now let's get Bob's response proper using the legit curve and a legit base point in order to get 'y'.
-        // We need to ensure that Alice's public key 'a' is also a generator of the same order as the base point,
+        // We need to ensure that Alice's public key 'A' is also a generator of the same order as the base point,
         // otherwise we will not learn enough about Bob's private key 'b'
         ECGroupElement   A = base.group().findGenerator(order);
         resp = bob.initiate(base, order, A.getX());

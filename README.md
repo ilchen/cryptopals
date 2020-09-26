@@ -546,9 +546,26 @@ are in fact generators of small subgroups. @spdevlin, the author of the challeng
   combinatorial explosion of potential CRT outputs. Try sending extra
   queries to narrow the range of possibilities.
   
-By way of illustration, based on an arbitrarily generated Bob's private key. The twist of the curve has small subgroups of
-the following orders [11, 107, 197, 1621, 105143, 405373, 2323367]. Sending the generators of these subgroups disguised as Alice's public
-keys, gives you the following facts about Bob's private key b:
+By way of illustration. In this challenge we work with a Montgomery curve
+```
+MontgomeryECGroup(modulus=233970423115425145524320034830162017933, A=534, B=1, order=233970423115425145498902418297807005944, cyclicOrder=233970423115425145498902418297807005944)
+```
+which is isomorphic to 
+```
+WeierstrassECGroup(modulus=233970423115425145524320034830162017933, a=-95051, b=11279326, order=233970423115425145498902418297807005944, cyclicOrder=233970423115425145498902418297807005944)
+```
+from the previous challenge.
+
+The twist of our Montgomery curve has order
+2·modulus + 2 - order-of-curve = 2233970423115425145549737651362517029924. The first gotcha is that the twist is
+not a cyclic curve and just taking small factors of its order will not do. @spdevlin says:
+> Calculate the order of the twist and find its small factors. This one should have a bunch under 2^24.
+
+Well, the small factors are [2, 11, 107, 197, 1621, 105143, 405373, 2323367]. However you will not be able to find
+a generator of order 2 as there's no subgroup of this order on the twist. You will be able to find generators for 
+the other small factors. I.e. the twist of the curve has small subgroups of
+the following orders [11, 107, 197, 1621, 105143, 405373, 2323367]. For a randomly generated Bob's private key, sending
+the generators of these subgroups disguised as Alice's public keys, reveals the following facts about Bob's private key b:
 ```
 Generator of order 11 found: 76600469441198017145391791613091732004
 Found b mod 11: 4 or 11-4=7
@@ -569,36 +586,132 @@ Can we do better? Yes, it is possible to whittle down the number of combinations
 call to Bob. What you need to do is find a generator on the twist curve of order which is the composite of these
 small moduli. Staying with the above example, it would mean finding a generator of order 
 
-11 · 107 · 197 · 1621 · 105143 · 405373 · 2323367 = 37220200115549684379403037
+r = 11 · 107 · 197 · 1621 · 105143 · 405373 · 2323367 = 37220200115549684379403037
 
 and then initiating a DH exchange with Bob giving him this generator as Alice's public key. Poor Bob will then
 calculate a symmetric key (i.e. the mac key in the context of this challenge) by raising this generator to his
 private key exponent and send his Mac response. 
 
 We will then try to calculate 2<sup>7</sup> different symmetric keys ourselves each based on one of the 2<sup>7</sup> combinations 
-of Bob's private key modulo 37220200115549684379403037. Those combinations that
-result in the identical Mac are the ones that are worth taking a DLog on to recover Bob's full private key. There'll
-be only two unique candidates of Bob's private key modulo 37220200115549684379403037 to try:
+of Bob's private key modulo `r` = 37220200115549684379403037. Those combinations that
+result in the identical Mac to that returned by Bob are the ones that are worth taking a DLog on to recover Bob's full private key. There'll
+be only two unique candidates of Bob's private key modulo `r` = 37220200115549684379403037 to try:
 k and 37220200115549684379403037 - k. Initially I had a less elegant way of going about this wrinkle. The current
 implementation is thanks to the idea shared with me by [Gregory Morse](https://github.com/GregoryMorse).
 
 I ended up creating [a class dedicated to generating different possible values of Bob's private key](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/CRTCombinations.java)
-modulo the product of the small prime factors (i.e. modulo 11 · 107 · 197 · 1621 · 105143 · 405373 · 2323367 = 37220200115549684379403037 in the example being used).
+modulo `r` (i.e. modulo 11 · 107 · 197 · 1621 · 105143 · 405373 · 2323367 = 37220200115549684379403037).
 The class implements [Iterable<BigInteger>](https://docs.oracle.com/javase/8/docs/api/java/lang/Iterable.html) and thus allows iterating
-through all possible combinations of the private key modulo the product of the small primes. Each candidate is constructed using 
+through all possible combinations of the private key modulo `r`. Each candidate is constructed using 
 Garner's formula.
- 
-Another complication is that finding `b mod small-prime` requires
+
+There are more intricacies to tackle along the way. Some small, others bigger:
+
+1. A fairly small complication is that finding `b mod small-prime` requires
 ploughing through large ranges for the bigger subgroups. For example to find b mod 2323367 requires wading through
 the [0, 2323367/2] range, and for each element of the range you need to calculate a DH key and derive a MAC.
-Without parallelizing this easily takes time. I therefore implemented [logic to carry such scans in parallel](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L309-L355).
+Without parallelizing this easily take a few minutes. I implemented [logic to carry such scans in parallel](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L309-L355)
+to save time.
+
+2. Once you know Bob's private key b modulo the product of small primes `r` = 37220200115549684379403037 (b mod r = n),
+taking a DLog in E(GF(p)) to recover the full private ket will take a few hours of time. The larger `r`, the less effort DLog will take.
+Are there any other small factors to use? I searched up to 2<sup>32</sup>
+and didn't find any. However there's a small improvement possible. Remember that the order of the twist has a divisor of 2
+but no subgroup of order 2? Its smallest subgroup has order 11. However the twist has a subgroup of order 22. So instead of
+finding residues of Bob's private key modulo these primes [11, 107, 197, 1621, 105143, 405373, 2323367] I switched to
+searching for residues of moduli [22, 107, 197, 1621, 105143, 405373, 2323367] instead. Garner's algorithm still
+works fine as its only requirement is that moduli be pairwise co-prime. This let me learn Bob's key modulo 
+`r` = 74440400231099368758806074 instead of modulo 37220200115549684379403037, roughly halving the time needed to take DLog later on.
+
+3. Applying the the kangaroo attack from Challenge 58 is also non-trivial and I made a couple of mistakes initially. One
+can get away with them if Bob's private key is small. Yet if Bob's private key is the same number of bits as the legit generator
+of the curve, you might easily trip up. In this problem the generator is 
+   ```
+   MontgomeryECGroup.ECGroupElement(u=4, v=85518893674295321206118380980485522083, order=29246302889428143187362802287225875743)
+   ```
+   I implemented Bob so that it [ensures that its private key has the same number of bits as the generator](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/ECDiffieHellmanBobService.java#L24-L33). This surfaced bugs that
+I describe how to avoid in this paragraph. By now we know Bob's private key `b` mod `r` is equal `n`. That means that
+b = n + m·r and the only thing we miss to reconstruct Bob's pk `b` is finding `m`. Applying the maths of the kangaroo attack from Challenge 58:
+   ```
+   y = g^b = g^(n + m·r)
+   y = g^n · g^(m·r)
+   y' = y · g^-n = g^(m·r)
+   g' = g^r
+   y' = (g')^m
+   ```
+   shows that we have everything needed to calculate `m` except for `y`. How do we find `y` _correctly_? The reason
+   I stress the adverb correctly is because we need to find its value using a generator `g` whose order must be the
+   same as the order of the legit generator of the curve, otherwise we'll trip up when Bob's private key is large.
+   ```java
+   // Now let's get Bob's response proper using the legit curve and a legit base point in order to get 'y'.
+   // We need to ensure that Alice's public key 'A' is also a generator of the same order as the base point,
+   // otherwise we will not learn enough about Bob's private key 'b'
+   ECGroupElement   A = base.group().findGenerator(order);
+   Challenge60ECDHBobResponse   resp = bob.initiate(base, order, A.getX());
+   ```
+   
+   Now we can do the rest:
+   ```java
+    ECGroupElement   gPrime = base.scale(r),
+                     y = base.group().createPoint(resp.xB, base.group().mapToY(resp.xB));
+    List<BigInteger>   ret = new ArrayList<>();
+
+    for (BigInteger n : cands) {
+        System.out.printf("Trying b mod %d = %d as Bob's private key%n", r, n);
+        ECGroupElement   yPrime = y.combine(base.scale(order.subtract(n)));
+        BigInteger   m = gPrime.dlog(yPrime, order.subtract(ONE).divide(r), ECGroupElement::f);
+        n = n.add(m.multiply(r));
+        ret.add(n);
+        System.out.println("Possible private key: " + n);
+    }
+   ```
+
+And now the final run of the test:
+```java
+@ParameterizedTest @ValueSource(strings = { "rmi://localhost/ECDiffieHellmanBobService" })
+void challenge60(String bobUrl) throws RemoteException, ... {
+    MontgomeryECGroup   mgroup = new MontgomeryECGroup(new BigInteger("233970423115425145524320034830162017933"),
+            valueOf(534), ONE, new BigInteger("233970423115425145498902418297807005944"));
+    MontgomeryECGroup.ECGroupElement   mbase = mgroup.createPoint( // The base point, aka the generator
+            valueOf(4), new BigInteger("85518893674295321206118380980485522083"));
+    BigInteger   q = new BigInteger("29246302889428143187362802287225875743"); // Order of the base point.
+
+    ECDiffieHellman   ecBob = (ECDiffieHellman) Naming.lookup(bobUrl);
+    boolean   recovered = false;
+    for (BigInteger b : breakChallenge60(mbase, q, bobUrl)) {
+        boolean  isValid = ecBob.isValidPrivateKey(b);
+        System.out.printf("Recovered Bob's secret key: %d? %b%n", b, isValid);
+        recovered |= isValid;
+    }
+    assertTrue(recovered, "Didn't succeed in recovering Bob's secret key :-(");
+}
+```
+
+Recall that we have two candidates of Bob's private key modulo 74440400231099368758806074:
+```
+Trying b mod 74440400231099368758806074 = 23977054913240415887527048 as Bob's private key
+k=26, N=11184810
+xt=28871456718421, upperBound=29264338846924
+yt=MontgomeryECGroup.ECGroupElement(u=66018503796393609535400154879727009901, v=75220517950417414937371017845721779515)
+Possible private key: 28218217810951813013557371685215994592
+
+Trying b mod 74440400231099368758806074 = 50463345317858952871279026 as Bob's private key
+k=26, N=11184810
+xt=28871456718421, upperBound=29264338846924
+yt=MontgomeryECGroup.ECGroupElement(u=66018503796393609535400154879727009901, v=75220517950417414937371017845721779515)
+Possible private key: 50463345317858952871279026
+
+Recovered Bob's secret key: 28218217810951813013557371685215994592? true
+Recovered Bob's secret key: 50463345317858952871279026? false
+```
 
 This challenge is an excellent demonstration of the extra safety that one obtains by using only the x-coordinates
 of Alice's and Bob's public keys when implementing DH on an elliptic curve group. If Alice and Bob go a step further
 and also ensure that they use a twist secure elliptic curve group E(GF(p)) such as
 [the curve 25519](https://en.wikipedia.org/wiki/Curve25519), their implementation will be almost bullet-proof. E.g.
 a twist secure elliptic curve group is one whose quadratic twist Ē(GF(p)) has a prime order or an order without any
-small subgroups.
+small subgroups. The challenge also highlights the importance of choosing large private keys, ideally the same number
+of bits as the order of the generator.
 
 
 ### Challenge 61. Duplicate-Signature Key Selection in ECDSA (and RSA)
