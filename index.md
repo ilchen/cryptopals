@@ -26,28 +26,28 @@ For the more advanced problems I created a proper explanation about the implemen
 can find in the Table of Contents below.
 
 ## Table of Contents
-* [Set 6: RSA and DSA](https://github.com/ilchen/cryptopals#set-6-rsa-and-dsa)
-  * [Challenge 48. Bleichenbacher's PKCS 1.5 Padding Oracle (Complete Case)](https://github.com/ilchen/cryptopals#challenge-48-bleichenbachers-pkcs-15-padding-oracle-complete-case)
+* [Set 6: RSA and DSA](https://ilchen.github.io/cryptopals#set-6-rsa-and-dsa)
+  * [Challenge 48. Bleichenbacher's PKCS 1.5 Padding Oracle (Complete Case)](https://ilchen.github.io/cryptopals#challenge-48-bleichenbachers-pkcs-15-padding-oracle-complete-case)
   
-* [Set 7: Hashes](https://github.com/ilchen/cryptopals#set-7-hashes)
-  * [Challenge 52. Iterated Hash Function Multicollisions](https://github.com/ilchen/cryptopals#challenge-52-iterated-hash-function-multicollisions)
-  * [Challenge 54. Kelsey and Kohno's Nostradamus Attack](https://github.com/ilchen/cryptopals#challenge-54-kelsey-and-kohnos-nostradamus-attack)
-  * [Challenge 55. MD4 Collisions](https://github.com/ilchen/cryptopals#challenge-55-md4-collisions)
-  * [Challenge 56. RC4 Single-Byte Biases](https://github.com/ilchen/cryptopals#challenge-56-rc4-single-byte-biases)
+* [Set 7: Hashes](https://ilchen.github.io/cryptopals#set-7-hashes)
+  * [Challenge 52. Iterated Hash Function Multicollisions](https://ilchen.github.io/cryptopals#challenge-52-iterated-hash-function-multicollisions)
+  * [Challenge 54. Kelsey and Kohno's Nostradamus Attack](https://ilchen.github.io/cryptopals#challenge-54-kelsey-and-kohnos-nostradamus-attack)
+  * [Challenge 55. MD4 Collisions](https://ilchen.github.io/cryptopals#challenge-55-md4-collisions)
+  * [Challenge 56. RC4 Single-Byte Biases](https://ilchen.github.io/cryptopals#challenge-56-rc4-single-byte-biases)
   
-* [Set 8: Abstract Algebra](https://github.com/ilchen/cryptopals#set-8-abstract-algebra)
-  * [Challenge 57. Diffie-Hellman Revisited: Small Subgroup Confinement](https://github.com/ilchen/cryptopals#challenge-57-diffie-hellman-revisited-small-subgroup-confinement)
-  * [Challenge 58. Pollard's Method for Catching Kangaroos](https://github.com/ilchen/cryptopals#challenge-58-pollards-method-for-catching-kangaroos)
-  * [Challenge 59. Elliptic Curve Diffie-Hellman and Invalid-Curve Attacks](https://github.com/ilchen/cryptopals#challenge-59-elliptic-curve-diffie-hellman-and-invalid-curve-attacks)
-  * [Challenge 60. Single-Coordinate Ladders and Insecure Twists](https://github.com/ilchen/cryptopals#challenge-60-single-coordinate-ladders-and-insecure-twists)
-  * [Challenge 61. Duplicate-Signature Key Selection in ECDSA (and RSA)](https://github.com/ilchen/cryptopals#challenge-61-duplicate-signature-key-selection-in-ecdsa-and-rsa)
-  * [Challenge 62. Key-Recovery Attacks on ECDSA with Biased Nonces](https://github.com/ilchen/cryptopals#challenge-62-key-recovery-attacks-on-ecdsa-with-biased-nonces)
-  * [Challenge 63. Key-Recovery Attacks on GCM with Repeated Nonces](https://github.com/ilchen/cryptopals#challenge-63-key-recovery-attacks-on-gcm-with-repeated-nonces)
-  * [Challenge 64. Key-Recovery Attacks on GCM with a Truncated MAC](https://github.com/ilchen/cryptopals#challenge-64-key-recovery-attacks-on-gcm-with-a-truncated-mac)
-  * [Challenge 65. Truncated-MAC GCM Revisited: Improving the Key-Recovery Attack via Ciphertext Length Extension](https://github.com/ilchen/cryptopals#challenge-65-truncated-mac-gcm-revisited-improving-the-key-recovery-attack-via-ciphertext-length-extension)
-  * [Challenge 66. Exploiting Implementation Errors in Diffie-Hellman](https://github.com/ilchen/cryptopals#challenge-66-exploiting-implementation-errors-in-diffie-hellman)
+* [Set 8: Abstract Algebra](https://ilchen.github.io/cryptopals#set-8-abstract-algebra)
+  * [Challenge 57. Diffie-Hellman Revisited: Small Subgroup Confinement](https://ilchen.github.io/cryptopals#challenge-57-diffie-hellman-revisited-small-subgroup-confinement)
+  * [Challenge 58. Pollard's Method for Catching Kangaroos](https://ilchen.github.io/cryptopals#challenge-58-pollards-method-for-catching-kangaroos)
+  * [Challenge 59. Elliptic Curve Diffie-Hellman and Invalid-Curve Attacks](https://ilchen.github.io/cryptopals#challenge-59-elliptic-curve-diffie-hellman-and-invalid-curve-attacks)
+  * [Challenge 60. Single-Coordinate Ladders and Insecure Twists](https://ilchen.github.io/cryptopals#challenge-60-single-coordinate-ladders-and-insecure-twists)
+  * [Challenge 61. Duplicate-Signature Key Selection in ECDSA (and RSA)](https://ilchen.github.io/cryptopals#challenge-61-duplicate-signature-key-selection-in-ecdsa-and-rsa)
+  * [Challenge 62. Key-Recovery Attacks on ECDSA with Biased Nonces](https://ilchen.github.io/cryptopals#challenge-62-key-recovery-attacks-on-ecdsa-with-biased-nonces)
+  * [Challenge 63. Key-Recovery Attacks on GCM with Repeated Nonces](https://ilchen.github.io/cryptopals#challenge-63-key-recovery-attacks-on-gcm-with-repeated-nonces)
+  * [Challenge 64. Key-Recovery Attacks on GCM with a Truncated MAC](https://ilchen.github.io/cryptopals#challenge-64-key-recovery-attacks-on-gcm-with-a-truncated-mac)
+  * [Challenge 65. Truncated-MAC GCM Revisited: Improving the Key-Recovery Attack via Ciphertext Length Extension](https://ilchen.github.io/cryptopals#challenge-65-truncated-mac-gcm-revisited-improving-the-key-recovery-attack-via-ciphertext-length-extension)
+  * [Challenge 66. Exploiting Implementation Errors in Diffie-Hellman](https://ilchen.github.io/cryptopals#challenge-66-exploiting-implementation-errors-in-diffie-hellman)
 
-* [Additional problems](https://github.com/ilchen/cryptopals/blob/master/src/docs/newproblems.md)
+* [Additional problems](https://ilchen.github.io/cryptopals/src/docs/newproblems.md)
 
 ## [Set 6: RSA and DSA](https://cryptopals.com/sets/6)
 ### Challenge 48. Bleichenbacher's PKCS 1.5 Padding Oracle (Complete Case)
@@ -307,7 +307,7 @@ algorithm. The best general-purpose algorithm for taking discrete logs in Z<sub>
 of the GNFS is O(&#x221B;p), where `p` is the group's prime.
 
 The Pohlig-Hellman algorithm lets take discrete logs potentially faster than that for groups where `n = p-1` (the order of Z<sub>p</sub><sup>\*</sup>)
-has many small factors. Moreover it works for any cyclic group &mdash; the fact that will come in handy in [Challenge 59](https://github.com/ilchen/cryptopals#challenge-59-elliptic-curve-diffie-hellman-and-invalid-curve-attacks).
+has many small factors. Moreover it works for any cyclic group &mdash; the fact that will come in handy in [Challenge 59](https://ilchen.github.io/cryptopals#challenge-59-elliptic-curve-diffie-hellman-and-invalid-curve-attacks).
 If n = p<sub>1</sub><sup>e1</sup> · p<sub>2</sub><sup>e2</sup> · ... · p<sub>r</sub><sup>er</sup>, then
 the computational complexity of taking dlog with Pohlig-Hellman is O{&Sigma;[e<sub>i</sub> · (lg`n` + &Sqrt;p<sub>i</sub>)]}.
 Well, the way @spdevlin proposes to go about the solution, which is the path I took:
@@ -338,7 +338,7 @@ It can be mounted against a group where `p-1` has at least one large factor in a
 The attack makes use of J.M. Pollard's Lambda Method for Catching Kangaroos, as outlined in
 [Section 3 of Pollard's paper](https://www.ams.org/journals/mcom/1978-32-143/S0025-5718-1978-0491431-9/S0025-5718-1978-0491431-9.pdf).
 While not as efficient as the GNFS, Pollard's kangaroo algorithm can be applied to any cyclic group (e.g. not only to Z<sub>p</sub><sup>*</sup>
-but also to elliptic curve groups) &mdash; a fact that will be of use in [a later elliptic curve challenge](https://github.com/ilchen/cryptopals#challenge-60-single-coordinate-ladders-and-insecure-twists).
+but also to elliptic curve groups) &mdash; a fact that will be of use in [a later elliptic curve challenge](https://ilchen.github.io/cryptopals#challenge-60-single-coordinate-ladders-and-insecure-twists).
 Its running time is O(&Sqrt;`q`), where `q` is the order of the generator used.
 
 Pollard's method employs a pseudo-random mapping function f that maps from set {1, 2, ..., p-1} to set {0, 1, ... k-1}.
