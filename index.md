@@ -880,7 +880,7 @@ length of the shared suffix from 8 bits to 12. And, voilà, within half an hour 
 
 ```
 Extracted private key:	0x59dc17a4bc3b63a7df0b0cde5d58119caa1b2c711ef46fa59735d8f7fe09e9d1
-Actual private key:		0x59dc17a4bc3b63a7df0b0cde5d58119caa1b2c711ef46fa59735d8f7fe09e9d1
+Actual private key:	0x59dc17a4bc3b63a7df0b0cde5d58119caa1b2c711ef46fa59735d8f7fe09e9d1
 ```
 
 [The code of the main test](https://github.com/ilchen/cryptopals/blob/master/src/test/java/com/cryptopals/Set8Tests.java#L229-L260) is pretty compact:
