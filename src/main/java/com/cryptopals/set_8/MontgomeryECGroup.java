@@ -14,7 +14,8 @@ import static java.math.BigInteger.ONE;
 import static java.math.BigInteger.ZERO;
 
 /**
- * Represents an elliptic curve E(F<sub>p</sub>) in the Montgomery form along with points on it.
+ * Represents an elliptic curve E(F<sub>p</sub>) in the Montgomery form along with points on it. A Montgomery curve
+ * has the following form B·v<sup>2</sup> = u<sup>3</sup> + A·u<sup>2</sup> + u
  */
 @EqualsAndHashCode
 @ToString
@@ -46,7 +47,7 @@ final public class MontgomeryECGroup implements ECGroup, Serializable {
 
     /**
      * Calculates the v coordinate of a point on this curve using its u coordinate
-     * @param u
+     * @param u  a {@code u} coordinate on this curve
      * @return the v coordinate or {@link Set8#NON_RESIDUE} if there's no point on the curve with the given v coordinate
      */
     public BigInteger  mapToY(BigInteger u) {

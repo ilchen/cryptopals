@@ -320,10 +320,10 @@ public class Set8 {
             System.out.println(Thread.currentThread() + " is scanning range: " + Arrays.toString(range));
             try {
                 Mac mac = Mac.getInstance(Set8.MAC_ALGORITHM_NAME);
-                for (BigInteger b = range[0]; b.compareTo(range[1]) < 0; b = b.add(ONE)) {  /* searching for Bob's secret key b modulo r */
+                for (BigInteger b = range[0]; b.compareTo(range[1]) <= 0; b = b.add(ONE)) {  /* searching for Bob's secret key b modulo r */
                     mac.init(generateSymmetricKey(group, h, b, 32, MAC_ALGORITHM_NAME));
                     if (b.remainder(freq).equals(ZERO)) {
-                        System.out.printf("%s remaining range: [%d, %d)%n", Thread.currentThread(), b, range[1]);
+                        System.out.printf("%s remaining range: [%d, %d]%n", Thread.currentThread(), b, range[1]);
                         if (stop.get())  return  null;
                     }
                     if (Arrays.equals(resp.mac, mac.doFinal(resp.msg.getBytes()))) {
@@ -346,7 +346,7 @@ public class Set8 {
         List<CompletableFuture<BigInteger>>   res = IntStream.range(0, concurrency).mapToObj(BigInteger::valueOf).map(
                 x -> CompletableFuture.completedFuture(
                         new BigInteger[] { x.multiply(step), x.add(ONE).equals(concur)
-                                ?  upper : x.add(ONE).multiply(step) })).map(x -> x.thenApplyAsync(task, executor)).collect(Collectors.toList());
+                                ?  upper : x.add(ONE).multiply(step).subtract(ONE) })).map(x -> x.thenApplyAsync(task, executor)).collect(Collectors.toList());
         for (CompletableFuture<BigInteger> future : res) {
             if (future.join() != null)  return  future.join();
         }
@@ -425,12 +425,6 @@ public class Set8 {
         assert  cands.size() == 2 : "Unexpected number of private key candidates";
 
         if (rComp.compareTo(order) >= 0)  return  cands; // Enough moduli, no need to take DLog in E(GF(p))
-
-        // Now let's get Bob's response proper using the legit curve and a legit base point in order to get 'y'.
-        // We need to ensure that Alice's public key 'A' is also a generator of the same order as the base point,
-        // otherwise we will not learn enough about Bob's private key 'b'
-        ECGroupElement   A = base.group().findGenerator(order);
-        resp = bob.initiate(base, order, A.getX());
 
         ECGroupElement   gPrime = base.scale(rComp),
                          y = base.group().createPoint(resp.xB, base.group().mapToY(resp.xB));

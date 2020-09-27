@@ -70,7 +70,7 @@ public class ECDiffieHellmanBobService implements ECDiffieHellman {
         // System.out.printf("%d^b = %d%n", xA, g.group().ladder(xA, privateKey));
         mac.init(macKey);
         return  new Set8.Challenge60ECDHBobResponse(g.ladder(privateKey), Set8.CHALLENGE56_MSG,
-                mac.doFinal(Set8.CHALLENGE56_MSG.getBytes()) );
+                                                    mac.doFinal(Set8.CHALLENGE56_MSG.getBytes()) );
     }
 
     @Override
