@@ -629,15 +629,14 @@ works fine as its only requirement is that moduli be pairwise co-prime. This let
    cyclic group, which is obviously less than the order of the twist 233970423115425145549737651362517029924. And then
    search for generators of small subgroups relative to this cyclic subgroup.
 
-3. Applying the the kangaroo attack from Challenge 58 is also non-trivial and I made a couple of mistakes initially. One
-can get away with them if Bob's private key is small. Yet if Bob's private key is the same number of bits as the legit generator
-of the curve, you might easily trip up. In this problem the generator is 
+3. Applying the the kangaroo attack from Challenge 58 correctly also warrants a couple of explanations. If Bob's private
+key is the same number of bits as the legit generator of the curve, you might easily trip up. In this problem the generator is 
    ```
    MontgomeryECGroup.ECGroupElement(u=4, v=85518893674295321206118380980485522083, order=29246302889428143187362802287225875743)
    ```
-   I implemented Bob so that it [ensures that its private key has the same number of bits as the generator](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/ECDiffieHellmanBobService.java#L24-L33). This surfaced bugs that
-I describe how to avoid in this paragraph. By now we know Bob's private key `b` mod `r` is equal `n`. That means that
-b = n + m·r and the only thing we miss to reconstruct Bob's pk `b` is finding `m`. Applying the maths of the kangaroo attack from Challenge 58:
+   I implemented Bob's part so that it [ensures that its private key has the same number of bits as the generator](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/ECDiffieHellmanBobService.java#L24-L33).
+   By now we know Bob's private key `b` mod `r` is equal `n`. That means that b = n + m·r and the only thing we miss
+   to reconstruct Bob's pk `b` is finding `m`. Applying the maths of the kangaroo attack from Challenge 58:
    ```
    y = g^b = g^(n + m·r)
    y = g^n · g^(m·r)
@@ -645,7 +644,7 @@ b = n + m·r and the only thing we miss to reconstruct Bob's pk `b` is finding `
    g' = g^r
    y' = (g')^m
    ```
-   shows that we have everything needed to calculate `m` except for `y`, which is Bob's public key (typically designated as B).
+   shows that we have everything needed to calculate `m` including  `y`, which is Bob's public key (typically designated as B).
    How do we find `y`? It is returned by Bob in every DH response it sends back including the last one we received when
    we searched for the generator of the subgroup of order 74440400231099368758806074. Here's a relevant piece of server-side
    code representing Bob, with an appropriate comment added.
@@ -677,7 +676,7 @@ b = n + m·r and the only thing we miss to reconstruct Bob's pk `b` is finding `
     }
    ```
 
-And now the final run of the test:
+Time for the final run of the test:
 ```java
 @ParameterizedTest @ValueSource(strings = { "rmi://localhost/ECDiffieHellmanBobService" })
 void challenge60(String bobUrl) throws RemoteException, ... {
