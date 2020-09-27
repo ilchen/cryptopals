@@ -676,22 +676,6 @@ b = n + m·r and the only thing we miss to reconstruct Bob's pk `b` is finding `
         System.out.println("Possible private key: " + n);
     }
    ```
-   
-   Now we can do the rest:
-   ```java
-    ECGroupElement   gPrime = base.scale(r),
-                     y = base.group().createPoint(resp.xB, base.group().mapToY(resp.xB));
-    List<BigInteger>   ret = new ArrayList<>();
-
-    for (BigInteger n : cands) {
-        System.out.printf("Trying b mod %d = %d as Bob's private key%n", r, n);
-        ECGroupElement   yPrime = y.combine(base.scale(order.subtract(n)));
-        BigInteger   m = gPrime.dlog(yPrime, order.subtract(ONE).divide(r), ECGroupElement::f);
-        n = n.add(m.multiply(r));
-        ret.add(n);
-        System.out.println("Possible private key: " + n);
-    }
-   ```
 
 And now the final run of the test:
 ```java
