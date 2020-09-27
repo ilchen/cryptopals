@@ -627,7 +627,8 @@ works fine as its only requirement is that moduli be pairwise co-prime. This let
 
    A still cleaner way to address this would be to spend more time analyzing the twist and figuring out the order of its largest
    cyclic group, which is obviously less than the order of the twist 233970423115425145549737651362517029924. And then
-   search for generators of small subgroups relative to this cyclic subgroup.
+   to search for generators of small subgroups relative to this cyclic subgroup. This challenge reveals an interesting 
+   fact &mdash; **the twist of a cyclic Elliptic Curve group need not be cyclic**.
 
 3. Applying the the kangaroo attack from Challenge 58 correctly also warrants a couple of explanations. If Bob's private
 key is the same number of bits as the legit generator of the curve, you might easily trip up. In this problem the generator is 
