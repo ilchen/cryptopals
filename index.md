@@ -557,15 +557,16 @@ WeierstrassECGroup(modulus=233970423115425145524320034830162017933, a=-95051, b=
 from the previous challenge.
 
 The twist of our Montgomery curve has order
-2·modulus + 2 - order-of-curve = 2233970423115425145549737651362517029924. The first gotcha is that the twist is
-not a cyclic curve and just taking small factors of its order will not do. @spdevlin says:
+2·modulus + 2 - order-of-curve = 233970423115425145549737651362517029924. The first gotcha is that the twist is
+not a _cyclic_ group and just taking small factors of its order will not do (it does have subgroups that are cyclic though).
+@spdevlin says:
 > Calculate the order of the twist and find its small factors. This one should have a bunch under 2^24.
 
 Well, the small factors are [2, 11, 107, 197, 1621, 105143, 405373, 2323367]. However you will not be able to find
-a generator of order 2 as there's no subgroup of this order on the twist. You will be able to find generators for 
-the other small factors. I.e. the twist of the curve has small subgroups of
-the following orders [11, 107, 197, 1621, 105143, 405373, 2323367]. For a randomly generated Bob's private key, sending
-the generators of these subgroups disguised as Alice's public keys, reveals the following facts about Bob's private key b:
+a generator of order 2 if you use assume the twist has a cyclic order of 233970423115425145549737651362517029924.
+You will be able to find generators for the other small factors: [11, 107, 197, 1621, 105143, 405373, 2323367].
+For a randomly generated Bob's private key, sending the generators of these subgroups disguised as Alice's public keys
+reveals the following facts about Bob's private key b:
 ```
 Generator of order 11 found: 76600469441198017145391791613091732004
 Found b mod 11: 4 or 11-4=7
@@ -613,15 +614,20 @@ the [0, 2323367/2] range, and for each element of the range you need to calculat
 Without parallelizing this easily take a few minutes. I implemented [logic to carry such scans in parallel](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L309-L355)
 to save time.
 
-2. Once you know Bob's private key b modulo the product of small primes `r` = 37220200115549684379403037 (b mod r = n),
+2. Once you know Bob's private key `b` modulo the product of small primes `r` = 37220200115549684379403037 (b mod r = n),
 taking a DLog in E(GF(p)) to recover the full private ket will take a few hours of time. The larger `r`, the less effort DLog will take.
 Are there any other small factors to use? I searched up to 2<sup>32</sup>
 and didn't find any. However there's a small improvement possible. Remember that the order of the twist has a divisor of 2
-but no subgroup of order 2? Its smallest subgroup has order 11. However the twist has a subgroup of order 22. So instead of
+but that you cannot find a subgroup of order 2 if you assume the twist is a cyclic group of order 233970423115425145549737651362517029924?
+The smallest subgroup you'll find has order 11. However you can find a subgroup of order 22. So instead of
 finding residues of Bob's private key modulo these primes [11, 107, 197, 1621, 105143, 405373, 2323367] I switched to
 searching for residues of moduli [22, 107, 197, 1621, 105143, 405373, 2323367] instead. Garner's algorithm still
 works fine as its only requirement is that moduli be pairwise co-prime. This let me learn Bob's key modulo 
 `r` = 74440400231099368758806074 instead of modulo 37220200115549684379403037, roughly halving the time needed to take DLog later on.
+
+   A still cleaner way to address this would be to spend more time analyzing the twist and figuring out the order of its largest
+   cyclic group, which is obviously less than the order of the twist 233970423115425145549737651362517029924. And then
+   search for generators of small subgroups relative to this cyclic subgroup.
 
 3. Applying the the kangaroo attack from Challenge 58 is also non-trivial and I made a couple of mistakes initially. One
 can get away with them if Bob's private key is small. Yet if Bob's private key is the same number of bits as the legit generator
@@ -639,15 +645,36 @@ b = n + m·r and the only thing we miss to reconstruct Bob's pk `b` is finding `
    g' = g^r
    y' = (g')^m
    ```
-   shows that we have everything needed to calculate `m` except for `y`. How do we find `y` _correctly_? The reason
-   I stress the adverb correctly is because we need to find its value using a generator `g` whose order must be the
-   same as the order of the legit generator of the curve, otherwise we'll trip up when Bob's private key is large.
+   shows that we have everything needed to calculate `m` except for `y`, which is Bob's public key (typically designated as B).
+   How do we find `y`? It is returned by Bob in every DH response it sends back including the last one we received when
+   we searched for the generator of the subgroup of order 74440400231099368758806074. Here's a relevant piece of server-side
+   code representing Bob, with an appropriate comment added.
    ```java
-   // Now let's get Bob's response proper using the legit curve and a legit base point in order to get 'y'.
-   // We need to ensure that Alice's public key 'A' is also a generator of the same order as the base point,
-   // otherwise we will not learn enough about Bob's private key 'b'
-   ECGroupElement   A = base.group().findGenerator(order);
-   Challenge60ECDHBobResponse   resp = bob.initiate(base, order, A.getX());
+    public Set8.Challenge60ECDHBobResponse initiate(ECGroupElement g, BigInteger q, BigInteger xA) {
+        init(g, q);
+
+        macKey = Set8.generateSymmetricKey(g.group(), xA, privateKey, 32, Set8.MAC_ALGORITHM_NAME);
+        mac.init(macKey);
+        return  new Set8.Challenge60ECDHBobResponse(g.ladder(privateKey), // this is Bob's public key
+                                                    Set8.CHALLENGE56_MSG,
+                                                    mac.doFinal(Set8.CHALLENGE56_MSG.getBytes()) );
+    }
+   ```
+   
+   Now we can do the rest:
+   ```java
+    ECGroupElement   gPrime = base.scale(r),
+                     y = base.group().createPoint(resp.xB, base.group().mapToY(resp.xB));
+    List<BigInteger>   ret = new ArrayList<>();
+
+    for (BigInteger n : cands) {
+        System.out.printf("Trying b mod %d = %d as Bob's private key%n", r, n);
+        ECGroupElement   yPrime = y.combine(base.scale(order.subtract(n)));
+        BigInteger   m = gPrime.dlog(yPrime, order.subtract(ONE).divide(r), ECGroupElement::f);
+        n = n.add(m.multiply(r));
+        ret.add(n);
+        System.out.println("Possible private key: " + n);
+    }
    ```
    
    Now we can do the rest:
