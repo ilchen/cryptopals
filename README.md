@@ -1359,7 +1359,7 @@ the dependency matrix being generated.
 For the sake of efficiency I decided to generated a transpose of the dependency matrix. This will make the calculation
 of its kernel faster.
 
-Since in this problem we repeatedly touch the notion of _the kernel_ (aka _the null space_), it's worth saying a couple of words about the linear algebra used.
+Since in this problem we repeatedly touch on the notion of _the kernel_ (aka _the null space_), it's worth saying a couple of words about the linear algebra used.
 Let's start with @spdevlin's explanation:
 > If you know a little bit of linear algebra, you'll know that what we
   really want to find is a basis for N(T), the null space of T. The null
@@ -1372,8 +1372,8 @@ So we have two vector spaces one of dimension `n` and another of dimension `m` (
 from one vector space to the other. The kernel of this mapping `T` are the pre-images (elements from the n-dimensional vector space) that get mapped
 to the zero vector from the m-dimensional vector space. Looking at the above-mentioned dependency matrix of dimension [2048 x 2176],
 we are dealing with two vector spaces over GF(2): one of dimension 2176 and the other of dimension 2048. And then we identify
-those elements of the first vector space that get mapped to the zero vector from the second vector space. Since
-the first vector space is of the larger dimension than the second, the mapping `T` is a many-to-one mapping (by pigeonhole principle).
+those elements of the first vector space that get mapped by `T` to the zero vector from the second vector space. Since
+the first vector space is of a larger dimension than the second, the mapping `T` is a many-to-one mapping (by pigeonhole principle).
 Therefore we should expect to find multiple such vectors.
 
 #### Finding the kernel of the dependency matrix T
