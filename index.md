@@ -1205,7 +1205,7 @@ I am able to commit an existential forgery attack!
 paper. GCM is the most popular standard for authenticated encryption and is used in TLS 1.2 and higher. To aid efficient
 fast implementations of GCM Intel even added [a special new instruction PCLMULQDQ](https://software.intel.com/sites/default/files/managed/72/cc/clmul-wp-rev-2.02-2014-04-20.pdf),
 which makes it easy to implement GCM's GHASH hash function. Of the different modes of authenticated encryption not
-encumbered by patents and certified by NIST, GCM is the fastest. It is faster than CCM and EAX. Moreover, with the help of Intel's PCLMULDQ
+encumbered by patents and certified by NIST, GCM is the fastest. It is faster than CCM and EAX. Moreover, with the help of Intel's PCLMULQDQ
 instruction for GHASH, it can be implemented with less code than would otherwise be required. All of these are the main
 reasons for GCM's popularity.
 
@@ -1303,11 +1303,9 @@ which is essentially the same as given by @spdevlin in the problem description:
   do is transpose T (i.e. flip it across its diagonal) and find the
   reduced row echelon form using Gaussian elimination. Now perform the
   same operations on an identity matrix of size n*128. The rows that
-  correspond to the zero rows in the reduced row echelon form of T
-  transpose form a basis for N(T).
+  correspond to the zero rows in the reduced row echelon form of T transpose form a basis for N(T).
 
 My implementation is captured in [this method](https://github.com/ilchen/cryptopals/blob/788dbe6e75a9d97bcac32a45295e3592c47258ec/src/main/java/com/cryptopals/set_8/BooleanMatrixOperations.java#L96-L127).
-
 
 #### Extraction and replacement of the 2<sup>i-th</sup> blocks of ciphertext
 This is the easiest part. The only thing to pay attention to is that the blocks to extract are the coefficients of
@@ -1333,7 +1331,7 @@ PolynomialGaloisFieldOverGF2.FieldElement   hash1 = gcm.ghashPower2BlocksDiffere
 assertEquals(hash1, hash2);
 ```
 As you can see, I calculate the hash1 over d<sub>i</sub> differences using standard GHASH arithmetic in GF(2<sup>128</sup>)
-and then hash2 by A<sub>d</sub>*h. TThe two must be the same.
+and then hash2 by A<sub>d</sub>·h. TThe two must be the same.
 
 The dependency matrix is more involved. Before setting out on a path to calculate it, it helps to understand what purpose it
 serves and how it comes about. In his original description of the attack Niels Ferguson writes:
@@ -1346,7 +1344,7 @@ The depdendency matrix is the A<sub>i,j</sub> coefficients of these equations. H
 ![alt text](https://raw.githubusercontent.com/ilchen/cryptopals/master/src/docs/challenge64_equations.png)
 
 To calculate it you first need to generate arbitrary coefficients of h<sup>2^i</sup> (i=1..17). They are the starting
-point for deriving properly forged coefficients. There will be exactly 17*128=2176 bits that you can flip, 128 per each coefficient.
+point for deriving properly forged coefficients. There will be exactly 17·128=2176 bits that you can flip, 128 per each coefficient.
 In the above equations they are denoted with d<sub>0</sub>, d<sub>1</sub>, ..., d<sub>2175</sub>. The way you then
 calculate the dependency matrix &mdash; all the different A<sub>i,j</sub> in the above equations &mdash; is precisely
 as described by @spdevlin:
@@ -1355,11 +1353,28 @@ as described by @spdevlin:
   cells of Ad and set the corresponding cells in this column of T.
 
 So you flip d<sub>0</sub> in the coefficient of h<sup>2</sup> that you just generated and then calculate A<sub>d</sub> over your
-generated coefficients. The first 16*128 cells of this A<sub>d</sub> constitute the values of the first column of
+generated coefficients. The first 16·128 cells of this A<sub>d</sub> constitute the values of the first column of
 the dependency matrix being generated. 
 
 For the sake of efficiency I decided to generated a transpose of the dependency matrix. This will make the calculation
 of its kernel faster.
+
+Since in this problem we repeatedly touch the notion of _the kernel_ (aka _the null space_), it's worth saying a couple of words about the linear algebra used.
+Let's start with @spdevlin's explanation:
+> If you know a little bit of linear algebra, you'll know that what we
+  really want to find is a basis for N(T), the null space of T. The null
+  space is exactly that set of vectors that solve the equation
+  above. Just what we're looking for. Recall that a basis is a minimal
+  set of vectors whose linear combinations span the whole space.
+  
+In linear algebra a matrix `T` of dimensions [`m` x `n`] defines a mapping from n-dimensional column vectors to m-dimensional ones. 
+So we have two vector spaces one of dimension `n` and another of dimension `m` (both over field GF(2) in this problem) and a mapping `T`
+from one vector space to the other. The kernel of this mapping `T` are the pre-images (elements from the n-dimensional vector space) that get mapped
+to the zero vector from the m-dimensional vector space. Looking at the above-mentioned dependency matrix of dimension [2048 x 2176],
+we are dealing with two vector spaces over GF(2): one of dimension 2176 and the other of dimension 2048. And then we identify
+those elements of the first vector space that get mapped to the zero vector from the second vector space. Since
+the first vector space is of the larger dimension than the second, the mapping `T` is a many-to-one mapping (by pigeonhole principle).
+Therefore we should expect to find multiple such vectors.
 
 #### Finding the kernel of the dependency matrix T
 With the dependency matrix generated we can now start looking for what flips to the different bits of these prototype coefficients
@@ -1372,7 +1387,7 @@ that finds the kernel from a transposed dependency matrix. **NB:** In contrast t
    
 it is sufficient to bring the transpose of T to a row echelon form, there's no need to bring it to _reduced_ row echelon form.
 
-If everything has been implemented correctly, the equality d * T<sup>T</sup> = 0 will hold for all elements of the kernel
+If everything has been implemented correctly, the equality d · T<sup>T</sup> = 0 will hold for all elements of the kernel
 found:
 ```java
 forgedCoeffs = getRandomPowerOf2Blocks();
@@ -1393,7 +1408,7 @@ for (boolean[] d : kernel) {
 #### Attempting an existential forgery attack on the smallest allowed GHASH tag size of tLen = 32 bits
 This is by far the most interesting and gratifying part of the exercise where all the earlier building blocks come together.
 I start with generating random bytes of plaintext. How long should the plaintext be to mount an existential forgery on GHASH with a 32 bit tag?
-Ideally it should be 2<sup>33</sup> blocks long. This will however be too much, namely 128 GB. So we will need to go for
+Ideally it should be 2<sup>33</sup> blocks long. This will however be too much, namely 128 GiB. So we will need to go for
 2<sup>17</sup> blocks, which is 2 MiB, this will let us assuredly zero out 16 bits of ciphertext differnces. We then expect
 to zero out another 16 bits by trial and error. As Niels puts it:
 > This, in turn, ensures us that the first 16 bits of the authentication tag will not change if we apply the differences
@@ -1528,7 +1543,7 @@ A<sub>d</sub>·h = 0. We can now rewrite it as:
 
 Instead of searching for forged coefficients that zero-out the first 16 rows of A<sub>d</sub>, we will search for
 forged coefficients that zero-out the first rows of A<sub>d</sub>·X. A<sub>d</sub>·X has dimension 128x112, which
-is smaller than that of A<sub>d</sub>. We use our good old dependency matrix T of dimensions mx17·128 to accomplish that.
+is smaller than that of A<sub>d</sub>. We use our good old dependency matrix T of dimensions m x 17·128 to accomplish that.
 However to zero out the first 16 rows of A<sub>d</sub>·X, we will fill in its columns with elements of A<sub>d</sub>·X. To tackle
 this I slightly modified my [produceDependencyMatrixTransposed method](https://github.com/ilchen/cryptopals/blob/e984f1f793f158570087d1c4b0e1fa70b7947253/src/main/java/com/cryptopals/set_8/GCMExistentialForgeryHelper.java#L235-L275).
 Quoting Niels on zeroing out rows in A<sub>d</sub>·X:
