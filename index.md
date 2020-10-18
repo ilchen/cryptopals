@@ -729,9 +729,9 @@ of bits as the order of the generator.
 The first part of [Challenge 61](https://toadstyle.org/cryptopals/61.txt) that concerns itself with Duplicate Signature
 Key Selection (DSKS) for ECDSA is almost trivial compared to anything else in Sets 7 and 8.
 [The implementation is quite compact](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_8/ECDSA.java#L15-L63)
-and simpler than DSA atop of Z<sub>p</sub><sup>\*</sup> since there's only group E(F<sub>p</sub>) to deal with rather than two groups
-Z<sub>p</sub><sup>\*</sup> and Z<sub>q</sub><sup>\*</sup> as is the case in the
-classical DSA. [The effort to produce a DSKS for ECDSA is negligible](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L468-L482),
+and simpler than DSA atop of Z<sub>p</sub><sup>\*</sup> since there's only one cyclic group of points on E(F<sub>p</sub>) to deal with
+rather than two groups Z<sub>p</sub><sup>\*</sup> and Z<sub>q</sub><sup>\*</sup> as is the case in the classical DSA.
+[The effort to produce a DSKS for ECDSA is negligible](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L460-L475),
 even for an industry standard curve such as [the curve 25519](https://en.wikipedia.org/wiki/Curve25519):
 ```java
 @Test
@@ -748,8 +748,27 @@ void challenge61ECDSA() {
     assertTrue(legitPk.verifySignature(CHALLENGE56_MSG.getBytes(), signature));
     assertTrue(forgedPk.verifySignature(CHALLENGE56_MSG.getBytes(), signature));
     assertNotEquals(legitPk, forgedPk);
+    
+    // ECDSA is not strongly secure, i.e. if (r, s) is a valid ECDSA signature on m, then so is (r, -s).
+    DSAHelper.Signature   altSignature = new DSAHelper.Signature(signature.getR(), q.subtract(signature.getS()));
+    assertTrue(legitPk.verifySignature(CHALLENGE56_MSG.getBytes(), altSignature));
+    assertTrue(forgedPk.verifySignature(CHALLENGE56_MSG.getBytes(), altSignature));
 }
 ```
+
+An important point about ECDSA worth mentioning is that ECDSA signatures are not _strongly secure_ in the sense that
+if (r, s) is a valid signature on message `m` then it is easy to come up with another valid signature on the same message.
+For ECDSA that is (r, -s). The last three statements in the above test demonstrate this in action.
+Why does signature (r, -s) work too? This is easy to see from how `r` is constructed:
+```
+function sign(m, d):
+   k := random_scalar(1, n)
+   r := (k * G).x
+   s := (H(m) + d*r) * k^-1
+   return (r, s)
+```
+There's another point on the curve whose x coordinate matches that of k · G, it is point -k · G. Plugging -k · G
+in the verification formulas shows the desired outcome.
 
 Mounting a DSKS attack on RSA is much more laborious. I implemented it for relatively small RSA moduli of 320 bits.
 The biggest effort went into finding primes `p` and `q` that meet the requirements for 1) `p-1` and `q-1` being smooth, 2)
