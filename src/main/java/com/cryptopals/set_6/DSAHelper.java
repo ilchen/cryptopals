@@ -51,7 +51,7 @@ public class DSAHelper {
     private static final Random SECURE_RANDOM = new SecureRandom(); // Thread safe
     private final BigInteger   p,  q,  g,  x;
 
-    public static BigInteger   fromHash(byte hash[]) {
+    public static BigInteger  fromHash(byte hash[]) {
         // BigInteger   h = new BigInteger(hash).add(ONE.shiftLeft(hash.length * 8));
         byte   prefixedHash[] = new byte[hash.length + 1];
         System.arraycopy(hash, 0, prefixedHash, 1, hash.length);

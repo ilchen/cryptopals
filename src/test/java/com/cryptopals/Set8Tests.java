@@ -176,6 +176,11 @@ class Set8Tests {
         assertTrue(legitPk.verifySignature(CHALLENGE56_MSG.getBytes(), signature));
         assertTrue(forgedPk.verifySignature(CHALLENGE56_MSG.getBytes(), signature));
         assertNotEquals(legitPk, forgedPk);
+
+        // ECDSA is not strongly secure, i.e. if (r, s) is a valid ECDSA signature on m, then so is (r, -s).
+        DSAHelper.Signature   altSignature = new DSAHelper.Signature(signature.getR(), q.subtract(signature.getS()));
+        assertTrue(legitPk.verifySignature(CHALLENGE56_MSG.getBytes(), altSignature));
+        assertTrue(forgedPk.verifySignature(CHALLENGE56_MSG.getBytes(), altSignature));
     }
 
     @DisplayName("https://toadstyle.org/cryptopals/61.txt")
