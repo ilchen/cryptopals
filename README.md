@@ -1744,31 +1744,32 @@ have their unique authentication tag.
 
 Why is this attack possible in the first place? The reason is two-fold:
  
- 1) GHASH is calculated in GF(2<sup>128</sup>). Multiplication by a constant and squaring are linear operations in that field.
- GHASH makes use of multiplications by a constant and squaring. Linear relationships in cryptography are recipes for trouble. That's the reason why
- all block ciphers such as AES or even DES go to such lengths to ensure that their S-boxes exhibit non-linear behavior.
- Were AES's S-boxes linear, AES encryption would boil down to multiplying a large [128x2176] matrix over GF(2) by a column vector [2176x1]
- made up of a block of plaintext and the 16 round keys derived from the encryption key. So that the entire AES would be
- represented in this [128x2176] matrix. This is what makes it possible to achieve a collision in the 32 bits of GHASH,
- which this attack exploits.
+1. GHASH is calculated in GF(2<sup>128</sup>). Multiplication by a constant and squaring are linear operations in that field.
+GHASH makes use of multiplications by a constant and squaring. Linear relationships in cryptography are recipes for trouble.
+This is what makes it possible to achieve a collision in the 32 bits of GHASH, which this attack exploits.
+Avoiding linear relationships is the reason why all block ciphers such as AES or even DES go to such lengths to ensure that
+their S-boxes exhibit non-linear behavior. Were AES's S-boxes linear, AES encryption would boil down to multiplying a large [128x2176] matrix over GF(2) by a column vector [2176x1]
+made up of a block of plaintext and the 16 round keys derived from the encryption key. So that the entire AES would be
+represented in this [128x2176] matrix, which would make it trivial to recover an encryption key after seeing just a few 
+plaintext-ciphertext pairs. Dan Boneh gives [an excellent explanation of this](https://www.youtube.com/watch?v=eBx6AvO-UJ).
 
- 2) GHASH is a one-time MAC, meaning that it can only be used once for the same authentication key. To turn it into
- a many-time MAC, GCM uses the Carter-Wegman MAC construction:
- `AuthTag((k, h), m) = E(k, r) ^ GHASH(h, m)` where:
-    * k is the encryption key that is passed to GCM by the user;
-    * h is the authentication key, which GCM derives from the encryption key passed by the user `h = E(k, 0)`
-    * r is randomness, which GCM derives from the encryption key and the nonce provided by the user `r = E(K, nonce || 1)`
- The resulting MAC is many-time secure. 
+2. GHASH is a one-time MAC, meaning that it can only be used once for the same authentication key. To turn it into
+a many-time MAC, GCM uses the Carter-Wegman MAC construction:
+`AuthTag((k, h), m) = E(k, r) ^ GHASH(h, m)` where:
+   * k is the encryption key that is passed to GCM by the user;
+   * h is the authentication key, which GCM derives from the encryption key passed by the user `h = E(k, 0)`
+   * r is randomness, which GCM derives from the encryption key and the nonce provided by the user `r = E(K, nonce || 1)`
  
-    This is all nice and backed by security theorems if the full GHASH tag size of 128 bits is used. If the user chooses
-    a short tag size of, say 32 bits, and we manage to make our forged blocks of ciphertext
-    produce the same 32 bits of GHASH as the legit ciphertext, the xor'ing with with a block of the keys stream __doesn't
-    spread the 32 bits of the GHASH__ that we managed to forge. And when truncating the resulting AuthTag to the 32 bits before
-    appending it to the ciphertext, GCM passes exactly the 32 bits that we succeeded in forging. This could've
-    been fixed by adopting a construction similar to that used by CWC `AuthTag((k, h), m) = E(k, r) ^ E(k, GHASH(h, m))`.
-    As you can see, here we encrypt the resulting GHASH before xoring it with the block of the keystream. This AES encryption
-    shuffles and diffuses the 32 bits we managed to forge, whereby rendering this attack useless. Unfortunately the 
-    designers of GCM didn't make use of this solution.
+   The resulting MAC is many-time secure. 
+ 
+   This is all nice and backed by security theorems if the full GHASH tag size of 128 bits is used. If the user chooses
+   a short tag size of, say 32 bits, and we manage to make our forged blocks of ciphertext
+   produce the same 32 bits of GHASH as the legit ciphertext, the xor'ing with with a block of the keys stream __doesn't    spread the 32 bits of the GHASH__ that we managed to forge. And when truncating the resulting AuthTag to the 32 bits before
+   appending it to the ciphertext, GCM passes exactly the 32 bits that we succeeded in forging. This could've
+   been fixed by adopting a construction similar to that used by CWC `AuthTag((k, h), m) = E(k, r) ^ E(k, GHASH(h, m))`.
+   As you can see, here we encrypt the resulting GHASH before xoring it with the block of the keystream. This AES encryption
+   shuffles and diffuses the 32 bits we managed to forge, whereby rendering this attack useless. Unfortunately the 
+   designers of GCM didn't make use of this solution.
  
  In conclusion I can only repeat the advice given by Niels in his paper:
  * If you use GCM, only use it with the maximum tag size of 128 bits. SUN made the right choice in the standard SunJCE
