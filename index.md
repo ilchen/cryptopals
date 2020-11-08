@@ -1764,7 +1764,8 @@ a many-time MAC, GCM uses the Carter-Wegman MAC construction:
  
    This is all nice and backed by security theorems if the full GHASH tag size of 128 bits is used. If the user chooses
    a short tag size of, say 32 bits, and we manage to make our forged blocks of ciphertext
-   produce the same 32 bits of GHASH as the legit ciphertext, the xor'ing with with a block of the keys stream __doesn't    spread the 32 bits of the GHASH__ that we managed to forge. And when truncating the resulting AuthTag to the 32 bits before
+   produce the same 32 bits of GHASH as the legit ciphertext, the xor'ing with with a block of the keys stream __doesn't spread the 32 bits of the GHASH__ that we managed to forge.
+   And when truncating the resulting AuthTag to the 32 bits before
    appending it to the ciphertext, GCM passes exactly the 32 bits that we succeeded in forging. This could've
    been fixed by adopting a construction similar to that used by CWC `AuthTag((k, h), m) = E(k, r) ^ E(k, GHASH(h, m))`.
    As you can see, here we encrypt the resulting GHASH before xoring it with the block of the keystream. This AES encryption
@@ -1778,11 +1779,11 @@ a many-time MAC, GCM uses the Carter-Wegman MAC construction:
  by NIST such as CCM.
  
  
- ### Challenge 65. Truncated-MAC GCM Revisited: Improving the Key-Recovery Attack via Ciphertext Length Extension
- [Challenge 65](https://toadstyle.org/cryptopals/65.txt) continues with making the attack outlined by Niels Ferguson in his 
- [Authentication weaknesses in GCM](https://csrc.nist.gov/csrc/media/projects/block-cipher-techniques/documents/bcm/comments/cwc-gcm/ferguson2.pdf)
- paper more generic. It's actually quite admirable that @spdevlin created such a fascinating challenge out of a small
- paragraph at the end of the paper:
+### Challenge 65. Truncated-MAC GCM Revisited: Improving the Key-Recovery Attack via Ciphertext Length Extension
+[Challenge 65](https://toadstyle.org/cryptopals/65.txt) continues with making the attack outlined by Niels Ferguson in his 
+[Authentication weaknesses in GCM](https://csrc.nist.gov/csrc/media/projects/block-cipher-techniques/documents/bcm/comments/cwc-gcm/ferguson2.pdf)
+paper more generic. It's actually quite admirable that @spdevlin created such a fascinating challenge out of a small
+paragraph at the end of the paper:
  > There are small improvements that can be made to this attack. The block that corresponds to D<sub>0</sub> of the error polynomial 
 encodes the message length. If the length of the message is not a multiple of 16, then the attacker can extend the message length by 
 appending zero bytes to the ciphertext. This changes only the length encoding in D<sub>0</sub>. By introducing a nonzero D<sub>0</sub>, 
@@ -1790,16 +1791,15 @@ the all-zero solution is no longer possible when we solve for suitable D<sub>i</
 k bits of the tag using only k D<sub>i</sub>’s, rather than the k + 1 we had before. As the efficiency of the attack is dominated by 
 finding the first successful forgery, this doubles the efficiency of the attack.
    
- Well, easier said than done. To solve the challenge in the most elegant way one needs to tackle three problems:
- * Making the attack work when the size of ciphertext is not a multiple of blocksize. Going about it in the same
-   way we crafted the previous attack would not be efficient. The last bytes of ciphertext before the authentication
-   tag are not a multiple of blocksize, therefore the coefficient c<sub>2</sub> of c<sub>2</sub>·h<sup>2</sup> will never
-   be full 128 bits, which reduces the number of free variables we can play with. This attack manages to squeeze
-   128 free variable out of c<sub>2</sub>.
- * Figuring out how to zero out not just 16 rows of A<sub>d</sub> in the first existential forgery attempt, but
-   17 rows with the same number of free variables we had in the previous challenge.
- * Once the previous two are solved, how to recover further bits of the authentication key faster with partial knowledge
-   of the key captured in matrix `X`. It is a bit more involved than in the previous challenge.
+Well, easier said than done. To solve the challenge in the most elegant way one needs to tackle three problems:
+* Making the attack work when the size of ciphertext is not a multiple of blocksize. Going about it in the same
+  way we crafted the previous attack would not be efficient. The last bytes of ciphertext before the authentication
+  tag are not a multiple of blocksize, therefore the coefficient c<sub>2</sub> of c<sub>2</sub>·h<sup>2</sup> will never   be full 128 bits, which reduces the number of free variables we can play with. This attack manages to squeeze
+  128 free variable out of c<sub>2</sub>.
+* Figuring out how to zero out not just 16 rows of A<sub>d</sub> in the first existential forgery attempt, but
+  17 rows with the same number of free variables we had in the previous challenge.
+* Once the previous two are solved, how to recover further bits of the authentication key faster with partial knowledge
+  of the key captured in matrix `X`. It is a bit more involved than in the previous challenge.
    
    
 #### Making the attack work when plaintext is not a multiple of blocksize
