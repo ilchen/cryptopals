@@ -5,7 +5,7 @@ The only dependency on top of standard JRE 8 runtime is that on [Lombok](https:/
 
 ## How to run
 The majority of the challenges of a set can be run by executing the `com.cryptopals.Setx.main` method of the set or
-by running the JUnit5 tets found under [src/test/java/com/cryptopals/SetXTests](https://github.com/ilchen/cryptopals/tree/master/src/test/java/com/cryptopals).
+by running the JUnit5 tests found under [src/test/java/com/cryptopals/SetXTests](https://github.com/ilchen/cryptopals/tree/master/src/test/java/com/cryptopals).
 Required dependencies are defined in the project's `pom.xml`.
 
 Some challenges ([31](https://cryptopals.com/sets/4/challenges/31), 
@@ -165,7 +165,7 @@ is presented is in the form of using hashes to produce _commitments_.
 The attack is explained at length by John Kelsey and Tadayoshi Kohno in
 [their _Herding Hash Functions and the Nostradamus Attack_ paper](https://eprint.iacr.org/2005/281.pdf). The most 
 involved part of the attack is building the diamond structure. I decided to represent it as a multi dimensional array.
-The first dimension (i) is the tree level, the second (j) contains 2^(k-i) two-element arrays in which the first element
+The first dimension (i) is the tree level, the second (j) contains 2<sup>k-i</sup> two-element arrays in which the first element
 is the starting hash h[i, j] (i.e. the chaining variable) and the second element is a message block whose hash collides
 with that of the message starting at either h[i, j+1] (when j is even) or h[i, j-1] (when j is odd). I demonstrate this
 in the following picture:
@@ -183,7 +183,7 @@ helper method to make it easier. To speed up the construction of a given level, 
 This sped up the process a lot.
 
 Some other notes worth mentioning. I use m<sub>0</sub> of 14 blocks long and m<sub>1</sub> of 4 blocks. This gives me
-a diamond structure with 10 levels and 2^10 different initial hashes at level 0. I make use of the easy 16-bit hash `f`
+a diamond structure with 10 levels and 2<sup>10</sup> different initial hashes at level 0. I make use of the easy 16-bit hash `f`
 from Challenge 52. With this setup I am able to construct the desired Nostradamus message in about 11 minutes on
 my MacBook Pro (with 8 virtual cores).
 
