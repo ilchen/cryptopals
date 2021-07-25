@@ -125,3 +125,58 @@ to authenticate  the user logging in:
  | id<sub>2</sub>| salt<sub>2</sub> | H(salt<sub>2</sub> &#124;&#124; password<sub>2</sub>) |
  | ...|...|...|
  | id<sub>n</sub>| salt<sub>n</sub> | H(salt<sub>n</sub> &#124;&#124; password<sub>n</sub>) |
+
+
+### Challenge 68. Multiplicative ElGamal with elliptic curve groups (simple version)
+The RSA encryption system you implemented in [Challenge 39](https://cryptopals.com/sets/5/challenges/39) and its various
+incarnations &mdash; PKCS#1 mode 2 v1.5, v2.0 (OAEP), v2.1, v2.2 &mdash; is not the only public key encryption algorithm.
+Another popular approach is called multiplicative ElGamal. It's inspired by the Diffie-Hellman key exchange protocol.
+
+Here's how it works. Imagine you have a cyclic group `G` of prime order `q` with a generator `g`, which can be a group of points on an elliptic curve.
+Alice computes her private key &alpha; by generating a random number from set Z<sub>q</sub>. Alice's public key is &upsilon; = g<sup>&alpha;</sup>, which she makes publicly known.
+
+Bob, who wants to send a secret message `m` (that can be mapped to `G`) to Alice, carries out the following actions:
+1. Encodes m (which we'll assume to be l bits long) as an element of G, the result of the encoding is m<sub>enc</sub> &isin; G.
+2. Generates a transient private key &beta; as a random number from Z<sub>q</sub> and the corresponding public key &nu; = g<sup>&beta;</sup>.
+3. Encypts m<sub>enc</sub> as follows c = &upsilon;<sup>&beta;</sup> · m<sub>enc</sub>
+4. Sends Alice the pair (&nu;, c)
+
+Alice then decrypts the c as follows:
+1. Computes m<sub>enc</sub> = c / &nu;<sup>&alpha;</sup>. **NB**: m<sub>enc</sub> &isin; G, and thus is an elliptic
+curve point if G is an elliptic curve group
+2. Decodes m<sub>enc</sub> into the original l-bits long message m.
+
+Sounds trivial, doesn't it? However if you try to implement it for elliptic curve groups such as the ones you tackled 
+in [Challenge 59](https://ilchen.github.io/cryptopals/#challenge-59-elliptic-curve-diffie-hellman-and-invalid-curve-attacks)
+and [Challenge 60](https://ilchen.github.io/cryptopals/#challenge-60-single-coordinate-ladders-and-insecure-twists), you will
+quickly realize how non-trivial mapping arbitrary l-bits long messages to points on an elliptic curve group is. Moreover
+the mapping needs to be efficiently invertible. One naïve approach would be raising the group generator to the power which is the integer representation
+m. However getting to the pre-image would then call on taking a DLog in E(F<sub>p</sub>). Are there any useful reversible mapping functions for E(F<sub>p</sub>) groups? 
+
+Yes, there are. In this challenge we'll look at a simple construction that is fairly generic and improve on it in the next challenge.
+We start with solving the invertible mapping problem for elliptic curves in the short Weierstrass form. These curves were introduced in Challenge 59.
+To remind: an elliptic curve E(F<sub>p</sub>) in Weierstrass form is defined as
+
+y<sup>2</sup> = x<sup>3</sup> + a·x + b
+
+The total number of points on this curve is p + 1 − t, for some integer t in the interval |t| ≤ 2√p. In other words it's approximately p. 
+So an optimal algorithm should allow us to map l-bit long strings where log<sub>2</sub>(p+1-2√p) <= l <= log<sub>2</sub>(p+1).
+
+The encoding algorithm we start with (due to Fouque, P.-A., Joux, A., and Tibouchi, M.) is more humble. It allows to encode 
+messages of up to /2·log<sub>2</sub>(p) bits long. The encoding function F: {0, 1}<sup>l</sup> → E(F<sub>p</sub>) works as follows.
+> To compute F(m), pick a random integer x in [0, p − 1] whose least significant l bits coincide with m. If there are points in E(F<sub>p</sub>) of abscissa x mod p,
+return one of those (at most two) points; otherwise, start over. The inversion algorithm I then simply maps a point (x, y) ∈ E(Fp) to the bit string m formed by the l least
+significant bits of x.
+
+With a correct choice of l, the expected number of iterations in F on any input is less than 3.
+
+Implement multiplicative ElGamal for [curve secp256k1](https://en.bitcoin.it/wiki/Secp256k1). Let l be 127. Given the following Alice's public key:
+`WeierstrassECGroup.ECGroupElement(x=ad9cfab1e08e1083cf7956726c02a335672df4f5bf69fce97beb3f649a705e23, y=82d9b937dc354fd32a2d4ff8fba4f1138d954d5797da79215c43793043eaf0ad)`
+
+send her a few 127-bits long messages. Verify that Alice is able to correctly decrypt them. The Base64 encoding of her private key is:
+`AJNqDTV/2WuxT8V8eC7Je4NNEHmfT/gbhZbW57G+0ILB`
+
+Word of caution. While providing Chosen-Plaintext Attack (CPA) security, i.e. secrecy in the face of a passive attacker,
+multiplication ElGamal is not Chosen-Ciphertext Attack (CCA) secure and will not hold up to an active attacker who can manipulate ciphertext messages.
+It is possible to combine ElGamal encryption with a CPA-secure symmetric cypher such as the AES in the counter mode to achieve CCA security, which
+we will tackle in a later challenge.
