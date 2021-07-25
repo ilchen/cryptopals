@@ -170,7 +170,8 @@ significant bits of x.
 
 With a correct choice of l, the expected number of iterations in F on any input is less than 3.
 
-Implement multiplicative ElGamal for [curve secp256k1](https://en.bitcoin.it/wiki/Secp256k1). Let l be 127. Given the following Alice's public key:
+Implement multiplicative ElGamal for [curve secp256k1](https://en.bitcoin.it/wiki/Secp256k1). The order of secp256k1 is prime, so this elliptic curve group is fine to use for multiplicative ElGamal.
+Let l be 127. Given the following Alice's public key:
 `WeierstrassECGroup.ECGroupElement(x=ad9cfab1e08e1083cf7956726c02a335672df4f5bf69fce97beb3f649a705e23, y=82d9b937dc354fd32a2d4ff8fba4f1138d954d5797da79215c43793043eaf0ad)`
 
 send her a few 127-bits long messages. Verify that Alice is able to correctly decrypt them. The Base64 encoding of her private key is:
