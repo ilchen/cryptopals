@@ -163,7 +163,7 @@ The total number of points on this curve is p + 1 − t, for some integer t in t
 So an optimal algorithm should allow us to map l-bit long strings where log<sub>2</sub>(p+1-2√p) <= l <= log<sub>2</sub>(p+1).
 
 The encoding algorithm we start with (due to Fouque, P.-A., Joux, A., and Tibouchi, M.) is more humble. It allows to encode 
-messages of up to /2·log<sub>2</sub>(p) bits long. The encoding function F: {0, 1}<sup>l</sup> → E(F<sub>p</sub>) works as follows.
+messages of up to 1/2·log<sub>2</sub>(p) bits long. The encoding function F: {0, 1}<sup>l</sup> → E(F<sub>p</sub>) works as follows.
 > To compute F(m), pick a random integer x in [0, p − 1] whose least significant l bits coincide with m. If there are points in E(F<sub>p</sub>) of abscissa x mod p,
 return one of those (at most two) points; otherwise, start over. The inversion algorithm I then simply maps a point (x, y) ∈ E(Fp) to the bit string m formed by the l least
 significant bits of x.
