@@ -3,7 +3,7 @@ package com.cryptopals;
 import java.util.Random;
 
 public class MT19937 extends Random {
-    final static int   W = 32,  N = 624,  M = 397,  R = 31,  F = 1812433253,  U = 11,
+    static final int   W = 32,  N = 624,  M = 397,  R = 31,  F = 1812433253,  U = 11,
                        S = 7,  B = 0x9D2C5680,  T = 15,  C = 0xEFC60000,  L = 18,  A = 0x9908B0DF,
                        LOWER_MASK = (1 << R) - 1,  UPPER_MASK =  ~LOWER_MASK;
 
