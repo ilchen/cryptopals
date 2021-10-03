@@ -279,3 +279,9 @@ you will wind up at 2 (max 3) candidates for the internal state. Deal with it.
 Go ahead to construct a second PRNG with the same Q and internal state and verify that they
 produce the same output. Bingo! You have uncovered the crux of what happened to Juniper's NetScreen product. A group
 of attackers were able to modify the sourcecode of its OS to implant the Q point of their choosing.
+
+You can find my solution to this challenge:
+* [Dual EC PRNG implementation](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_9/DualECPRNG.java)
+* [The code for the &#967;<sup>2</sup> test](https://github.com/ilchen/cryptopals/blob/master/src/test/java/com/cryptopals/Set9Tests.java#L66-L87)
+* [The code for the attack](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set9.java#L33-L76)
+* [The code for the test](https://github.com/ilchen/cryptopals/blob/master/src/test/java/com/cryptopals/Set9Tests.java#L89-L114)
