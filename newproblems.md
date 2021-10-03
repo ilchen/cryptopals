@@ -185,9 +185,9 @@ we will tackle in a later challenge.
 ### Challenge 70. Weaknesses in Dual Elliptic Curve Deterministic Random Bit Generators (aka DUAL EC DRBG)
 Generating random bits is critical in cryptography. We rely on secure pseudo random generators (PRNG) to generate keys,
 initialization vectors, random challenges in identification protocols, to sign with DSA or RSA, etc. Things will run
-amok when a pseudo random generator you use is not cryptographically secure. What makes a PRNG cryptographicall secure?
+amok when a pseudo random generator you use is not cryptographically secure. What makes a PRNG cryptographically secure?
 Basically two things: 1) the PRNG must be indistinguishable from a truly random generator, and 2) it must be unpredictable
-in the sense that no matter how many random bits of its output you've observerd, you are not able to predict the next bit.
+in the sense that no matter how many random bits of its output you've observed, you are not able to predict the next bit.
 
 There are many different secure PRNGs around, in this challenge we will examine a former NIST-standardized 
 Dual Elliptic Curve PRNG. It has gained notoriety because of a security breach that it contributed to &mdash; [the 
@@ -247,7 +247,7 @@ pretty similar to how s<sub>0</sub> was produced.
 With all of this explained go ahead to implement Dual EC PRNG. Make sure that when your PRNG is initialized you can supply it with a Q point of your choosing.
 Please test its output on not being distinguishable from
 the uniform distribution using &#967;<sup>2</sup>. I generated 3000 integers in the range [0, 51), i.e. 51 categories.
-For the unifrom distribution the exepcted frequency of seeing each category is p=51/3000. If your resulting &#967;<sup>2</sup> 
+For the uniform distribution the expected frequency of seeing each category is p=51/3000. If your resulting &#967;<sup>2</sup> 
 is less than p95 = 67.5, you are good. If higher, you likely have made a mistake as the probability of witnessing such a run
 with a uniform PRNG is less than 5%.
 
@@ -263,8 +263,8 @@ Q := scale(P, e)
 Instantiate your Dual EC PRNG with this Q and request 32 bytes of output from it. Break this up into two pieces:
 one containing the first 30 bytes and the second containing the last two. You will recall that these 32 bytes were 
 produced from two separate output blocks of your DUAL EC PRNG, namely r<sub>1</sub> and r<sub>2</sub>. So the first 30
-bytes constiture the 240 least significant bits of r<sub>1</sub>. Iterate though every possible 2<sup>16</sup> most
-significant bits of r<sub>1</sub> and prepend them to arrive at the whole r<sub>1</sub>' candidate. Roughly half of
+bytes constitute the 240 least significant bits of r<sub>1</sub>. Iterate through every possible 2<sup>16</sup> most
+significant bits of r<sub>1</sub> (that you don't know) and prepend them to arrive at the whole r<sub>1</sub>' candidate. Roughly half of
 the r<sub>1</sub>' values will be valid x-coordinates of point R<sub>1</sub>:=s<sub>1</sub>·Q. For each such R,
 compute s<sub>2</sub>′ = x(dR<sub>1</sub>) and r<sub>2</sub>′ = x(s<sub>2</sub>′Q).
 
@@ -273,14 +273,14 @@ x(d·s<sub>1</sub>·Q) = x(s<sub>1</sub>·P) = s<sub>2</sub>.
 
 Now go to the last 2 bytes of your call to the PRNG and search among the r<sub>2</sub>′ candidates for those
 whose bits 240:224 correspond to the last 2 bytes of the PRNG. The corresponding s<sub>2</sub> is the correct internal
-state of the PRNG. **NB**: since you are matching 240-bit outputs by only 16 bits, there's a small probability that
+state of the PRNG. **NB**: Since you are matching 240-bit outputs by only 16 bits, there's a small probability that
 you will wind up at 2 (max 3) candidates for the internal state. Deal with it.
 
-Go ahead to construct a second PRNG with the same Q and internal state and verify that they
+Go ahead to construct a second PRNG with the same Q and internal state you've recivered and verify that they
 produce the same output. Bingo! You have uncovered the crux of what happened to Juniper's NetScreen product. A group
 of attackers were able to modify the sourcecode of its OS to implant the Q point of their choosing.
 
-You can find my solution to this challenge:
+You can find my solution to this challenge here:
 * [Dual EC PRNG implementation](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_9/DualECPRNG.java)
 * [The code for the &#967;<sup>2</sup> test](https://github.com/ilchen/cryptopals/blob/master/src/test/java/com/cryptopals/Set9Tests.java#L66-L87)
 * [The code for the attack](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set9.java#L33-L76)
