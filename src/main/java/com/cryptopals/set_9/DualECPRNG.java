@@ -2,10 +2,8 @@ package com.cryptopals.set_9;
 
 import com.cryptopals.set_8.WeierstrassECGroup;
 
-import javax.xml.bind.DatatypeConverter;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.nio.LongBuffer;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Random;
@@ -109,10 +107,9 @@ public class DualECPRNG extends Random {
 
     @Override
     public void  nextBytes(byte[] bytes) {
-        int   requestedNumBits = bytes.length * 8;
         synchronized (Q) {
             if (blockCounter + bytes.length / MAX_BLOCK_BYTE_LENGTH
-                             + (bytes.length % MAX_BLOCK_BYTE_LENGTH > 0  ?  1 : 0) > 1L <<Integer.SIZE) {
+                             + (bytes.length % MAX_BLOCK_BYTE_LENGTH > 0  ?  1 : 0) > 1L << Integer.SIZE) {
                 reseed();
             }
             int  numBytesRemaining = bytes.length,  numBytesToCopy;

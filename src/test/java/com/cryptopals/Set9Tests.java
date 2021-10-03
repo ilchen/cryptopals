@@ -9,7 +9,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import sun.security.provider.MD4;
 
-
 import javax.xml.bind.DatatypeConverter;
 import java.math.BigInteger;
 import java.security.InvalidKeyException;
@@ -21,7 +20,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import static com.cryptopals.Set9.CURVE_SECP256R1_ORDER;
 import static com.cryptopals.set_9.DualECPRNG.P;
