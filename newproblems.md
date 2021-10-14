@@ -217,7 +217,7 @@ Q=(`c97445f4 5cdef9f0 d3e05e1e 585fc297 235b82b5 be8ff3ef ca67c598 52018192`, `b
 At the same time the standard allows to use alternate values of P and Q, albeit it doesn't recommend it. Remember that I
 highlighted that the property of the curve is that all its elements are generators? This means that there exist
 values:
-* e=log<sub>P</sub>Q (i.e., the integer e such that eP = Q); and
+* e=log<sub>P</sub>Q (i.e., the integer e such that e·P = Q); and
 * d=log<sub>Q</sub>P=e<sup>−1</sup> mod r, where r is the order of the group
 
 If you know either e or d, you can go far at breaking the unpredictability property of this PRNG provided you get to see
@@ -266,7 +266,7 @@ produced from two separate output blocks of your DUAL EC PRNG, namely r<sub>1</s
 bytes constitute the 240 least significant bits of r<sub>1</sub>. Iterate through every possible 2<sup>16</sup> most
 significant bits of r<sub>1</sub> (that you don't know) and prepend them to arrive at the whole r<sub>1</sub>' candidate. Roughly half of
 the r<sub>1</sub>' values will be valid x-coordinates of point R<sub>1</sub>:=s<sub>1</sub>·Q. For each such R,
-compute s<sub>2</sub>′ = x(dR<sub>1</sub>) and r<sub>2</sub>′ = x(s<sub>2</sub>′Q).
+compute s<sub>2</sub>′ = x(d·R<sub>1</sub>) and r<sub>2</sub>′ = x(s<sub>2</sub>′·Q).
 
 The key insight is that multiplying the point s<sub>1</sub>·Q by d yields the internal state
 x(d·s<sub>1</sub>·Q) = x(s<sub>1</sub>·P) = s<sub>2</sub>. 
