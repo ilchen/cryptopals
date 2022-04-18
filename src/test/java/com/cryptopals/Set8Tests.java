@@ -128,6 +128,40 @@ class Set8Tests {
         assertTrue(group.containsPoint(base));
         assertEquals(group.O, base.scale(q));
         assertEquals(ZERO, base.ladder(q));
+
+        // Exploring if Curve25519 works correctly
+        MontgomeryECGroup    curve25519 = new MontgomeryECGroup(
+                CURVE_25519_PRIME, valueOf(486662), ONE, CURVE_25519_ORDER, CURVE_25519_ORDER.shiftRight(3));
+        Random   rnd = java.util.concurrent.ThreadLocalRandom.current();
+        BigInteger   largestCyclicSubgroupOrder = curve25519.getCyclicOrder(),  order = curve25519.getOrder(),  x,  y;
+
+        // Test if we can find a generator of the whole group
+        ECGroupElement   possibleGen = curve25519.getIdentity();
+        do {
+            x = new BigInteger(curve25519.getModulus().bitLength(), rnd);
+            y = curve25519.mapToY(x);
+            if (!y.equals(NON_RESIDUE)) {
+                possibleGen = curve25519.createPoint(x, y).scale(largestCyclicSubgroupOrder);
+            }
+        }  while (possibleGen.equals(curve25519.getIdentity()));
+        possibleGen = curve25519.createPoint(x, y);
+        assertEquals(curve25519.getIdentity(), possibleGen.scale(order));
+        assertNotEquals(possibleGen.scale(valueOf(2)), curve25519.getIdentity());
+        assertNotEquals(ZERO, possibleGen.ladder(valueOf(2)));
+        assertNotEquals(possibleGen.scale(valueOf(4)), curve25519.getIdentity());
+        assertNotEquals(ZERO, possibleGen.ladder(valueOf(4)));
+        assertNotEquals(possibleGen.scale(valueOf(8)), curve25519.getIdentity());
+        assertNotEquals(ZERO, possibleGen.ladder(valueOf(8)));
+        assertNotEquals(possibleGen.scale(largestCyclicSubgroupOrder), curve25519.getIdentity());
+        assertNotEquals(ZERO, possibleGen.ladder(largestCyclicSubgroupOrder));
+
+        // Test if we can find a subgroup of order 8 in the whole group
+        possibleGen = curve25519.findGenerator(valueOf(8), true);
+        assertEquals(possibleGen.scale(valueOf(8)), curve25519.getIdentity());
+
+        // Test that we can't find a subgroup of order 8 in the cyclic subgroup of prime order
+        assertThrows(IllegalArgumentException.class,
+                () -> curve25519.findGenerator(BigInteger.valueOf(8), false));
     }
 
     @DisplayName("Pollard's kangaroo algorithm on elliptic curve groups")
@@ -165,7 +199,7 @@ class Set8Tests {
     @Test
     void challenge61ECDSA() {
         MontgomeryECGroup   curve25519 = new MontgomeryECGroup(CURVE_25519_PRIME,
-                valueOf(486662), ONE, CURVE_25519_ORDER.shiftRight(3), CURVE_25519_ORDER);
+                valueOf(486662), ONE, CURVE_25519_ORDER, CURVE_25519_ORDER.shiftRight(3));
         MontgomeryECGroup.ECGroupElement   curve25519Base = curve25519.createPoint(
                 valueOf(9), curve25519.mapToY(valueOf(9)));
         BigInteger   q = curve25519.getCyclicOrder();
@@ -738,7 +772,7 @@ class Set8Tests {
                 "Authentication key not recovered correctly");
     }
 
-    @DisplayName("Faulty curve and trace logic for Challenge 66)")
+    @DisplayName("Faulty curve and trace logic for Challenge 66")
     @Test
     void  faultyCurveForChallenge66()  {
         // Using Bitcoin's secp256k1
@@ -773,5 +807,27 @@ class Set8Tests {
         BigInteger   b = Set8.breakChallenge66(base, q, url, incidence);
         ECDiffieHellman bob = (ECDiffieHellman) Naming.lookup(url);
         assertTrue(bob.isValidPrivateKey(b));
+    }
+
+    @DisplayName("Square root modulo prime")
+    @ParameterizedTest @ValueSource(ints = { 8192 })
+    void squareRootModuloPrime(int tries) {
+        Random   rnd = java.util.concurrent.ThreadLocalRandom.current();
+        BigInteger   difficultPrime; // p % 4 == 1  &&  p % 8 != 5
+        do {
+            difficultPrime = new BigInteger(CURVE_25519_PRIME.bitLength() + 1, 64, rnd);
+        }  while (!difficultPrime.mod(valueOf(4)).equals(ONE)  ||  difficultPrime.mod(valueOf(8)).equals(valueOf(5)) );
+        BigInteger[]   primes = {   CURVE_25519_PRIME,  CURVE_SECP256K1_PRIME,  difficultPrime   };
+        for (BigInteger p : primes) {
+            assertTrue(p.isProbablePrime(64));
+        }
+        for (int i=0; i < tries; i++) {
+            for (BigInteger p : primes) {
+                BigInteger   root = new BigInteger(p.bitLength() + 1, rnd).mod(p),
+                             quadraticResidue = root.multiply(root).mod(p),
+                             root2 = squareRoot(quadraticResidue, p);
+                assertTrue(root2.equals(root)  ||  root2.equals(p.subtract(root)));
+            }
+        }
     }
 }

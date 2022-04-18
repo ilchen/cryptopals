@@ -50,11 +50,12 @@ public class Set8 {
              + "28318042418238184896212352329118608100083187535033402010599512641674644143"),
                               Q = new BigInteger("236234353446506858198510045061214171961"),
             CURVE_25519_PRIME = ONE.shiftLeft(255).subtract(valueOf(19)),
-            CURVE_25519_ORDER = ONE.shiftLeft(252).add(new BigInteger("27742317777372353535851937790883648493")),
+            CURVE_25519_ORDER = ONE.shiftLeft(252).add(new BigInteger("27742317777372353535851937790883648493")).shiftLeft(3),
             CURVE_SECP256K1_PRIME = ONE.shiftLeft(256).subtract(ONE.shiftLeft(32)).subtract(valueOf(512)).subtract(valueOf(256))
                                                       .subtract(valueOf(128)).subtract(valueOf(64)).subtract(valueOf(16)).subtract(ONE),
             CURVE_SECP256K1_ORDER = new BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141", 16);
-    private static final BigInteger   TWO = valueOf(2),  THREE = valueOf(3),  FOUR = valueOf(4);
+    private static final BigInteger   TWO = valueOf(2),  THREE = valueOf(3),  FOUR = valueOf(4),  FIVE = valueOf(5),
+                                      EIGHT = valueOf(8);
 
     @Data
     public static class Challenge57DHBobResponse implements Serializable {
@@ -90,23 +91,39 @@ public class Set8 {
     }
 
     /**
-     * Finds &radic;n mod p using <a href="https://en.wikipedia.org/wiki/Tonelli–Shanks_algorithm">the Tonelli–Shanks algorithm</a>
+     * Computes the Legendre symbol for the given parameter and prime
+     * @return  0 if {@code p|a}, 1 if {@code a} is a quadratic residue modulo {@code p},
+     *           -1 if {@code a} is a quadratic non-residue modulo {@code p}.
+     */
+    public static BigInteger  legendreSymbol(BigInteger a, BigInteger p) {
+        return  a.modPow(p.subtract(ONE).shiftRight(1), p);
+    }
+
+    /**
+     * Finds &radic;n mod p using <a href="https://en.wikipedia.org/wiki/Tonelli–Shanks_algorithm">the Tonelli–Shanks algorithm</a>.
+     * Handles special cases of {@code p % 4 == 3}  and  {@code p % 8 == 5} with a more efficient approach. Returns
+     * the principal square root in case {@code p % 4 == 3}.
      * @return  &radic;n mod p if n is a quadratic residue, {@link #NON_RESIDUE} otherwise
      */
     public static BigInteger  squareRoot(BigInteger n, BigInteger p) {
         BiFunction<BigInteger, BigInteger, BigInteger>   powModP = (BigInteger a, BigInteger e) -> a.modPow(e, p);
-        Function<BigInteger, BigInteger>   ls = (BigInteger a) -> powModP.apply(a, p.subtract(ONE).divide(TWO));
-        if (!ls.apply(n).equals(ONE))   return  NON_RESIDUE;
-        if (p.mod(FOUR).equals(THREE))  return  powModP.apply(n, p.add(ONE).divide(FOUR));
-
+        if (!legendreSymbol(n, p).equals(ONE))  return  NON_RESIDUE;
+        if (p.mod(FOUR).equals(THREE))  return  n.modPow(p.add(ONE).shiftRight(2), p);  // Principal square root
+        if (p.mod(EIGHT).equals(FIVE)) {
+            // 2^((p−1)/4) is a square root of -1 modulo p
+            BigInteger   d = n.modPow(p.subtract(ONE).shiftRight(2), p);
+            return  d.equals(ONE)  ?  n.modPow(p.add(THREE).shiftRight(3), p)
+                                   :  n.shiftLeft(1).multiply(
+                                           n.shiftLeft(2).modPow(p.subtract(FIVE).shiftRight(3), p)).mod(p);
+        }
         BigInteger  q = p.subtract(ONE),  ss = ZERO,  z = TWO;
         while (q.and(ONE).equals(ZERO)) {
             ss = ss.add(ONE);
             q = q.shiftRight(1);
         }
 
-        while (!ls.apply(z).equals(p.subtract(ONE))) z = z.add(ONE);
-        BigInteger   c = powModP.apply(z, q),  r = powModP.apply(n, q.add(ONE).divide(TWO)),
+        while (!legendreSymbol(z, p).equals(p.subtract(ONE))) z = z.add(ONE);
+        BigInteger   c = powModP.apply(z, q),  r = powModP.apply(n, q.add(ONE).shiftRight(1)),
                      t = powModP.apply(n, q),  m = ss;
 
         while (true) {
@@ -282,7 +299,7 @@ public class Set8 {
             System.out.println(newFactors);
 
             for (BigInteger r : newFactors) {
-                ECGroupElement h = degenerateGroup.findGenerator(r);
+                ECGroupElement h = degenerateGroup.findGenerator(r, false);
                 Challenge59ECDHBobResponse res = bob.initiate(base, order, h);
                 for (BigInteger b = ZERO; b.compareTo(r) < 0; b = b.add(ONE)) {  /* searching for Bob's secret key b modulo r */
                     mac.init(generateSymmetricKey(h, b, 32, MAC_ALGORITHM_NAME));
@@ -892,7 +909,7 @@ public class Set8 {
             System.out.println("\nChallenge 61");
             // Curve 25519
             MontgomeryECGroup   curve25519 = new MontgomeryECGroup(CURVE_25519_PRIME,
-                    valueOf(486662), ONE, CURVE_25519_ORDER.shiftRight(3), CURVE_25519_ORDER);
+                    valueOf(486662), ONE, CURVE_25519_ORDER, CURVE_25519_ORDER.shiftRight(3));
             MontgomeryECGroup.ECGroupElement   curve25519Base = curve25519.createPoint(
                     valueOf(9), curve25519.mapToY(valueOf(9)));
             q = curve25519.getCyclicOrder();

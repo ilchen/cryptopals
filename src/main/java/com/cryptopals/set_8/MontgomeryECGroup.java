@@ -19,11 +19,11 @@ import static java.math.BigInteger.ZERO;
  */
 @EqualsAndHashCode
 @ToString
-final public class MontgomeryECGroup implements ECGroup, Serializable {
-    static final BigInteger   FOUR = BigInteger.valueOf(4);
+public class MontgomeryECGroup implements ECGroup, Serializable {
+    protected static final BigInteger   FOUR = BigInteger.valueOf(4);
     private static final long serialVersionUID = 1194952055574519819L;
     @Getter
-    private final BigInteger modulus,  A,  B,  order,  cyclicOrder;
+    private final BigInteger   modulus,  A,  B,  order,  cyclicOrder;
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
     public final ECGroupElement O = this.new ECGroupElement(ZERO, ONE);

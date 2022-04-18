@@ -1,8 +1,11 @@
 package com.cryptopals;
 
+import com.cryptopals.set_8.ECGroupElement;
+import com.cryptopals.set_8.MontgomeryECGroup;
 import com.cryptopals.set_8.WeierstrassECGroup;
 import com.cryptopals.set_9.DualECPRNG;
 import com.cryptopals.set_9.RainbowTable;
+import com.cryptopals.set_9.FpMappableMontgomeryECGroup;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -19,12 +22,16 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Function;
 
+import static com.cryptopals.Set8.*;
 import static com.cryptopals.Set9.CURVE_SECP256R1_ORDER;
 import static com.cryptopals.set_9.DualECPRNG.P;
 import static com.cryptopals.set_9.RainbowTable.getPlainText;
 import static com.cryptopals.set_9.RainbowTable.isAscii3295;
+import static java.math.BigInteger.ONE;
+import static java.math.BigInteger.valueOf;
 import static java.util.stream.Collectors.counting;
 import static org.junit.jupiter.api.Assertions.*;
 import static java.util.stream.Collectors.groupingBy;
@@ -63,6 +70,25 @@ class Set9Tests {
         assertTrue(cnt >= expectedCount, "Expected frequency of 0.63 for inverting is not met");
     }
 
+    @DisplayName("Elligator 2")
+    @ParameterizedTest
+    @ValueSource(ints = { 3000 })
+    void  elligator2(int numExperiments) {
+        FpMappableMontgomeryECGroup   curve25519 = new FpMappableMontgomeryECGroup(
+                CURVE_25519_PRIME, valueOf(486662), CURVE_25519_ORDER, CURVE_25519_ORDER.shiftRight(3));
+        Random   rnd = java.util.concurrent.ThreadLocalRandom.current();
+        BigInteger   msg;
+        for (int i=0; i < numExperiments; i++) {
+            msg = new BigInteger(CURVE_25519_PRIME.bitLength() - 1, rnd);
+            assertTrue(msg.compareTo(CURVE_25519_PRIME.shiftRight(1)) <= 0);
+            MontgomeryECGroup.ECGroupElement   elem = curve25519.mapFromFp(msg);
+            if (elem.equals(curve25519.getIdentity()))  {
+                continue; // msg is not mappable, should never happen.
+            }
+            assertEquals(msg, curve25519.mapToFp(elem));
+        }
+    }
+
     @DisplayName("Chi-squared test of DUAL EC DRBG")
     @ParameterizedTest
     @ValueSource(ints = { 3000 })
@@ -83,7 +109,7 @@ class Set9Tests {
         System.out.printf("Degrees of freedom (\u03BD)=%d, \u03C7^2=%.2f%n", numCategories-1, chiSquared);
 
         assertTrue(chiSquared < p95,
-                "The likelyhood of getting such a run with a true uniform PRNG is less than 5%");
+                "The likelihood of getting such a run with a true uniform PRNG is less than 5%");
     }
 
     @DisplayName("Challenge 70")

@@ -44,7 +44,7 @@ final public class WeierstrassECGroup implements ECGroup, Serializable {
 
     /**
      * Calculates the y coordinate of a point on this curve using its x coordinate
-     * @param x
+     * @param x  the {@code x} coordinate of a point to be mapped to its {@code y} coordinate
      * @return the y coordinate or {@link Set8#NON_RESIDUE} if there's no point on the curve with the given x coordinate
      */
     public BigInteger  mapToY(BigInteger x) {

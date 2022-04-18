@@ -50,17 +50,26 @@ public interface ECGroup {
     /**
      * Finds a generator of a subgroup of E(GF(p)) of required order
      * @param order  the order the generator must have, it must be a divisor of the order of the curve
+     * @param useFullGroup  if {@code true} will search for a generator of the required order withing the whole
+     *                      group (the whole group must be cyclic in this case), otherwise will search within
+     *                      the largest cyclic subgroup.
      * @return a generator satisfying the order given
      */
-    default ECGroupElement  findGenerator(BigInteger order) {
+    default ECGroupElement  findGenerator(BigInteger order, boolean useFullGroup) {
+        BigInteger[]   otherOrder = (useFullGroup  ?  getOrder() : getCyclicOrder()).divideAndRemainder(order);
+        if (!otherOrder[1].equals(BigInteger.ZERO))  {
+            throw  new IllegalArgumentException(
+                    String.format("This curve doesn't contain a subgroup of order %d in its %s",
+                            order, useFullGroup  ?  "full group" : "largest cyclic subgroup"));
+        }
         Random   rnd = ThreadLocalRandom.current();
-        BigInteger   otherOrder = getCyclicOrder().divide(order),  x,  y;
+        BigInteger     x,  y;
         ECGroupElement   possibleGen = getIdentity();
         do {
             x = new BigInteger(getModulus().bitLength(), rnd);
             y = mapToY(x);
             if (!y.equals(NON_RESIDUE)) {
-                possibleGen = createPoint(x, y).scale(otherOrder);
+                possibleGen = createPoint(x, y).scale(otherOrder[0]);
             }
         }  while (possibleGen.equals(getIdentity()));
         return  possibleGen;

@@ -1350,7 +1350,7 @@ PolynomialGaloisFieldOverGF2.FieldElement   hash1 = gcm.ghashPower2BlocksDiffere
 assertEquals(hash1, hash2);
 ```
 As you can see, I calculate the hash1 over d<sub>i</sub> differences using standard GHASH arithmetic in GF(2<sup>128</sup>)
-and then hash2 by A<sub>d</sub>·h. TThe two must be the same.
+and then hash2 by A<sub>d</sub>·h. The two must be the same.
 
 The dependency matrix is more involved. Before setting out on a path to calculate it, it helps to understand what purpose it
 serves and how it comes about. In his original description of the attack Niels Ferguson writes:
@@ -1764,7 +1764,7 @@ a many-time MAC, GCM uses the Carter-Wegman MAC construction:
  
    This is all nice and backed by security theorems if the full GHASH tag size of 128 bits is used. If the user chooses
    a short tag size of, say 32 bits, and we manage to make our forged blocks of ciphertext
-   produce the same 32 bits of GHASH as the legit ciphertext, the xor'ing with with a block of the keys stream __doesn't spread the 32 bits of the GHASH__ that we managed to forge.
+   produce the same 32 bits of GHASH as the legit ciphertext, the xor'ing with a block of the keys stream __doesn't spread the 32 bits of the GHASH__ that we managed to forge.
    And when truncating the resulting AuthTag to the 32 bits before
    appending it to the ciphertext, GCM passes exactly the 32 bits that we succeeded in forging. This could've
    been fixed by adopting a construction similar to that used by CWC `AuthTag((k, h), m) = E(k, r) ^ E(k, GHASH(h, m))`.
