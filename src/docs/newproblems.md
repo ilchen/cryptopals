@@ -203,9 +203,9 @@ y<sup>2</sup> = x<sup>3</sup> - 3·x + b
 where b in hexadecimal is: `5ac635d8 aa3a93e7 b3ebbd55 769886bc 651d06b0 cc53b0f6 3bce3c3e 27d2604b`. The curve P256 is defined
 over the prime p = 2<sup>256</sup> − 2<sup>224</sup> + 2<sup>192</sup> + 2<sup>96</sup> − 1. The order of the group of
 points on this curve, let's call it **r**, in hexadecimal is `ffffffff 00000000 ffffffff ffffffff bce6faad f3b9cac2 fc632551` and is a prime number.
-The order of this elliptic curve being prime has important implications that are being used by this generator:
-1. This elliptic curve group has a co-factor of 1, which is an elaborate way of sayin that it has no non-trivial subgroups.
-2. All the group elements except for he point at infinity are generators.
+The order of this elliptic curve being prime has important implications that are used by this generator:
+1. This elliptic curve group has a co-factor of 1, which is an elaborate way of saying that it has no non-trivial subgroups.
+2. All the group elements except for the point at infinity are generators.
 
 Why the adjective _dual_ in the name of this PRNG? It's because it makes use of two predetermined points on this curve for its work.
 They are called P and Q. NIST came up with recommended values for them:
@@ -217,7 +217,7 @@ Q=(`c97445f4 5cdef9f0 d3e05e1e 585fc297 235b82b5 be8ff3ef ca67c598 52018192`, `b
 At the same time the standard allows to use alternate values of P and Q, albeit it doesn't recommend it. Remember that I
 highlighted that the property of the curve is that all its elements are generators? This means that there exist
 values:
-* e=log<sub>P</sub>Q (i.e., the integer e such that eP = Q); and
+* e=log<sub>P</sub>Q (i.e., the integer e such that e·P = Q); and
 * d=log<sub>Q</sub>P=e<sup>−1</sup> mod r, where r is the order of the group
 
 If you know either e or d, you can go far at breaking the unpredictability property of this PRNG provided you get to see
@@ -235,8 +235,8 @@ using available sources of randomness. For the purposes of this challenge we wil
 secure PRNG (Fortuna on my macOS 11.5.2).
 
 Output blocks r<sub>i</sub> are produced from the internal state by scaling point Q to s<sub>i</sub> and then taking the x coordinate of the new point.
-Only 240 least significant bits of the output are passed on to the user. If the user requested more than 240 bits, say 256 bits as
-I depicted in the figure, then the PRNG produces a second output block of 240 bits and takes 16 most significant bytes out of them.
+Only the 240 least significant bits of the output are passed on to the user. If the user requests more than 240 bits, say 256 bits as
+I depicted in the figure, then the PRNG produces a second output block of 240 bits and takes the 16 most significant bits out of them.
 
 After processing each user request the Dual EC 2007 algorithm additionally updates the internal state s<sub>i+1</sub> = x(s<sub>i</sub>·P). 
 This is meant to provide backtracking resistance i.e. to prevent working backwards from the internal state to earlier random numbers.
@@ -252,7 +252,7 @@ is less than p95 = 67.5, you are good. If higher, you likely have made a mistake
 with a uniform PRNG is less than 5%.
 
 Now that you have built and fine-tuned the PRNG, we can mount the actual attack on its alleged unpredictability. This is
-only possible if you come up with your on Q. So generate a random exponent `e` (up till r &mdash; the order of the EC group),
+only possible if you come up with your own Q. So generate a random exponent `e` (up till r &mdash; the order of the EC group),
 find its inverse `d`, and finally produce point Q:
 ```
 e := random(100, r)
@@ -266,7 +266,7 @@ produced from two separate output blocks of your DUAL EC PRNG, namely r<sub>1</s
 bytes constitute the 240 least significant bits of r<sub>1</sub>. Iterate through every possible 2<sup>16</sup> most
 significant bits of r<sub>1</sub> (that you don't know) and prepend them to arrive at the whole r<sub>1</sub>' candidate. Roughly half of
 the r<sub>1</sub>' values will be valid x-coordinates of point R<sub>1</sub>:=s<sub>1</sub>·Q. For each such R,
-compute s<sub>2</sub>′ = x(dR<sub>1</sub>) and r<sub>2</sub>′ = x(s<sub>2</sub>′Q).
+compute s<sub>2</sub>′ = x(d·R<sub>1</sub>) and r<sub>2</sub>′ = x(s<sub>2</sub>′·Q).
 
 The key insight is that multiplying the point s<sub>1</sub>·Q by d yields the internal state
 x(d·s<sub>1</sub>·Q) = x(s<sub>1</sub>·P) = s<sub>2</sub>. 
