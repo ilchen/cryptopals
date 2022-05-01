@@ -1,17 +1,15 @@
 package com.cryptopals;
 
+import com.cryptopals.set_8.ECGroupElement;
 import com.cryptopals.set_8.WeierstrassECGroup;
 import com.cryptopals.set_9.DualECPRNG;
-import com.fasterxml.jackson.databind.node.BigIntegerNode;
+import com.cryptopals.set_9.ECMultiplicativeElGamal;
+import com.cryptopals.set_9.FpMappableMontgomeryECGroup;
 
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.security.SecureRandom;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.function.Function;
+import java.util.*;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -32,10 +30,11 @@ public class Set9 {
 
     /**
      * Recovers the internal state of a curve P-256 based NIST Dual EC PRNG from a 32 bytes block produced
-     * from an earlier invocation to it and from the knowledge of the exponent {@code d} such that {@code Q^d == P}
+     * from an earlier invocation to it and from the knowledge of the exponent {@code d} such that {@code Q^d == P}.
+     *
      * @param q  the Q point used to translate internal state of a Dual EC PRNG to its output
      * @param d  the exponent such that {@code Q^d == P}
-     * @param fullBlock  a 32 random bytes produced by a Dual EC PRNG initialized with the Q point {@code q}
+     * @param fullBlock  32 random bytes produced by a Dual EC PRNG initialized with the Q point {@code q}
      * @return  candidates for the internal state of a Dual EC PRNG, typically only one.
      */
     static List<BigInteger>   breakChallenge70(WeierstrassECGroup.ECGroupElement q, BigInteger d, byte[] fullBlock) {
@@ -73,6 +72,57 @@ public class Set9 {
                             nextBlock.length - DualECPRNG.MAX_BLOCK_BYTE_LENGTH + 2));
                 }));
         return  nextBlockCands.get(bb);
+    }
+
+    /**
+     * Attempts to recover up to log<sub>2</sub>(|EC(F<sub>p</sub>)|/|G|) bits of the plaintext
+     * message (where G is a subgroup of EC(F<sub>p</sub>) encoded as an element of EC(F<sub>p</sub>).
+     *
+     * The method only works when the plaintext message was encoded as a member of the full elliptic curve group
+     * EC(F<sub>p</sub>) and not as member of the prime-order subgroup G, i.e. the full group has a cofactor greater
+     * than 1. It further assumes that the cofactor is a power of 2. It recovers the least significant bits
+     * of the exponent when the EC(F<sub>p</sub>) encodig of the plaintext is represented as
+     * {@code fullGroupGen^exponent}.
+     *
+     * @param megCipherTxt   a two element array whose first element is the ephemeral public key &nu; and the second
+     *                       the {@code msg} encrypted as a member of E(F<sub>p</sub>)
+     * @param pk  The public key that was used to encrypt the plaintext message
+     * @return  a two element {@code long} array, whose first element designates how many least significant bits
+     *          of the exponent were recovered, and the second the actual bits.
+     */
+    static long[]  breakChallenge69(ECGroupElement[] megCipherTxt, ECMultiplicativeElGamal.PublicKey pk,
+                                    ECGroupElement fullGroupGen) {
+        long[]   emptyRes = new long[] {  0,  0  };
+        // Check if the curve is mappable to Fp
+        if (!(pk.getG().group() instanceof FpMappableMontgomeryECGroup))  return  emptyRes;
+
+        // First check if the ciphertext message is indeed member of the whole elliptic curve group
+        FpMappableMontgomeryECGroup   fpMappableGroup = (FpMappableMontgomeryECGroup) pk.getG().group();
+        ECGroupElement   elem = megCipherTxt[1].scale(pk.getN());
+
+        // Check if the plaintext message was encoded as a member of the prime-order subgroup
+        if (elem.equals(fpMappableGroup.O))  return  emptyRes;
+
+        BigInteger   cofactor = fpMappableGroup.getOrder().divide(fpMappableGroup.getCyclicOrder());
+        // Check if the cofactor is a power of 2
+        if (Long.bitCount(cofactor.longValueExact()) > 1)  return  emptyRes;
+
+        ECGroupElement  smallSubGroupGen = fullGroupGen.scale(fpMappableGroup.getCyclicOrder());
+
+        // Did we land in the subgroup of the cofactor order? If not, lower the expected number of bits to recover.
+        while (elem.scale(cofactor.shiftRight(1)).equals(fpMappableGroup.O)) {
+            cofactor = cofactor.shiftRight(1);
+            smallSubGroupGen = smallSubGroupGen.combine(smallSubGroupGen);
+        }
+
+        long   numBits = Long.numberOfTrailingZeros(cofactor.longValue());
+
+        for (long i=0; i < 1L << numBits; i++) {
+            if (smallSubGroupGen.scale(BigInteger.valueOf(i)).equals(elem))  {
+                return  new long[] {   numBits,  i   };
+            }
+        }
+        return  emptyRes;
     }
 
     public static void main(String[] args) {

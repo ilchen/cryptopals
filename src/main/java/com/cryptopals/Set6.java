@@ -21,7 +21,7 @@ import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 import java.util.stream.IntStream;
 
-import static com.cryptopals.set_6.DSAHelper.fromHash;
+import static com.cryptopals.set_6.DSAHelper.newBigInteger;
 import static com.cryptopals.set_6.DSAHelper.TWO;
 
 /**
@@ -80,7 +80,7 @@ public class Set6 {
     @SneakyThrows
     static BigInteger  breakChallenge43(byte msg[], DSAHelper.Signature signature, DSAHelper.PublicKey pk) {
         MessageDigest   sha = MessageDigest.getInstance("SHA-1");
-        BigInteger   h = fromHash(sha.digest(msg));
+        BigInteger   h = newBigInteger(sha.digest(msg));
         return IntStream.rangeClosed(0, 0xffff).parallel().mapToObj(BigInteger::valueOf)
                 .map(k -> signature.getS().multiply(k).subtract(h).multiply(signature.getR().modInverse(pk.getQ())).mod(pk.getQ()))
                 .filter(x -> pk.getG().modPow(x, pk.getP()).equals(pk.getY())).findFirst().orElseThrow(IllegalStateException::new);
@@ -106,7 +106,7 @@ public class Set6 {
             for (int i=0; i < maxLines  &&  (line = reader.readLine()) != null; i++)  {
                 if (line.startsWith(MSG)) {
                     String   msg = line.substring(MSG.length());
-                    smb = SignedMessage.builder().msg(msg).m(fromHash(sha.digest(msg.getBytes())));
+                    smb = SignedMessage.builder().msg(msg).m(newBigInteger(sha.digest(msg.getBytes())));
                 } else if (line.startsWith(S)) {
                     sb = DSAHelper.Signature.builder().s(new BigInteger(line.substring(S.length())) );
                 } else if (line.startsWith(R)) {
@@ -203,16 +203,16 @@ public class Set6 {
             pk = new DSAHelper.PublicKey(DSAHelper.P, DSAHelper.Q, DSAHelper.G, CHALLENGE_43_Y);
             BigInteger   x = breakChallenge43(CHALLENGE_43_TEXT.getBytes(), CHALLANGE_43_SIGNATURE, pk);
             System.out.printf("Recovered x = %d%nSHA-1 of the hex representation of the private key is: 0x%s%n",
-                    x, fromHash(sha.digest(x.toString(16).getBytes())).toString(16));
+                    x, newBigInteger(sha.digest(x.toString(16).getBytes())).toString(16));
 
             System.out.println("\nChallenge 44");
             msg = "Listen for me, you better listen for me now. ".getBytes();
-            System.out.printf("m = 0x%x%n", fromHash(sha.digest(msg)));
+            System.out.printf("m = 0x%x%n", newBigInteger(sha.digest(msg)));
             List<SignedMessage> signatures = extractSignatures("https://cryptopals.com/static/challenge-data/44.txt");
             pk = new DSAHelper.PublicKey(DSAHelper.P, DSAHelper.Q, DSAHelper.G, CHALLENGE_44_Y);
             x = breakChallenge44(signatures, pk);
             System.out.printf("Recovered x = %d%nSHA-1 of the hex representation of the private key is: 0x%s%n",
-                    x, fromHash(sha.digest(x.toString(16).getBytes())).toString(16));
+                    x, newBigInteger(sha.digest(x.toString(16).getBytes())).toString(16));
 
             System.out.println("\nChallenge 45");
             BigInteger   gs[] = new BigInteger[] { BigInteger.ZERO, DSAHelper.P.add(BigInteger.ONE) };
@@ -220,14 +220,14 @@ public class Set6 {
                 dsa = new DSAHelper(DSAHelper.P, DSAHelper.Q, g);
                 for (String str : new String[] {"Hello, world", "Goodbye, world"}) {
                     dsaSignature = DSAHelper.Signature.builder().r(g.mod(DSAHelper.P))
-                            .s(fromHash(sha.digest(str.getBytes()))).build(); // s could be any value
+                            .s(newBigInteger(sha.digest(str.getBytes()))).build(); // s could be any value
                     System.out.printf("Forged signature %s for message '%s' with g==%d verifies? %b%n",
                             dsaSignature.toString(), str, g, dsa.getPublicKey().verifySignature(msg, dsaSignature));
                 }
             }
 
             System.out.println("\nChallenge 46");
-            cipherTxt = rsa.encrypt(fromHash(CHALLANGE_46_PLAINTEXT));
+            cipherTxt = rsa.encrypt(newBigInteger(CHALLANGE_46_PLAINTEXT));
             BigInteger  plainText = breakChallenge46(cipherTxt, rsa.getPublicKey(), rsa::decryptionOracle);
             msg = plainText.toByteArray();
             System.out.println("Obtained plaintext:\n" + new String(msg));

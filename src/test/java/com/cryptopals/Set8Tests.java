@@ -162,6 +162,11 @@ class Set8Tests {
         // Test that we can't find a subgroup of order 8 in the cyclic subgroup of prime order
         assertThrows(IllegalArgumentException.class,
                 () -> curve25519.findGenerator(BigInteger.valueOf(8), false));
+
+        // Test whether the base point generates the correct subgroup
+        base = curve25519.createPoint(valueOf(9), curve25519.mapToY(valueOf(9)));
+        assertEquals(curve25519.O, base.scale(curve25519.getCyclicOrder()));
+        assertEquals(ZERO, base.ladder(curve25519.getCyclicOrder()));
     }
 
     @DisplayName("Pollard's kangaroo algorithm on elliptic curve groups")

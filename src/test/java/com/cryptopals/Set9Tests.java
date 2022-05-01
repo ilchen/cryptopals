@@ -4,6 +4,7 @@ import com.cryptopals.set_8.ECGroupElement;
 import com.cryptopals.set_8.MontgomeryECGroup;
 import com.cryptopals.set_8.WeierstrassECGroup;
 import com.cryptopals.set_9.DualECPRNG;
+import com.cryptopals.set_9.ECMultiplicativeElGamal;
 import com.cryptopals.set_9.RainbowTable;
 import com.cryptopals.set_9.FpMappableMontgomeryECGroup;
 import org.junit.jupiter.api.DisplayName;
@@ -27,10 +28,10 @@ import java.util.function.Function;
 
 import static com.cryptopals.Set8.*;
 import static com.cryptopals.Set9.CURVE_SECP256R1_ORDER;
+import static com.cryptopals.Set9.breakChallenge69;
 import static com.cryptopals.set_9.DualECPRNG.P;
 import static com.cryptopals.set_9.RainbowTable.getPlainText;
 import static com.cryptopals.set_9.RainbowTable.isAscii3295;
-import static java.math.BigInteger.ONE;
 import static java.math.BigInteger.valueOf;
 import static java.util.stream.Collectors.counting;
 import static org.junit.jupiter.api.Assertions.*;
@@ -87,6 +88,28 @@ class Set9Tests {
             }
             assertEquals(msg, curve25519.mapToFp(elem));
         }
+    }
+
+    @DisplayName("Challenge 69")
+    @Test
+    void  challenge69()  {
+        FpMappableMontgomeryECGroup   curve25519 = new FpMappableMontgomeryECGroup(
+                CURVE_25519_PRIME, valueOf(486662), CURVE_25519_ORDER, CURVE_25519_ORDER.shiftRight(3));
+        MontgomeryECGroup.ECGroupElement   base = curve25519.createPoint(valueOf(9), curve25519.mapToY(valueOf(9)));
+        ECMultiplicativeElGamal   meg = new ECMultiplicativeElGamal(base, curve25519.getCyclicOrder());
+        ECMultiplicativeElGamal.PublicKey   pk = meg.getPublicKey();
+
+        String   plainTxt = "Taking it to the edge of realm.";
+        ECGroupElement[]   megCipherTxt = pk.encrypt(plainTxt.getBytes());
+        assertEquals(plainTxt, new String(meg.decrypt(megCipherTxt)));
+
+        // Generator for the entire EC curve25519 group
+        ECGroupElement  fullGroupGen = curve25519.createPoint(
+                new BigInteger("6388931193617442843730615974211913565219356972986535115281385604017080356929"),
+                new BigInteger("15183578202947452771374813110749360144330333520376073491257004066936409973672"));
+        long[]   res = breakChallenge69(megCipherTxt, pk, fullGroupGen);
+        assertEquals(3, res[0]);
+        assertEquals(5, res[1]);
     }
 
     @DisplayName("Chi-squared test of DUAL EC DRBG")

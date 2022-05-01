@@ -17,7 +17,7 @@ public interface ECGroupElement {
     BigInteger  getY();
     ECGroupElement  getIdentity();
     ECGroupElement  inverse();
-    ECGroupElement  combine(ECGroupElement that);
+    ECGroupElement      combine(ECGroupElement that);
     ECGroup  group();
 
     /** Returns the x coordinate of kP where P is this point */

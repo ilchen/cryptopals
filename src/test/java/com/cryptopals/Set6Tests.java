@@ -12,7 +12,6 @@ import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.security.MessageDigest;
@@ -21,7 +20,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import static com.cryptopals.Set6.*;
-import static com.cryptopals.set_6.DSAHelper.fromHash;
+import static com.cryptopals.set_6.DSAHelper.newBigInteger;
 import static org.junit.jupiter.api.Assertions.*;
 
 class Set6Tests {
@@ -67,7 +66,7 @@ class Set6Tests {
                 },
                 () -> {
                     MessageDigest sha = MessageDigest.getInstance("SHA-1");
-                    BigInteger   h = fromHash(sha.digest(CHALLENGE_43_TEXT.getBytes()));
+                    BigInteger   h = newBigInteger(sha.digest(CHALLENGE_43_TEXT.getBytes()));
                     assertEquals("d2d0714f014a9784047eaeccf956520045c45265", h.toString(16),
                             "Wrong conversion of hash to a BigInteger");
                 },
@@ -78,26 +77,26 @@ class Set6Tests {
                     assertEquals(new BigInteger("125489817134406768603130881762531825565433175625"), x,
                             "Wrong key found");
                     assertEquals("954edd5e0afe5542a4adf012611a91912a3ec16",
-                            fromHash(sha.digest(x.toString(16).getBytes())).toString(16));
+                            newBigInteger(sha.digest(x.toString(16).getBytes())).toString(16));
                 });
 
     }
 
     @DisplayName("https://cryptopals.com/sets/6/challenges/44")
     @ParameterizedTest
-    @ArgumentsSource(Challeng44ArgumentsProvider.class)
+    @ArgumentsSource(Challenge44ArgumentsProvider.class)
     void  challenge44(String url) throws IOException, NoSuchAlgorithmException {
         MessageDigest   sha = MessageDigest.getInstance("SHA-1");
         List<SignedMessage> signatures = extractSignatures(url);
         DSAHelper.PublicKey   pk = new DSAHelper.PublicKey(DSAHelper.P, DSAHelper.Q, DSAHelper.G, CHALLENGE_44_Y);
         BigInteger   x = breakChallenge44(signatures, pk);
         assertEquals("ca8f6f7c66fa362d40760d135b763eb8527d3d52",
-                fromHash(sha.digest(x.toString(16).getBytes())).toString(16));
+                newBigInteger(sha.digest(x.toString(16).getBytes())).toString(16));
     }
 
-    static class  Challeng44ArgumentsProvider implements ArgumentsProvider {
+    static class Challenge44ArgumentsProvider implements ArgumentsProvider {
         @Override
-        public Stream<? extends Arguments> provideArguments(ExtensionContext context) throws FileNotFoundException {
+        public Stream<? extends Arguments> provideArguments(ExtensionContext context) {
             return Stream.of(Arguments.of(getClass().getClassLoader().getResource("challenge44.txt").toString()));
         }
     }
@@ -106,7 +105,7 @@ class Set6Tests {
     @Test
     void  challenge46() {
         RSAHelperExt   rsa = new RSAHelperExt(BigInteger.valueOf(17));
-        BigInteger     cipherTxt = rsa.encrypt(fromHash(CHALLANGE_46_PLAINTEXT));
+        BigInteger     cipherTxt = rsa.encrypt(newBigInteger(CHALLANGE_46_PLAINTEXT));
         BigInteger  plainText = breakChallenge46(cipherTxt, rsa.getPublicKey(), rsa::decryptionOracle);
         assertArrayEquals(CHALLANGE_46_PLAINTEXT, plainText.toByteArray(),
                 "Didn't succeed in obtaining correct plaintext");

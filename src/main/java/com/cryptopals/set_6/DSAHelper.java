@@ -47,13 +47,19 @@ public class DSAHelper {
                     "0f5b64c36b625a097f1651fe775323556fe00b3608c887892" +
                     "878480e99041be601a62166ca6894bdd41a7054ec89f756ba9fc95302291", 16),
             TWO = BigInteger.valueOf(2L);
-    private static int   L = 1024,  QL = 160;
+    private static final int   L = 1024,  QL = 160;
     private static final Random SECURE_RANDOM = new SecureRandom(); // Thread safe
     private final BigInteger   p,  q,  g,  x;
 
-    public static BigInteger  fromHash(byte hash[]) {
+    /**
+     * Constructs a new positive {@link BigInteger} instance from a byte array representation.
+     *
+     * The method ensures the resultant BigInteger is positive in case the most significant bit of {@code hash} is 1,
+     * i.e. {@code (hash[0] & 0x08) == 0x08}.
+     */
+    public static BigInteger newBigInteger(byte[] hash) {
         // BigInteger   h = new BigInteger(hash).add(ONE.shiftLeft(hash.length * 8));
-        byte   prefixedHash[] = new byte[hash.length + 1];
+        byte[]   prefixedHash = new byte[hash.length + 1];
         System.arraycopy(hash, 0, prefixedHash, 1, hash.length);
         return  new BigInteger(prefixedHash);
     }
@@ -69,14 +75,14 @@ public class DSAHelper {
             u = Set1.challenge2(sha.digest(s.toByteArray()),
                     sha.digest(s.add(ONE).mod(TWO.pow(s.bitLength())).toByteArray()));
             u[0] &= 0x7f;     u[19] |= 1;    // Big-endian
-        } while (!(q = fromHash(u)).isProbablePrime(64));
+        } while (!(q = newBigInteger(u)).isProbablePrime(64));
 
         N = TWO;     S = s;
         do {
             final BigInteger  NN = N;
             W = IntStream.rangeClosed(0, n).mapToObj(k ->
                     new Object() {
-                        BigInteger v = fromHash(
+                        BigInteger v = newBigInteger(
                                 sha.digest(S.add(NN).add(BigInteger.valueOf(k)).mod(TWO.pow(S.bitLength())).toByteArray()));
                         int i = k;
                     }).map(pair -> TWO.pow(160 * pair.i).multiply(pair.i == n ? pair.v.mod(TWO.pow(b)) : pair.v))
@@ -126,7 +132,7 @@ public class DSAHelper {
 
     @SneakyThrows
     public static BigInteger  hashAsBigInteger(byte msg[]) {
-        return  fromHash(MessageDigest.getInstance("SHA-1").digest(msg));
+        return  newBigInteger(MessageDigest.getInstance("SHA-1").digest(msg));
     }
 
     public PublicKey  getPublicKey() {

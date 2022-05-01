@@ -17,6 +17,7 @@ import static java.math.BigInteger.*;
 public class FpMappableMontgomeryECGroup extends MontgomeryECGroup {
     public static final BigInteger   TWO = valueOf(2),  THREE = valueOf(3),
                                      FIVE = valueOf(5),  EIGHT = valueOf(8);
+    private static final long serialVersionUID = -8108634203005429831L;
     private final UnaryOperator<BigInteger>   squareRoot;
     private final BigInteger                  smallNonSquare;
 
@@ -69,7 +70,7 @@ public class FpMappableMontgomeryECGroup extends MontgomeryECGroup {
      * @return  an element of F<sub>p</sub> that belongs to set { 0, 1, ..., (p-1)/2 } if {@code ecElem} can be mapped,
      *          {@link Set8#NON_RESIDUE} otherwise
      */
-    public BigInteger  mapToFp(ECGroupElement ecElem) {
+    public BigInteger  mapToFp(com.cryptopals.set_8.ECGroupElement ecElem) {
         // Simple aliases for the sake of readability
         BigInteger   x = ecElem.getX(),  y = ecElem.getY(),  mod = getModulus();
         // Check if mappable
@@ -78,7 +79,6 @@ public class FpMappableMontgomeryECGroup extends MontgomeryECGroup {
                 ||  !Set8.legendreSymbol(mod.subtract(smallNonSquare).multiply(x).multiply(x.add(getA())), mod).equals(ONE))
             return  Set8.NON_RESIDUE;
 
-        BigInteger   sqrtYSquared = Set8.squareRoot(y.multiply(y).mod(mod), mod);
         return  modulo(Set8.squareRoot(
             y.equals(Set8.squareRoot(y.multiply(y).mod(mod), mod))
                     ?  mod.subtract(x).multiply(x.add(getA()).multiply(smallNonSquare).modInverse(mod))
