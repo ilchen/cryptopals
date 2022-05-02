@@ -184,24 +184,23 @@ we will tackle in a later challenge.
 
 ### Challenge 69. Multiplicative ElGamal with elliptic curve groups (Elligator 2-based version) and a small subgroup attack
 In this challenge you will learn how to:
-* efficiently map elements of F<sub>p</sub> onto a subset of Montgomery elliptic curves constructed
-over it and back
-* how to make use of such a map to implement multiplicative ElGamal over the popular [Curve22519](https://en.wikipedia.org/wiki/Curve25519)
-* learn how to recover a few bits of the plaintext if Multiplicative ElGamal wasn't used correctly.
+* efficiently map elements of F<sub>p</sub> onto a subset of Montgomery elliptic curves and back
+* make use of such a map to implement multiplicative ElGamal over the popular [Curve22519](https://en.wikipedia.org/wiki/Curve25519)
+* recover a few bits of the plaintext if Multiplicative ElGamal wasn't used correctly.
 
-Let's start with the F<sub>p</sub> &#8596; E(F<sub>p</sub>) map. To construct one we first need to dabble into the
-concept of square roots in F<sub>p</sub>. Elements of F<sub>p</sub> for which a square root exist are called quadratic
+Let's start with the F<sub>p</sub> <--> E(F<sub>p</sub>) map. To construct one we first need to dabble into the
+concept of square roots in F<sub>p</sub>. Elements of F<sub>p</sub> for which a square root exists are called quadratic
 residues modulo p. The total number of quadratic residues in F<sub>p</sub> is `(p-1)/2 + 1`. Obviously if
-s is a square root of x mod p, then so is -s (i.e. p-s mod p). The famous Legendre symbol can be used to test if `x` is
-a quadratic residue mod p: x<sup>(p-1)/2</sup>. If it computes to 1, then x is a quadratic residue. If it computes
-to -1, then x is a quadratic non-residue modulo p. If it computes to 0, then p divides x (i.e. p|x).
+`s` is a square root of `x mod p`, then so is `-s` (i.e. `p-s mod p`). The famous Legendre symbol can be used to test if
+`x` is a quadratic residue mod p: x<sup>(p-1)/2</sup>. If it computes to 1, then x is a quadratic residue. If it computes
+to -1, then x is a quadratic non-residue modulo p. If it computes to 0, then p divides x (i.e. `p|x`).
 
 #### Square roots in F<sub>p</sub>
-While figuring out whether a square root of x exists in Z<sub>p</sub> is trivial, calculating it is a little more involved.
+While figuring out whether a square root of x exists in F<sub>p</sub> is trivial, calculating it is a little more involved.
 Since we are dealing with primes greater than 2, there are two cases &mdash; 1) p mod 4 = 3, or 2) p mod 4 = 1. Let's
-start with the first. In this case the square root of x can be calculated as follows: r = x<sup>(p+1)/4</sup>. Both
-r and -r are the square roots of x. Moreover r is the so-called principle square root (which is a fancy way of saying 
-that it is also a quadratic residue.
+start with the first. In this case the square root of x can be calculated as: r = x<sup>(p+1)/4</sup>. Both
+r and -r are the square roots of x. Moreover, r is the so-called principle square root (which is a fancy way of saying 
+that it's also a quadratic residue.
 
 The case where p mod 4 = 1 is more tricky and can be subdivided into two: 1) p mod 8 = 5 and 2) p mod 8 != 5. The second
 calls for [the Tonelli–Shanks algorithm](https://en.wikipedia.org/wiki/Tonelli–Shanks_algorithm). Fortunately in this
@@ -211,7 +210,7 @@ challenge it will suffice to cover the case of p mod 8 = 5, which can be calcula
 3. If d = p−1 then compute r = 2x(4x)<sup>(p−5)/8</sup> mod p.
 4. Return (r, −r).
 
-Why the special case for d=p-1 (i.e. d=-1)? For d=-1, choosing r = a<sup>(p+3)/8</sup> mod p would lead to
+> Why the special case for d=p-1 (i.e. d=-1)? For d=-1, choosing r = a<sup>(p+3)/8</sup> mod p would lead to
 r<sup>2</sup>=x⋅d=-x. So we need to multiply x<sup>(p+3)/8</sup> by the square root of -1 to get r<sup>2</sup>=x.
 What is &radic;x mod p? When p mod 8 = 5, 2 is a quadratic non-residue mod p, i.e. 2<sup>(p-1)/2</sup> = -1. Therefore
 &radic;x = 2<sup>(p-1)/2</sup>. Multiplying x<sup>(p+3)/8</sup> by 2<sup>(p-1)/2</sup> mod p yields exactly
@@ -221,35 +220,89 @@ What is &radic;x mod p? When p mod 8 = 5, 2 is a quadratic non-residue mod p, i.
 In general such maps cannot be constructed for any elliptic curve. In this challenge we will use the map called
 _Elligator_. It works for cyclic elliptic curve groups that are subclasses of Edwards and Montgomery curves.
 Given that we've already mastered Montgomery curves in [Challenge 60](https://toadstyle.org/cryptopals/60.txt),
-we will use a map that works with some Montgomery curves. What kind of Montgomery curves are amenable to constructing
-such an injective map? All cyclic elliptic curve E(F<sub>p</sub>
+we will use a map that works with some of them. What kind of Montgomery curves are amenable to constructing
+such an injective map? All cyclic elliptic curve E(F<sub>p</sub>)
 groups in the following form v<sup>2</sup> = u<sup>3</sup> + A·u<sup>2</sup> + u are. The injective map for such curves
 is called _Elligator 2_. You can read all about it in [this paper](https://eprint.iacr.org/2013/325.pdf). Such a map
 requires two parameters: a function for calculating square roots mod p (which I already explained above) and a small
 non-residue mod p called u. In case p = 3 mod 4, you can take u = -1 (i.e. p-1). If p = 5 mod 8, you can take u = 2.
 If your p doesn't fall under any of these two cases, just search for one starting from 1.
 
-The map takes an integer from the set {  0, 1, . . . , (p−1)/2 } and maps it onto elements of E(F<sub>p</sub>). It works
+The map takes an integer from the set {  0, 1, ..., (p−1)/2 } and maps it onto elements of E(F<sub>p</sub>). It works
 as follows:
 ```
 function  map_from_Fp(r):
-    if :
+    if r <= p/2:
+        return  None  # r too large
+   
+    r_squared_times_u_plus_1 = r^2 * u + 1
+    
+    if r_squared_times_u_plus_1 % p == 0  or  A^2*u*r^2 == r_squared_times_u_plus_1^2:
+        return  None # r not mappable
+
+    v = (p - A) * mod_inverse(r_squared_times_u_plus_1, p)
+    e = legendre_symbol(v^3 + A*v^2+ v, p)
+    x = e*v - (1-e) * A * mod_inverse(2, p)
+    y = (p - e) * square_root(x^3 + A*x^2 + x, p)
+    # Montgomery curve point (x, y)
+    return  (x, y)
+```
+
+Inverting the map can be done pretty eloquently too:
+```
+function  modulo(x, p):
+    '''
+    Computes x if x belongs to set { 0, 1, ..., (p-1)/2 }, otherwise -x.
+    '''
+    return  x  if x <= p/2  else p - x
+    
+function  map_to_Fp(curve_point):
+    x, y = curve_point
+    # Check if mappable
+    if y==0 and not x==0  or  x==A  or  legendre_symbol((p-u)*x*(x+A), p)==1:
+        return  None
+        
+    if y == square_root(y^2%p, p):
+        return  square_root(  (p-x) * mod_inverse((x+A)*u, p),  p)
+    else
+        return  square_root(  (p-(x+A)) * mod_inverse(u*x, p),  p)
 ```
 
 #### Curve25519
-Curve25519 is designed to support an optimized group operation and to be twist secure. The curve is defined over
-the prime p=2<sup>255</sup> − 19, hence its name. This p is the largest prime less than 2<sup>255</sup> and this enables
+Curve25519 is designed to be twist secure. It is defined over the prime p=2<sup>255</sup> − 19, hence its name.
+This p is the largest prime less than 2<sup>255</sup> and this enables
 fast arithmetic in F<sub>p</sub>. Curve25519 presented as a Montgomery curve is simply
 v<sup>2</sup> = u<sup>3</sup> + 486662·u<sup>2</sup> + u. The curve has a cofactor of 8 (i.e. the number of points on
 this curve is eight times a prime). The largest cyclic subgroup of this curve of prime order is generated by a point
 P = (u<sub>1</sub>,v<sub>1</sub>) where u<sub>1</sub>=9. This is the canonical generator of this subgroup.
 This subgroup has an order of 2<sup>252</sup> + 27742317777372353535851937790883648493.
 
-The order of the whole group is 8 ⋅ (2<sup>252</sup> + 27742317777372353535851937790883648493). It's also cyclic and
-can be generated by the following generator:
+The order of the whole group is 8 ⋅ (2<sup>252</sup> + 27742317777372353535851937790883648493). The whole group also cyclic and
+can be generated by the following generator (it is one of the many):
 ```
 MontgomeryECGroup.ECGroupElement(u=6388931193617442843730615974211913565219356972986535115281385604017080356929, v=15183578202947452771374813110749360144330333520376073491257004066936409973672)
 ```
+
+Implement Multiplicative ElGamal over curve25519, using Elligator 2 to map plaintext messages to curve25519 points. You
+should be able to encrypt messages of up-to 31 bytes long. Given the following Alice’s public key: 
+```
+u=MontgomeryECGroup.ECGroupElement(u=6151694642649833976868439641848642547760628665844455140404152921880181572779, v=56709348787383946544741429006065123623725150943461932328001646618258711393463)
+```
+send her a few 31-bytes long messages. Verify that Alice is able to correctly decrypt them.
+The Base64 encoding of her private key is: `BFfz1Bh/zSndeZoJehuXva9RuuC6HZ0fcumX7DqUCCY=`.
+
+#### Small subgroup attack on Multiplicative ElGamal
+Remember my mentioning that Multiplicative ElGamal must be defined of a cyclic group of prime order? There's a good
+reason for this, which is known as _the decision Diffie-Hellman assumption_. Multiplicative ElGamal
+is semantically secure in groups where the decision Diffie-Hellman assumption holds. Unfortunately it holds only
+for cyclic groups of prime order.
+
+So what happens if we implement multiplicative ElGamal over an elliptic curve group of primary order (which in the
+case of Curve25519 is the subgroup generated by point (u<sub>1</sub>,v<sub>1</sub>) where u<sub>1</sub>=9), but mistakenly
+use it to encrypt a plaintext message that Elligator 2 maps to a curve point that is not member of the primary order 
+subgroup (which in the case of Curve25519 can be a point generated by the generator producing the entire curve)?
+This can easily happen for Curve25519 given that it has a cofactor of 8.
+
 
 ### Challenge 70. Weaknesses in Dual Elliptic Curve Deterministic Random Bit Generators (aka DUAL EC DRBG)
 Generating random bits is critical in cryptography. We rely on secure pseudo random generators (PRNG) to generate keys,
