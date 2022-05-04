@@ -3,10 +3,10 @@ I hope you enjoy them.
 
 ## Table of Contents
 
-  * [Challenge 67. Rainbow tables: space efficient recovery of passwords from their hashes](https://github.com/ilchen/cryptopals/blob/master/src/docs/newproblems.md#challenge-67-rainbow-tables-space-efficient-recovery-of-passwords-from-their-hashes)
-  * [Challenge 68. Multiplicative ElGamal with elliptic curve groups (simple version)](https://github.com/ilchen/cryptopals/blob/master/src/docs/newproblems.md#challenge-68-multiplicative-elgamal-with-elliptic-curve-groups-simple-version)
-  * [Challenge 69. Multiplicative ElGamal with elliptic curve groups (Elligator 2-based version) and a small subgroup attack](https://github.com/ilchen/cryptopals/blob/master/src/docs/newproblems.md#challenge-69-multiplicative-elgamal-with-elliptic-curve-groups-elligator-2-based-version-and-a-small-subgroup-attack)
-  * [Challenge 70. Weaknesses in Dual Elliptic Curve Deterministic Random Bit Generators (aka DUAL EC DRBG)](https://github.com/ilchen/cryptopals/blob/master/src/docs/newproblems.md#challenge-70-weaknesses-in-dual-elliptic-curve-deterministic-random-bit-generators-aka-dual-ec-drbg)
+  * [Challenge 67. Rainbow tables: space efficient recovery of passwords from their hashes](https://ilchen.github.io/cryptopals/newproblems.html#challenge-67-rainbow-tables-space-efficient-recovery-of-passwords-from-their-hashes)
+  * [Challenge 68. Multiplicative ElGamal with elliptic curve groups (simple version)](https://ilchen.github.io/cryptopals/newproblems.html#challenge-68-multiplicative-elgamal-with-elliptic-curve-groups-simple-version)
+  * [Challenge 69. Multiplicative ElGamal with elliptic curve groups (Elligator 2-based version) and a small subgroup attack](https://ilchen.github.io/cryptopals/newproblems.html#challenge-69-multiplicative-elgamal-with-elliptic-curve-groups-elligator-2-based-version-and-a-small-subgroup-attack)
+  * [Challenge 70. Weaknesses in Dual Elliptic Curve Deterministic Random Bit Generators (aka DUAL EC DRBG)](https://ilchen.github.io/cryptopals/newproblems.html#challenge-70-weaknesses-in-dual-elliptic-curve-deterministic-random-bit-generators-aka-dual-ec-drbg)
   
 
 ### Challenge 67. Rainbow tables: space efficient recovery of passwords from their hashes
