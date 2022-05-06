@@ -13,7 +13,6 @@ import javax.script.ScriptEngineManager;
 import javax.xml.bind.DatatypeConverter;
 
 import static javax.xml.bind.DatatypeConverter.parseBase64Binary;
-import static javax.xml.bind.DatatypeConverter.printBase64Binary;
 import static javax.xml.bind.DatatypeConverter.printHexBinary;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -38,7 +37,7 @@ public class Set7 extends Set3 {
                           CHALLENGE49_MCT_TARGET = "http://localhost:8080/challenge49/mct?",
                           CHALLENGE50_TEXT = "alert('MZA who was that?');\n",
                           CHALLENGE50_TARGET_TEXT = "print('Ayo, the Wu is back!');//",
-                          CHALLENGE56_COOKIE = new String(DatatypeConverter.parseBase64Binary("QkUgU1VSRSBUTyBEUklOSyBZT1VSIE9WQUxUSU5F"));
+                          CHALLENGE56_COOKIE = new String(Base64.getDecoder().decode("QkUgU1VSRSBUTyBEUklOSyBZT1VSIE9WQUxUSU5F"));
     private static final String  CHALLENGE51_COOKIE_NAME = "sessionid=",
                                  CHALLENGE51_REQUEST_TEMPLATE =
                                   "POST / HTTP/1.1%n Host: hapless.com%n"
@@ -92,7 +91,7 @@ public class Set7 extends Set3 {
         byte[]   randomIV = new byte[cipher.getBlockSize()],  cbcMAC;
         secRandGen.nextBytes(randomIV);
         cbcMAC = generateCbcMac(sb.toString().getBytes(), randomIV);
-        sb.append(printBase64Binary(randomIV)).append(printBase64Binary(cbcMAC));
+        sb.append(Base64.getEncoder().encodeToString(randomIV)).append(Base64.getEncoder().encodeToString(cbcMAC));
         return  sb.toString();
     }
 
@@ -108,7 +107,7 @@ public class Set7 extends Set3 {
 
         byte[]   cbcMAC;
         cbcMAC = generateCbcMac(sb.toString().getBytes(), zeroedIV);
-        sb.append(printBase64Binary(cbcMAC));
+        sb.append(Base64.getEncoder().encodeToString(cbcMAC));
         return  sb.toString();
     }
 
@@ -143,7 +142,7 @@ public class Set7 extends Set3 {
                 qs = legitMACedMessage.substring(forgedFrom.length(), legitMACedMessage.length() - (base64Len << 1));
         diff = Arrays.copyOf(diff, iv.length);
         Set2.xorBlock(iv, diff);
-        return  forgedFrom + qs + printBase64Binary(iv) + cbcMAC;
+        return  forgedFrom + qs + Base64.getEncoder().encodeToString(iv) + cbcMAC;
     }
 
     static String  breakChallenge49Mct(String legitMACedMessage, String attackersMACedMessage,

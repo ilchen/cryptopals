@@ -35,7 +35,7 @@ public class Set1 {
     }
 
     static String challenge1(String hex) {
-        return DatatypeConverter.printBase64Binary(DatatypeConverter.parseHexBinary(hex));
+        return Base64.getEncoder().encodeToString(DatatypeConverter.parseHexBinary(hex));
     }
 
     public static byte[] challenge2(byte buf1[], byte buf2[]) {

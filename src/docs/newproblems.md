@@ -404,6 +404,6 @@ of attackers were able to modify the sourcecode of its OS to implant the Q point
 
 You can find my solution to this challenge here:
 * [Dual EC PRNG implementation](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_9/DualECPRNG.java)
-* [The code for the &#967;<sup>2</sup> test](https://github.com/ilchen/cryptopals/blob/master/src/test/java/com/cryptopals/Set9Tests.java#L66-L87)
-* [The code for the attack](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set9.java#L33-L76)
-* [The code for the test](https://github.com/ilchen/cryptopals/blob/master/src/test/java/com/cryptopals/Set9Tests.java#L89-L114)
+* [Code for the &#967;<sup>2</sup> test](https://github.com/ilchen/cryptopals/blob/master/src/test/java/com/cryptopals/Set9Tests.java#L115-L136)
+* [Code for the attack](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set9.java#L31-L74)
+* [Code for the test](https://github.com/ilchen/cryptopals/blob/master/src/test/java/com/cryptopals/Set9Tests.java#L138-L162)
