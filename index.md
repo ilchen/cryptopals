@@ -1,7 +1,8 @@
 # cryptopals
 Solutions to all cryptopals problems: [Sets 1-7](https://cryptopals.com), [Set 8](https://toadstyle.org/cryptopals/).
 
-The only dependency on top of standard JRE 8 runtime is that on [Lombok](https://projectlombok.org).
+The only dependency on top of standard JRE 8 runtime is that on [Lombok](https://projectlombok.org). The project runs
+on all subsequent versions of the Java platform such as Java 11 and Java 17.
 
 ## How to run
 The majority of the challenges of a set can be run by executing the `com.cryptopals.Setx.main` method of the set or
