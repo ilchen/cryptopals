@@ -23,7 +23,7 @@
  * questions.
  */
 
-package sun.security.provider;
+package sun.security.modifiedprovider;
 
 import java.nio.ByteBuffer;
 

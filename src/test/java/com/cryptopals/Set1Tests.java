@@ -11,7 +11,7 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
-import javax.xml.bind.DatatypeConverter;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -44,14 +44,14 @@ class Set1Tests {
         String   hex2 = "686974207468652062756c6c277320657965";
 
         assertEquals("746865206b696420646f6e277420706c6179",
-                DatatypeConverter.printHexBinary(
-                        Set1.challenge2(DatatypeConverter.parseHexBinary(hex1),
-                                DatatypeConverter.parseHexBinary(hex2))).toLowerCase());
+                Set1.printHexBinary(
+                        Set1.challenge2(Set1.parseHexBinary(hex1),
+                                Set1.parseHexBinary(hex2))).toLowerCase());
     }
 
     @Test @DisplayName("https://cryptopals.com/sets/1/challenges/3")
     void  challenge3() {
-        Set1.FrequencyAnalysisHelper res = Set1.challenge3Helper(DatatypeConverter.parseHexBinary(
+        Set1.FrequencyAnalysisHelper res = Set1.challenge3Helper(Set1.parseHexBinary(
                 "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736"));
         assertEquals(Set1.FrequencyAnalysisHelper.builder().score(2.14329f).key('X')
                 .possiblePlainText("Cooking MC's like a pound of bacon".getBytes()).build(), res);
@@ -97,7 +97,7 @@ class Set1Tests {
                  key = "ICE";
         assertEquals("0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272" +
                 "a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f",
-                DatatypeConverter.printHexBinary(Set1.challenge5(plainText, key)).toLowerCase());
+                Set1.printHexBinary(Set1.challenge5(plainText, key)).toLowerCase());
     }
 
 

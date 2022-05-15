@@ -1,7 +1,7 @@
 package com.cryptopals.set_7;
 
 import lombok.ToString;
-import sun.security.provider.MD4;
+import sun.security.modifiedprovider.MD4Ext;
 
 import java.security.MessageDigest;
 import java.util.*;
@@ -10,8 +10,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static sun.security.provider.MD4Ext.squashBytesToIntsLittle;
-import static sun.security.provider.MD4Ext.spreadIntsToBytesLittle;
+import static sun.security.modifiedprovider.MD4Ext.squashBytesToIntsLittle;
+import static sun.security.modifiedprovider.MD4Ext.spreadIntsToBytesLittle;
 
 /**
  * Implements the attack for finding collisions for MD4 as explained in
@@ -359,7 +359,7 @@ public class MD4CollisionsFinder {
 
         @Override
         public byte[][] call() {
-            MessageDigest   md4 = MD4.getInstance();
+            MessageDigest   md4 = MD4Ext.getInstance();
             long   cnt = 0;
             while (true) {
                 MD4CollisionsFinder   finder = new MD4CollisionsFinder();

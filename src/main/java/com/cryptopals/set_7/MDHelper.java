@@ -1,5 +1,6 @@
 package com.cryptopals.set_7;
 
+import com.cryptopals.Set1;
 import com.cryptopals.Set2;
 import com.cryptopals.Set4;
 
@@ -8,7 +9,7 @@ import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.SecretKeySpec;
-import javax.xml.bind.DatatypeConverter;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.security.InvalidKeyException;
@@ -284,7 +285,7 @@ public class MDHelper {
                         expandableMessage[expandableMessage.length - 1][2][1]);*/
                 if (Arrays.equals(hashes[i], expandableMessage[expandableMessage.length - 1][2])) {
                     System.out.printf("Bridge found with hash index %d%nhash = 0x%s%n",
-                            i, DatatypeConverter.printHexBinary(hashes[i]));
+                            i, Set1.printHexBinary(hashes[i]));
                     break;
                 }
             }

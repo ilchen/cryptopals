@@ -18,8 +18,8 @@ import java.util.Map;
 @Controller
 @RequestMapping("/challenge49")
 public class Challenge49Controller {
-    private Map<String, SecretKey>   headerToKeyMap;
-    private NumberFormat   currencyFormatter;
+    private final Map<String, SecretKey>   headerToKeyMap;
+    private final NumberFormat   currencyFormatter;
 
     @Autowired
     Challenge49Controller(Map<String, SecretKey>  h2keyMap) {

@@ -1,13 +1,13 @@
 package com.cryptopals;
 
 import lombok.Data;
-import sun.security.provider.MD4;
-import sun.security.provider.MD4Ext;
-import sun.security.provider.SHA1;
+
+import sun.security.modifiedprovider.MD4Ext;
+import sun.security.modifiedprovider.SHA1;
 
 import javax.crypto.*;
 import javax.crypto.spec.SecretKeySpec;
-import javax.xml.bind.DatatypeConverter;
+
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -31,14 +31,14 @@ public class Set4 extends Set3 {
     public static final int   HMAC_SIGNATURE_LENGTH = 10;
     static final String   CHALLANGE_29_ORIGINAL_MESSAGE = "comment1=cooking%20MCs;userdata=foo;comment2=%20like%20a%20pound%20of%20bacon",
                           CHALLANGE_29_EXTENSION = ";admin=true";
-    private SecretKey  key;
-    private MessageDigest   sha,  md4;
+    private final SecretKey  key;
+    private final MessageDigest   sha,  md4;
 
     public Set4(int mode, SecretKey key) throws InvalidKeyException, NoSuchPaddingException, NoSuchAlgorithmException {
         super(mode, key);
         this.key = key;
         sha = MessageDigest.getInstance("SHA-1");
-        md4 = MD4.getInstance();
+        md4 = MD4Ext.getInstance();
     }
 
     byte[]  keyedMac(byte message[]) {
@@ -66,10 +66,6 @@ public class Set4 extends Set3 {
         innerHash = md.digest(message);
         md.update(outerKeyPad);
         return  md.digest(innerHash);
-    }
-
-    public int  getHmacSha1DigestLength() {
-        return  sha.getDigestLength();
     }
 
     interface CipherTextEditOracle {
@@ -128,7 +124,7 @@ public class Set4 extends Set3 {
                 + "' to the Oracle directly makes it return: "
                 + challenge26Oracle.isExpectedParamPresent(cipherText, null));
 
-        // Now we need to modify the pfxLen+1th, the pfxLen+7th, and the pfxLen+12th bytes of the ciphertext
+        // Now we need to modify the pfxLen+1st, the pfxLen+7th, and the pfxLen+12th bytes of the ciphertext
         cipherText[pfxLen]      ^= (byte) ';';
         cipherText[pfxLen + 6]  ^= (byte) '=';
         cipherText[pfxLen + 11] ^= (byte) ';';
@@ -138,7 +134,7 @@ public class Set4 extends Set3 {
     }
 
     static class  Challenge27OracleException extends IllegalArgumentException {
-        private byte   plainText[];
+        private final byte[] plainText;
         Challenge27OracleException(byte p[]) {
             plainText = p;
         }
@@ -172,7 +168,7 @@ public class Set4 extends Set3 {
         byte[]   cipherText = challenge27Oracle.apply(craftedString),  craftedCipherText = cipherText.clone();
         int   blockSize = decryptor.cipher.getBlockSize();
 
-        assert  cipherText.length < blockSize * 3;
+        // assert  cipherText.length < blockSize * 3;
 
         // Now let's do the following CCA manipulation C_1, C_2, C_3 -> C_1, 0, C_1
         Arrays.fill(craftedCipherText, blockSize, 2 * blockSize, (byte) 0);
@@ -261,7 +257,7 @@ public class Set4 extends Set3 {
         public boolean test(byte[] file, byte[] signature) {
             StringBuilder   qs = new StringBuilder();
             qs.append("file=").append(new String(file)).append("&signature=")
-                    .append(DatatypeConverter.printHexBinary(signature));
+                    .append(Set1.printHexBinary(signature));
             try {
                 HttpURLConnection httpCon = (HttpURLConnection) new URL(TARGET + qs).openConnection();
                 return  httpCon.getResponseCode() == HttpURLConnection.HTTP_OK;
@@ -271,8 +267,8 @@ public class Set4 extends Set3 {
         }
     }
 
-    static byte[]  breakeChallenge31Oracle(String fileName, Challenge31Oracle oracle) {
-        final int   tries = 10;
+    static byte[]  breakChallenge31Oracle(String fileName, Challenge31Oracle oracle) {
+        final int   tries = 20;
         byte[]   file = fileName.getBytes(), signature = new byte[HMAC_SIGNATURE_LENGTH];
         LongUnaryOperator  op = x -> {
             long  t0 = System.nanoTime();
@@ -280,29 +276,29 @@ public class Set4 extends Set3 {
             return  System.nanoTime() - t0;
         };
 
+        double   baseline = LongStream.range(0, tries).map(op).average().orElseThrow(IllegalStateException::new);
         for (int i=0; i < signature.length; i++) {
             int   j;
-//            byte   b = 0;
 
             NEXT_BYTE:
             do {
-                double baseline = LongStream.range(0, tries).map(op).average().orElseThrow(IllegalStateException::new);
-
                 for (j = 0; j < 256; j++) {
                     signature[i] = (byte) j;
 
                     if (i == signature.length - 1) {
                         if (oracle.test(file, signature)) return signature;
-                    }
-                    double avg = LongStream.range(0, tries).map(op).average().orElseThrow(IllegalStateException::new);
-                    if (avg - baseline > DELAY_MILLIS * 88e4) {
-                        System.out.println("Guessed " + (i + 1) + " signature bytes");
-                        break  NEXT_BYTE;
+                    } else {
+                        double avg = LongStream.range(0, tries).map(op).average().orElseThrow(IllegalStateException::new);
+                        if (avg - baseline > DELAY_MILLIS * 75e4) { /* 75% of the expected delay is enough */
+                            System.out.println("Guessed " + (i + 1) + " signature bytes");
+                            System.out.printf("Old baseline in [ns]: %.2f%nNew baseline in [ns]: %.2f%n", baseline, avg);
+                            baseline = avg;
+                            break  NEXT_BYTE;
+                        }
                     }
                 }
-//                b ^= 1;
-//                signature[i] = b;
-            } while (j == 256);    // No luck, we need to try again.
+
+            } while (j == 256  &&  i < signature.length - 1);    // No luck, we need to try again.
 
         }
         return  null;
@@ -337,8 +333,8 @@ public class Set4 extends Set3 {
                     Set2.CHALLANGE_16_QUERY_STRING_PREFIX.getBytes(),
                     Set2.CHALLANGE_16_QUERY_STRING_SUFFIX.getBytes());
             byte   k[] = breakChallenge27Oracle(decryptor, challenge27Oracle);
-            System.out.println("Recovered key: " + DatatypeConverter.printHexBinary(k));
-            System.out.println("Original key: " + DatatypeConverter.printHexBinary(key.getEncoded()));
+            System.out.println("Recovered key: " + Set1.printHexBinary(k));
+            System.out.println("Original key: " + Set1.printHexBinary(key.getEncoded()));
             System.out.println("Are these keys equal? " + new SecretKeySpec(k, 0, k.length, "AES").equals(key));
 
             System.out.println("\nChallenge 29");
@@ -346,26 +342,26 @@ public class Set4 extends Set3 {
                                                                                CHALLANGE_29_EXTENSION.getBytes());
             System.out.printf("Forged message: %s%nForged MAC: %s%nActual MAC: %s%n",
                     new String(existForgery.getForgedMessage()),
-                    DatatypeConverter.printHexBinary(existForgery.getForgedMAC()),
-                    DatatypeConverter.printHexBinary(encryptor.keyedMac(existForgery.getForgedMessage())) );
+                    Set1.printHexBinary(existForgery.getForgedMAC()),
+                    Set1.printHexBinary(encryptor.keyedMac(existForgery.getForgedMessage())) );
 
             System.out.println("\nChallenge 30");
             existForgery = breakMD4KeyedMAC(encryptor, CHALLANGE_29_ORIGINAL_MESSAGE.getBytes(),
                                                        CHALLANGE_29_EXTENSION.getBytes());
             System.out.printf("Forged message: %s%nForged MAC: %s%nActual MAC: %s%n",
                     new String(existForgery.getForgedMessage()),
-                    DatatypeConverter.printHexBinary(existForgery.getForgedMAC()),
-                    DatatypeConverter.printHexBinary(encryptor.keyedMacMD4(existForgery.getForgedMessage())) );
+                    Set1.printHexBinary(existForgery.getForgedMAC()),
+                    Set1.printHexBinary(encryptor.keyedMacMD4(existForgery.getForgedMessage())) );
 
             encryptor = new Set4(Cipher.ENCRYPT_MODE, new SecretKeySpec(Arrays.copyOf("key".getBytes(), 32), "AES"));
-            System.out.printf("The HMAC-SHA1 of '' is: %s", DatatypeConverter.printHexBinary(
+            System.out.printf("The HMAC-SHA1 of '' is: %s", Set1.printHexBinary(
                     encryptor.hmac("The quick brown fox jumps over the lazy dog".getBytes(), MessageDigest.getInstance("SHA-256"))));
 
             System.out.println("\nChallenge 31");
             String   fileName = "foobardoo";
-            k = breakeChallenge31Oracle(fileName, new Challenge31Oracle());
+            k = breakChallenge31Oracle(fileName, new Challenge31Oracle());
             System.out.printf("The matching HMAC signature for query parameter 'file=%s' is: %s%n",
-                    fileName, DatatypeConverter.printHexBinary(k));
+                    fileName, k == null ? "Not found" : Set1.printHexBinary(k));
 
         } catch (Exception e) {
             e.printStackTrace();

@@ -12,7 +12,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import javax.crypto.*;
 import javax.crypto.spec.GCMParameterSpec;
-import javax.xml.bind.DatatypeConverter;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.MalformedURLException;
@@ -521,8 +520,8 @@ class Set8Tests {
             System.out.println("\nRecovered authentication key: " + candidateAuthenticationKey);
             System.out.println("Legit associated data: " + new String(assocData));
             System.out.println("Bogus associated data: " + new String(additionalBogusAssociatedData));
-            System.out.println("Legit  cipher text: " + DatatypeConverter.printHexBinary(cTxt1));
-            System.out.println("Forged cipher text: " + DatatypeConverter.printHexBinary(forgedCipherTxt));
+            System.out.println("Legit  cipher text: " + Set1.printHexBinary(cTxt1));
+            System.out.println("Forged cipher text: " + Set1.printHexBinary(forgedCipherTxt));
             System.out.println("Decrypted by the crypto system under attack into: "
                     + (plainTxt == null ? "\u22A5" : new String(plainTxt)) );
         }

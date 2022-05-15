@@ -96,7 +96,7 @@ public class DiffieHellmanHelper {
 
 
     public SecretKeySpec generateSymmetricKey(BigInteger A, BigInteger b) {
-        return  generateSymmetricKey(A, b, 20, "AES");
+        return  generateSymmetricKey(A, b, 16, "AES");
     }
 
     @SneakyThrows // SHA-1 and SHA-256 are guaranteed to be available by the Java platform.

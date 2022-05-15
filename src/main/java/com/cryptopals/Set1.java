@@ -5,7 +5,7 @@ import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.SecretKeySpec;
-import javax.xml.bind.DatatypeConverter;
+
 import java.io.*;
 import java.net.URL;
 import java.nio.ByteBuffer;
@@ -35,7 +35,7 @@ public class Set1 {
     }
 
     static String challenge1(String hex) {
-        return Base64.getEncoder().encodeToString(DatatypeConverter.parseHexBinary(hex));
+        return Base64.getEncoder().encodeToString(parseHexBinary(hex));
     }
 
     public static byte[] challenge2(byte buf1[], byte buf2[]) {
@@ -113,7 +113,7 @@ public class Set1 {
         try (InputStream is = new URL(url).openStream(); BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
             for (int i=0; i < maxLines  &&  (line = reader.readLine()) != null; i++)  {
                 candidates[i] = line;
-                helper = challenge3Helper(DatatypeConverter.parseHexBinary(line));
+                helper = challenge3Helper(parseHexBinary(line));
                 collisions = candsScores.computeIfAbsent(helper.getScore(), k -> new ArrayList<>());
                 collisions.add(i);
             }
@@ -121,7 +121,7 @@ public class Set1 {
 
         collisions = candsScores.get(candsScores.lastKey());
         return  collisions.stream().map(i -> new FrequencyAnalysisReportingHelper(
-                challenge3Helper(DatatypeConverter.parseHexBinary(candidates[i])), i, candidates[i]))
+                challenge3Helper(parseHexBinary(candidates[i])), i, candidates[i]))
                 .collect(Collectors.toList());
 
     }
@@ -183,8 +183,8 @@ public class Set1 {
              BufferedReader reader = new BufferedReader(new InputStreamReader(is));
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             String line;
-            Function<String, byte[]>   encoder = enc == Encoding.BASE64  ?  DatatypeConverter::parseBase64Binary
-                                                                         :  DatatypeConverter::parseHexBinary;
+            Function<String, byte[]>   encoder = enc == Encoding.BASE64  ?  Base64.getDecoder()::decode
+                                                                         :  Set1::parseHexBinary;
             while ((line = reader.readLine()) != null) {
                 byte   next[] = encoder.apply(line);
                 out.write(next, 0, next.length);
@@ -199,8 +199,8 @@ public class Set1 {
         try (InputStream is = new URL(url).openStream();
              BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
             String line;
-            Function<String, byte[]>   encoder = enc == Encoding.BASE64  ?  DatatypeConverter::parseBase64Binary
-                    :  DatatypeConverter::parseHexBinary;
+            Function<String, byte[]>   encoder = enc == Encoding.BASE64  ?  Base64.getDecoder()::decode
+                                                                         :  Set1::parseHexBinary;
             while ((line = reader.readLine()) != null) {
                 byte   next[] = encoder.apply(line);
                 blocks.add(next);
@@ -260,7 +260,7 @@ public class Set1 {
             uniqueVals2lines.put(countUniqueCipherBlocks(ciphertexts.get(i), AES_BLOCK_SIZE), i);
         }
         int      lineNum = uniqueVals2lines.get(uniqueVals2lines.firstKey());
-        String   cipherText = DatatypeConverter.printHexBinary(ciphertexts.get(lineNum));
+        String   cipherText = printHexBinary(ciphertexts.get(lineNum));
         return  FrequencyAnalysisReportingHelper.builder().line(lineNum).cipherText(cipherText).build();
     }
 
@@ -289,6 +289,39 @@ public class Set1 {
         HttpsURLConnection.setDefaultHostnameVerifier(allHostsValid);
     }
 
+    public static byte[]  parseHexBinary(String hexBinary) {
+        if (hexBinary.length() % 2 == 1) {
+            throw  new IllegalArgumentException("Invalid hexadecimal String supplied.");
+        }
+
+        byte[] bytes = new byte[hexBinary.length() >> 1];
+        for (int i=0; i < hexBinary.length(); i += 2) {
+            bytes[i >> 1] = (byte) (toDigit(hexBinary.charAt(i)) << 4 | toDigit(hexBinary.charAt(i+1)));
+        }
+        // assert  Arrays.equals(bytes, DatatypeConverter.parseHexBinary(hexBinary));
+        return bytes;
+    }
+
+    private static int  toDigit(char hexChar) {
+        int   digit = Character.digit(hexChar, 16);
+        if (digit == -1) {
+            throw  new IllegalArgumentException("Invalid Hexadecimal Character: " + hexChar);
+        }
+        return  digit;
+    }
+
+    public static String  printHexBinary(byte[] val) {
+        char[]   hexDigits = new char[val.length << 1];
+        int   i = 0;
+        for (byte b : val) {
+            hexDigits[i++] = Character.toUpperCase(Character.forDigit(b >> 4 & 0xF, 16));
+            hexDigits[i++] = Character.toUpperCase(Character.forDigit(b & 0xF, 16));
+        }
+        // assert  DatatypeConverter.printHexBinary(val).equals(new String(hexDigits));
+        return  new String(hexDigits);
+    }
+
+
     public static void main(String[] args) {
 
         String   hex = "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d";
@@ -297,12 +330,12 @@ public class Set1 {
         hex = "1c0111001f010100061a024b53535009181c";
         String   hex2 = "686974207468652062756c6c277320657965";
 
-        System.out.printf("%n%s xored with %s gives%n%s", hex, hex2, DatatypeConverter.printHexBinary(
-                challenge2(DatatypeConverter.parseHexBinary(hex), DatatypeConverter.parseHexBinary(hex2))));
+        System.out.printf("%n%s xored with %s gives%n%s", hex, hex2, printHexBinary(
+                challenge2(parseHexBinary(hex), parseHexBinary(hex2))));
 
         hex = "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736";
 
-        challenge3(DatatypeConverter.parseHexBinary(hex));
+        challenge3(parseHexBinary(hex));
 
 
         try {
@@ -318,7 +351,7 @@ public class Set1 {
             hex = "Burning 'em, if you ain't quick and nimble\n" + "I go crazy when I hear a cymbal";
             hex2 = "ICE";
             System.out.printf("Challenge 5%nPlain text: %s, key: %s%nCypher text: %s%n",
-                    hex, hex2, DatatypeConverter.printHexBinary(challenge5(hex, hex2)).toLowerCase());
+                    hex, hex2, printHexBinary(challenge5(hex, hex2)).toLowerCase());
 
 
             System.out.println("\nChallenge 6");

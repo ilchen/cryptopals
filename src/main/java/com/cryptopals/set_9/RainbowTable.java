@@ -1,6 +1,6 @@
 package com.cryptopals.set_9;
 
-import sun.security.provider.MD4;
+import sun.security.modifiedprovider.MD4Ext;
 
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
@@ -40,7 +40,7 @@ public class RainbowTable {
         Consumer<long[]> task = (range) -> {
             System.out.printf("%s is populating rows %s of the rainbow table%n", Thread.currentThread(), Arrays.toString(range));
             try {
-                MessageDigest   md = hashAlgorithmName.equals("MD4")  ?  MD4.getInstance()
+                MessageDigest   md = hashAlgorithmName.equals("MD4")  ?  MD4Ext.getInstance()
                                                                       :  MessageDigest.getInstance(hashAlgorithmName);
                 Random         rnd = ThreadLocalRandom.current();
                 byte[]   pw,  z,  collision;
@@ -73,7 +73,7 @@ public class RainbowTable {
 
     public byte[]  crackPassword(byte[] hash) throws NoSuchAlgorithmException {
         byte[]   z = gi(tau-1, hash);
-        MessageDigest   md = hashAlgoName.equals("MD4")  ?  MD4.getInstance()
+        MessageDigest   md = hashAlgoName.equals("MD4")  ?  MD4Ext.getInstance()
                                                          :  MessageDigest.getInstance(hashAlgoName);
         byte[]   pw;
         for (int i=tau-2; i >= 0; i--) {

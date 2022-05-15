@@ -8,7 +8,6 @@ import lombok.Data;
 import lombok.SneakyThrows;
 import com.cryptopals.set_6.RSAHelperExt;
 
-import javax.xml.bind.DatatypeConverter;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -49,7 +48,7 @@ public class Set6 {
     static final DSAHelper.Signature   CHALLANGE_43_SIGNATURE = new DSAHelper.Signature(
             new BigInteger("548099063082341131477253921760299949438196259240", 10),
             new BigInteger("857042759984254168557880549501802188789837994940", 10));
-    static final byte   CHALLANGE_46_PLAINTEXT[] = DatatypeConverter.parseBase64Binary(
+    static final byte   CHALLANGE_46_PLAINTEXT[] = Base64.getDecoder().decode(
             "VGhhdCdzIHdoeSBJIGZvdW5kIHlvdSBkb24ndCBwbGF5IGFyb3VuZCB3aXRoIHRoZSBGdW5reSBDb2xkIE1lZGluYQ==");
     private static final Random   RANDOM = new Random(); // Thread safe
 

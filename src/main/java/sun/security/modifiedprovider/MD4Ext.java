@@ -23,15 +23,16 @@
  * questions.
  */
 
-package sun.security.provider;
+package sun.security.modifiedprovider;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.security.*;
 
 /**
  * The MD4 class is used to compute an MD4 message digest over a given
  * buffer of bytes. It is an implementation of the RSA Data Security Inc
- * MD4 algorithim as described in internet RFC 1320.
+ * MD4 algorithm as described in internet RFC 1320.
  *
  * <p>The MD4 algorithm is very weak and should not be used unless it is
  * unavoidable. Therefore, it is not registered in our standard providers. To
@@ -61,6 +62,28 @@ public final class MD4Ext extends DigestBase1 {
     private static final int S33 = 11;
     private static final int S34 = 15;
 
+    private final static Provider md4Provider;
+
+    static {
+        md4Provider = new Provider("MD4ExtProvider", 1.8d, "MD4 MessageDigest") {
+            private static final long serialVersionUID = -8850464997518347965L;
+        };
+        AccessController.doPrivileged(new PrivilegedAction<Void>() {
+            public Void run() {
+                md4Provider.put("MessageDigest.MD4", "sun.security.modifiedprovider.MD4Ext");
+                return null;
+            }
+        });
+    }
+
+    public static MessageDigest getInstance() {
+        try {
+            return MessageDigest.getInstance("MD4", md4Provider);
+        } catch (NoSuchAlgorithmException e) {
+            // should never occur
+            throw new ProviderException(e);
+        }
+    }
 
     // Standard constructor, creates a new MD4 instance.
     public MD4Ext() {

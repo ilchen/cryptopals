@@ -3,15 +3,11 @@ package com.cryptopals;
 import lombok.SneakyThrows;
 
 import javax.crypto.*;
-import javax.xml.bind.DatatypeConverter;
 import java.nio.ByteBuffer;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.function.UnaryOperator;
 
 /**
@@ -21,7 +17,7 @@ import java.util.function.UnaryOperator;
 public class Set2 {
     static final String   CHALLANGE_16_QUERY_STRING_PREFIX = "comment1=cooking%20MCs;userdata=",
                           CHALLANGE_16_QUERY_STRING_SUFFIX = ";comment2=%20like%20a%20pound%20of%20bacon";
-    private static final byte[] CHALLENGE_12_UNKNOWN_PLAINTEXT = DatatypeConverter.parseBase64Binary(
+    private static final byte[] CHALLENGE_12_UNKNOWN_PLAINTEXT = Base64.getDecoder().decode(
             "Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkg"
                     + "aGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBq"
                     + "dXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUg"

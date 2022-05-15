@@ -6,7 +6,7 @@ import com.cryptopals.set_7.MDHelper;
 import com.cryptopals.set_7.RC4SingleByteBiasAttackHelper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import sun.security.provider.MD4;
+import sun.security.modifiedprovider.MD4Ext;
 
 import static com.cryptopals.Set7.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -17,8 +17,6 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
-import javax.script.ScriptException;
-import javax.xml.bind.DatatypeConverter;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -69,11 +67,11 @@ class Set7Tests {
 
     @DisplayName("https://cryptopals.com/sets/7/challenges/50")
     @Test
-    void challenge50() throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, ScriptException {
+    void challenge50() throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException {
         Set7 encryptor = new Set7(Cipher.ENCRYPT_MODE, Set1.YELLOW_SUBMARINE_SK);
         byte[] trgtMac = encryptor.generateCbcMac(CHALLENGE50_TEXT.getBytes(), encryptor.zeroedIV),
                 mac = encryptor.generateCbcMac(CHALLENGE50_TARGET_TEXT.getBytes(), encryptor.zeroedIV);
-        assertEquals("296b8d7cb78a243dda4d0a61d33bbdd1", DatatypeConverter.printHexBinary(trgtMac).toLowerCase());
+        assertEquals("296b8d7cb78a243dda4d0a61d33bbdd1", Set1.printHexBinary(trgtMac).toLowerCase());
         String attackersMacedMsg = breakChallenge50(CHALLENGE50_TEXT.getBytes(), mac,
                 CHALLENGE50_TARGET_TEXT.getBytes(), encryptor.cipher.getBlockSize());
         mac = encryptor.generateCbcMac(attackersMacedMsg.getBytes(StandardCharsets.ISO_8859_1), encryptor.zeroedIV);
@@ -164,7 +162,7 @@ class Set7Tests {
     @DisplayName("https://cryptopals.com/sets/7/challenges/55")
     @Test
     void challenge55() throws ExecutionException, InterruptedException {
-        MessageDigest md4 = MD4.getInstance();
+        MessageDigest md4 = MD4Ext.getInstance();
         byte   collision[][] = MD4CollisionsFinder.findCollision(), digest[];
         assertNotNull(collision);
         // Found colliding messages must be different

@@ -23,7 +23,7 @@
  * questions.
  */
 
-package sun.security.provider;
+package sun.security.modifiedprovider;
 
 import java.security.MessageDigestSpi;
 import java.security.DigestException;
@@ -214,7 +214,7 @@ abstract class DigestBase1 extends MessageDigestSpi implements Cloneable {
     abstract void implReset();
 
     public Object clone() throws CloneNotSupportedException {
-        DigestBase copy = (DigestBase) super.clone();
+        DigestBase1 copy = (DigestBase1) super.clone();
         copy.buffer = copy.buffer.clone();
         return copy;
     }

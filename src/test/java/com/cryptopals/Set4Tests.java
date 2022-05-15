@@ -12,8 +12,7 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
-import static com.cryptopals.Set4.CHALLANGE_29_EXTENSION;
-import static com.cryptopals.Set4.CHALLANGE_29_ORIGINAL_MESSAGE;
+import static com.cryptopals.Set4.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class Set4Tests {
@@ -67,5 +66,14 @@ class Set4Tests {
         Set4.ExistentialForgeryPair   existForgery = Set4.breakMD4KeyedMAC(encryptor,
                 CHALLANGE_29_ORIGINAL_MESSAGE.getBytes(), CHALLANGE_29_EXTENSION.getBytes());
         assertArrayEquals(encryptor.keyedMacMD4(existForgery.getForgedMessage()), existForgery.getForgedMAC());
+    }
+
+    @DisplayName("https://cryptopals.com/sets/4/challenges/32")
+    @Test
+    void  challenge32() {
+        String   fileName = "foobardoo";
+        byte[]   hmac = breakChallenge31Oracle(fileName, new Set4.Challenge31Oracle());
+        assertNotNull(hmac);
+        assertEquals(HMAC_SIGNATURE_LENGTH, hmac.length);
     }
 }

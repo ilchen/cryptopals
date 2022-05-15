@@ -1,10 +1,10 @@
 package com.cryptopals.set_5;
 
+import com.cryptopals.Set1;
 import com.cryptopals.Set4;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
-import javax.xml.bind.DatatypeConverter;
 import java.math.BigInteger;
 import java.rmi.RemoteException;
 import java.security.MessageDigest;
@@ -49,7 +49,7 @@ public class SRPService implements SRP {
                 s.setValid(true);
             }
             System.out.printf("HMAC: %s%nExpected HMAC: %s%n",
-                    DatatypeConverter.printHexBinary(hmac), DatatypeConverter.printHexBinary(expectedHmac));
+                    Set1.printHexBinary(hmac), Set1.printHexBinary(expectedHmac));
         } catch (Exception e) {
             throw  new RemoteException(e.getMessage(), e);
         }

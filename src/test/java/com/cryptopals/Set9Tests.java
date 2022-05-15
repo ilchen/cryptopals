@@ -11,11 +11,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import sun.security.provider.MD4;
+import sun.security.modifiedprovider.MD4Ext;
 
-import javax.xml.bind.DatatypeConverter;
 import java.math.BigInteger;
-import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -23,7 +21,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.concurrent.ThreadLocalRandom;
+
 import java.util.function.Function;
 
 import static com.cryptopals.Set8.*;
@@ -42,9 +40,9 @@ class Set9Tests {
     @DisplayName("Challenge 67")
     @ParameterizedTest
     @ValueSource(ints = { 4, 5 })
-    void  challenge67(int numChars) throws NoSuchAlgorithmException, InvalidKeyException {
+    void  challenge67(int numChars) throws NoSuchAlgorithmException {
         RainbowTable rainbowTable = new RainbowTable(numChars, "MD4");
-        MessageDigest   md4 = MD4.getInstance();
+        MessageDigest   md4 = MD4Ext.getInstance();
         Random   rnd = new SecureRandom();
 
         // The probability of a rainbow table containing a preimage is approximately 0.63
@@ -61,7 +59,7 @@ class Set9Tests {
         for (int i=0; i < totalTries; i++) {
             byte[]   pw = getPlainText(numChars, rnd),  hash = md4.digest(pw),
                      crackedPw = rainbowTable.crackPassword(hash);
-            System.out.printf("%s hashes into: %s. ", new String(pw), DatatypeConverter.printHexBinary(hash));
+            System.out.printf("%s hashes into: %s. ", new String(pw), Set1.printHexBinary(hash));
             System.out.printf("Recovering the original password from the hash with the rainbow table yields: %s%n",
                     crackedPw == null  ?  "null" : new String(crackedPw));
             if (Arrays.equals(pw, crackedPw))  cnt++;

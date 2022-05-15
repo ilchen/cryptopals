@@ -35,7 +35,7 @@ public class MontgomeryECGroup implements ECGroup, Serializable {
     /**
      * Constructs a curve that isn't a cyclic group
      * @param q  the order of the group
-     * @param cq the order of the largest cyclic subgroup
+     * @param cq the order of the largest cyclic subgroup, typically of prime order
      */
     public MontgomeryECGroup(BigInteger p, BigInteger a, BigInteger b, BigInteger q, BigInteger cq) {
         modulus = p;     A = a;     B = b;     order = q;   cyclicOrder = cq;

@@ -10,10 +10,7 @@ import javax.crypto.*;
 import javax.crypto.spec.SecretKeySpec;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
-import javax.xml.bind.DatatypeConverter;
 
-import static javax.xml.bind.DatatypeConverter.parseBase64Binary;
-import static javax.xml.bind.DatatypeConverter.printHexBinary;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
@@ -27,6 +24,8 @@ import java.security.SecureRandom;
 import java.util.*;
 import java.util.function.ToIntFunction;
 import java.util.zip.Deflater;
+
+import static com.cryptopals.Set1.printHexBinary;
 
 /**
  * Created by Andrei Ilchenko on 04-05-19.
@@ -111,31 +110,62 @@ public class Set7 extends Set3 {
         return  sb.toString();
     }
 
+    /**
+     * Validates a single credit transfer message of the form: {@code message || IV || MAC} by checking its MAC.
+     * @param msg  a string of the form {@code message || IV || MAC}, where:
+     *             <ul>
+     *               <li>{@code message} is the original message from the online banking application UTF-8 encoded, it
+     *                   has the following format: <code>from=#{from_id}&to=#{to_id}&amount=#{amount}</code></li>
+     *               <li>{@code IV} an initialization vector (Base64 encoded) used for calculating the CBC-MAC</li>
+     *               <li>{@code MAC} a CBC-MAC (Base64 encoded) calculated on {@code message} using the {@code IV}</li>
+     *             </ul>
+     * @return an empty string if CBC-MAC fails, {@code message} otherwise
+     */
     public String  validateCreditTransferMsg(String msg) {
-        byte[]  iv = parseBase64Binary(
-                    msg.substring(msg.length() - (base64BlockLen << 1), msg.length() - base64BlockLen)),
-                cbcMAC = parseBase64Binary(msg.substring(msg.length() - base64BlockLen));
-        if (Arrays.equals(cbcMAC, generateCbcMac(msg.substring(0, msg.length() - (base64BlockLen << 1)).getBytes(), iv)) ) {
-            return  msg.substring(0, msg.length() - (base64BlockLen << 1));
-        } else {
-            return "";
+        final int   origMessageLen = msg.length() - (base64BlockLen << 1);
+        try {
+            byte[] iv = Base64.getDecoder().decode(
+                    msg.substring(origMessageLen, msg.length() - base64BlockLen)),
+                    cbcMAC = Base64.getDecoder().decode(msg.substring(msg.length() - base64BlockLen));
+            if (Arrays.equals(cbcMAC, generateCbcMac(msg.substring(0, origMessageLen).getBytes(), iv))) {
+                return msg.substring(0, origMessageLen);
+            } else {
+                return "";
+            }
+        } catch (IllegalArgumentException e) {  /* Can be thrown by 'decode' if 'msg' doesn't end in */
+            return "";                          /* two cipher blocks properly encoded in Base64.     */
         }
     }
 
+    /**
+     * Validates a multiple credit transfer message of the form: {@code message || MAC} by checking its MAC.
+     * @param msg  a string of the form {@code message || MAC}, where:
+     *             <ul>
+     *               <li>{@code message} is the original message from the online banking application UTF-8 encoded, it
+     *                   has the following format: <code>from=#{from_id}&tx_list=#{transactions}</code></li>
+     *               <li>{@code MAC} a CBC-MAC (Base64 encoded) calculated on {@code message} using the {@code IV}</li>
+     *             </ul>
+     * @return an empty string if CBC-MAC fails, {@code message} otherwise
+     */
     public String  validateMultipleCreditTransferMsg(String msg) {
-        byte[]  cbcMAC = parseBase64Binary(msg.substring(msg.length() - base64BlockLen)),
-                computedMAC = generateCbcMac(msg.substring(0, msg.length() - base64BlockLen).getBytes(StandardCharsets.ISO_8859_1), zeroedIV);
-        if (Arrays.equals(cbcMAC, computedMAC) ) {
-            return  msg.substring(0, msg.length() - base64BlockLen);
-        } else {
-            return "";
+        final int   origMessageLen = msg.length() - base64BlockLen;
+        try {
+            byte[] cbcMAC = Base64.getDecoder().decode(msg.substring(origMessageLen)),
+                    computedMAC = generateCbcMac(msg.substring(0, origMessageLen).getBytes(StandardCharsets.ISO_8859_1), zeroedIV);
+            if (Arrays.equals(cbcMAC, computedMAC)) {
+                return msg.substring(0, origMessageLen);
+            } else {
+                return "";
+            }
+        } catch (IllegalArgumentException e) {  /* Can be thrown by 'decode' if 'msg' doesn't end in */
+            return "";                          /* one cipher block properly encoded in Base64.      */
         }
     }
 
     static String  breakChallenge49(String legitMACedMessage, String forgedFrom, int base64Len) {
         byte[]   legitMsg = legitMACedMessage.getBytes(),  forgedMsg = forgedFrom.getBytes(),  diff = forgedMsg.clone();
         Set2.xorBlock(diff, legitMsg);
-        byte[]  iv = parseBase64Binary(
+        byte[]  iv = Base64.getDecoder().decode(
                 legitMACedMessage.substring(legitMACedMessage.length() - (base64Len << 1),
                                             legitMACedMessage.length() - base64Len));
         String  cbcMAC = legitMACedMessage.substring(legitMACedMessage.length() - base64Len),
@@ -149,9 +179,9 @@ public class Set7 extends Set3 {
                                        int blockSize, int base64Len) {
         byte[]   legitPaddedMsg = Set2.pkcs7Pad(
                         legitMACedMessage.substring(0, legitMACedMessage.length() - base64Len).getBytes(), blockSize),
-                 legitCbcMac = parseBase64Binary(legitMACedMessage.substring(legitMACedMessage.length() - base64Len) ),
+                 legitCbcMac = Base64.getDecoder().decode(legitMACedMessage.substring(legitMACedMessage.length() - base64Len) ),
                  attackersFirstBlock = attackersMACedMessage.substring(0, 16).getBytes();
-        String   attackersRemainingBlocks = attackersMACedMessage.substring(16, attackersMACedMessage.length());
+        String   attackersRemainingBlocks = attackersMACedMessage.substring(16);
         Set2.xorBlock(legitCbcMac, attackersFirstBlock);
         assert  Arrays.equals(legitPaddedMsg, new String(legitPaddedMsg, StandardCharsets.ISO_8859_1).getBytes(StandardCharsets.ISO_8859_1));
         assert  Arrays.equals(legitCbcMac, new String(legitCbcMac, StandardCharsets.ISO_8859_1).getBytes(StandardCharsets.ISO_8859_1));
@@ -161,7 +191,7 @@ public class Set7 extends Set3 {
 
 
     // URL Encoding is needed for the second part of Challenge 49 as when we xor the legit CBC-MAC of the victim message
-    // with the first block of the attackers message, we end up with character that are not allowed in a query string.
+    // with the first block of the attackers message, we end up with characters that are not allowed in a query string.
     int  submitMACedMessageURLEncoded(String trgt, String MACedMessage) {
         String   parts[] = MACedMessage.split("&\\w+?=");
         parts = Arrays.copyOfRange(parts, 1, parts.length);
@@ -330,7 +360,7 @@ public class Set7 extends Set3 {
 
         encryptor.init(Cipher.ENCRYPT_MODE, sk);
         return  encryptor.doFinal(
-                (request + CHALLENGE56_COOKIE + ", " + DatatypeConverter.printHexBinary(sk.getEncoded())).getBytes());
+                (request + CHALLENGE56_COOKIE + ", " + printHexBinary(sk.getEncoded())).getBytes());
     }
 
     public static void main(String[] args) {
