@@ -362,7 +362,7 @@ Bruce Schneier, and Tadayoshi Kohno.
 
 The only deviation from the book is that I use fewer than 256 bits for `q`, which obviously weakens the group. Unfortunately
 Pollard's kangaroo algorithm doesn't lend itself to parallelisation so choosing `q` to be much larger than 42 bits makes the
-attack impracticle. E.g. with a 42-bit q the attack takes on the order of 20 minutes on my MacBook Pro.
+attack impractical. E.g. with a 42-bit q the attack takes on the order of 20 minutes on my MacBook Pro.
 
 To make the attack more realistic I establish only one session to Bob to find `b mod r`, where `r` is one factor of `N`.
 This no longer assumes that Bob uses the same private key across all new sessions with Alice. The attack thus works
