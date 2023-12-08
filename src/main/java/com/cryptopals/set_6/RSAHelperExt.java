@@ -77,7 +77,7 @@ public class RSAHelperExt extends RSAHelper {
      * Pads {@code plainText} using the PKCS#1 v1.5 padding mode 2 (encryption)
      * @param plainText  the message to pad
      * @param bitNum  the bit length of the RSA modulus
-     * @return
+     * @return PKCS-padded plaintext with randomness added
      */
     public static BigInteger  pkcs15Pad(byte plainText[], int bitNum) {
         byte   pad[] = new byte[(bitNum + 7 & ~7) / 8];
@@ -109,7 +109,10 @@ public class RSAHelperExt extends RSAHelper {
 
     /**
      * Pads {@code msg} using the PKCS#1 v1.5 padding mode 1 (signing): <p>
-     * <code>00h 01h ffh ffh ... ffh ffh 00h ASN.1 GOOP HASH</code></p>
+     * <code>00h 01h ffh ffh ... ffh ffh 00h ASN.1 HASH</code></p>. The implementation is
+     * in line with
+     * <a href="https://datatracker.ietf.org/doc/html/rfc8017#section-9.2">the EMSA-PKCS1-v1_5 specification</a>
+     * except that I allow the PS part of the padding (consisting of the 0xff octets) to be shorter than 8 bytes.
      * @param msg  the message to pad
      * @param hMethod  one of { {@link HashMethod#MD5}, {@link HashMethod#SHA1}, {@link HashMethod#SHA256} }
      * @param bitLength  the bit length of the RSA modulus
@@ -121,6 +124,10 @@ public class RSAHelperExt extends RSAHelper {
         MessageDigest   md = MessageDigest.getInstance(hMethod.name);
         byte[]   hash = md.digest(msg),  paddedMsg;
         int      lenPad = (bitLength + 7 & ~7) / 8 - (hash.length + hMethod.asn1.length + MIN_PAD + 1);
+        // If the RSA modulus is k*8 bits long, we can pack up an extra byte in the padding.
+        // This is because the leading 00 octet ensures that the padding block, converted to an integer,
+        // is less than the modulus.
+        if (bitLength % 8 == 0)  lenPad++;
         paddedMsg = new byte[lenPad + hash.length + hMethod.asn1.length + MIN_PAD];
         paddedMsg[1] = 1;
         Arrays.fill(paddedMsg, MIN_PAD - 1, MIN_PAD - 1 + lenPad, (byte) 0xff);

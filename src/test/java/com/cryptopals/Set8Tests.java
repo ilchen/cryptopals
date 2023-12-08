@@ -199,7 +199,7 @@ class Set8Tests {
         assertTrue(recovered, "Didn't succeed in recovering Bob's secret key :-(");
     }
 
-    @DisplayName("https://toadstyle.org/cryptopals/61.txt")
+    @DisplayName("https://toadstyle.org/cryptopals/61.txt#ECDSA")
     @Test
     void challenge61ECDSA() {
         MontgomeryECGroup   curve25519 = new MontgomeryECGroup(CURVE_25519_PRIME,
@@ -221,43 +221,70 @@ class Set8Tests {
         assertTrue(forgedPk.verifySignature(CHALLENGE56_MSG.getBytes(), altSignature));
     }
 
-    @DisplayName("https://toadstyle.org/cryptopals/61.txt")
+    @DisplayName("https://toadstyle.org/cryptopals/61.txt#RSA_Signing")
     @Test
     void challenge61RSA() {
         RSAHelperExt rsa = new RSAHelperExt(RSAHelper.PUBLIC_EXPONENT, 160);
-        BigInteger rsaSignature = rsa.sign(CHALLENGE56_MSG.getBytes(), RSAHelperExt.HashMethod.SHA1);
+        BigInteger rsaSignature = rsa.sign(CHALLENGE56_MSG.getBytes(), RSAHelperExt.HashMethod.SHA1),
+                   padm = RSAHelperExt.pkcs15Pad(CHALLENGE56_MSG.getBytes(), RSAHelperExt.HashMethod.SHA1,
+                                                 rsa.getPublicKey().getModulus().bitLength());
 
         RSAHelper.PublicKey legitRSAPk = rsa.getPublicKey(),
-                forgedRSAPk = Set8.breakChallenge61RSA(CHALLENGE56_MSG.getBytes(), rsaSignature,
-                                                       legitRSAPk.getModulus().bitLength());
-
+                forgedRSAPk = Set8.breakChallenge61RSA(padm, rsaSignature,
+                                                       legitRSAPk.getModulus().bitLength(), true).getPublicKey();
+        assertEquals(padm, RSAHelperExt.pkcs15Pad(CHALLENGE56_MSG.getBytes(), RSAHelperExt.HashMethod.SHA1,
+                                                  forgedRSAPk.getModulus().bitLength()));
         assertTrue(legitRSAPk.verify(CHALLENGE56_MSG.getBytes(), rsaSignature));
         assertTrue(forgedRSAPk.verify(CHALLENGE56_MSG.getBytes(), rsaSignature));
     }
 
-    @DisplayName("https://toadstyle.org/cryptopals/61.txt")
+    @DisplayName("https://toadstyle.org/cryptopals/61.txt#RSA_Signing_Precomputed_Primes")
     @Test
     void challenge61RSAPrecomputedPrimes() {
-        RSAHelperExt rsa = new RSAHelperExt(new BigInteger("1244531015222089066686014345871128487293834311511"),
-                new BigInteger("1203007175264872213635758749034760908717988390329"), RSAHelper.PUBLIC_EXPONENT);
+        RSAHelperExt rsa = new RSAHelperExt(new BigInteger("914870568795060946847120153269016785730918605601"),
+                new BigInteger("1451643663050147586365902596364187789387069394377"), RSAHelper.PUBLIC_EXPONENT);
         BigInteger rsaSignature = rsa.sign(CHALLENGE56_MSG.getBytes(), RSAHelperExt.HashMethod.SHA1);
 
         DiffieHellmanUtils.PrimeAndFactors pq[] = new DiffieHellmanUtils.PrimeAndFactors[]{
                 new DiffieHellmanUtils.PrimeAndFactors(
-                        new BigInteger("2252226720431925817465020447075111488063403846689"),
-                        Stream.of(2, 7, 277, 647, 2039, 2953, 14633, 139123, 479387, 904847).map(BigInteger::valueOf).collect(Collectors.toList())
+                        new BigInteger("2833661342772813588933245576136232698713154761527"),
+                        Stream.of(2, 3, 7, 41, 71, 26053, 27953, 175993, 197887, 208927, 649079).map(BigInteger::valueOf).collect(Collectors.toList())
                 ),
                 new DiffieHellmanUtils.PrimeAndFactors(
-                        new BigInteger("2713856776699319359494147955700110393372009838087"),
-                        Stream.of(2, 13, 17, 23, 26141, 56633, 80429, 241567, 652429, 1049941).map(BigInteger::valueOf).collect(Collectors.toList())
+                        new BigInteger("2548967573405345106240265536975982175118648959657"),
+                        Stream.of(2, 19, 997, 2657, 2699, 7297, 21841, 25237, 122839, 140177).map(BigInteger::valueOf).collect(Collectors.toList())
                 ),
         };
 
+        BigInteger   padm = RSAHelperExt.pkcs15Pad(CHALLENGE56_MSG.getBytes(), RSAHelperExt.HashMethod.SHA1,
+                                                   rsa.getPublicKey().getModulus().bitLength());
+        assertEquals(padm, RSAHelperExt.pkcs15Pad(CHALLENGE56_MSG.getBytes(), RSAHelperExt.HashMethod.SHA1,
+                                                  pq[0].getP().multiply(pq[1].getP()).bitLength()));
+
         RSAHelper.PublicKey legitRSAPk = rsa.getPublicKey(),
-                            forgedRSAPk = Set8.breakChallenge61RSA(CHALLENGE56_MSG.getBytes(), rsaSignature, pq,
-                                                                   legitRSAPk.getModulus().bitLength());
+                            forgedRSAPk = Set8.breakChallenge61RSA(padm, rsaSignature, pq,
+                                                                   legitRSAPk.getModulus().bitLength(), true).getPublicKey();
         assertTrue(legitRSAPk.verify(CHALLENGE56_MSG.getBytes(), rsaSignature));
         assertTrue(forgedRSAPk.verify(CHALLENGE56_MSG.getBytes(), rsaSignature));
+    }
+
+    @DisplayName("https://toadstyle.org/cryptopals/61.txt#RSA_Encryption")
+    @Test
+    void challenge61RSAEncryption() {
+        RSAHelperExt rsa = new RSAHelperExt(RSAHelper.PUBLIC_EXPONENT, 152);
+        String   plainTxt = "id135: credentials invalid",  forgedPlainTxt = "id135: credentials valid!";
+        BigInteger   padm = RSAHelperExt.pkcs15Pad(plainTxt.getBytes(), rsa.getPublicKey().getModulus().bitLength()),
+                     cTxt = rsa.encrypt(padm),
+                     forgedPadm = RSAHelperExt.pkcs15Pad(forgedPlainTxt.getBytes(),
+                                                         rsa.getPublicKey().getModulus().bitLength());
+        assertArrayEquals(rsa.pkcs15Unpad(rsa.decrypt(cTxt)), plainTxt.getBytes());
+
+        RSAHelperExt   forgedRsa = Set8.breakChallenge61RSA(forgedPadm, cTxt,
+                rsa.getPublicKey().getModulus().bitLength(), false);
+
+        byte[]   pTxt = rsa.pkcs15Unpad(forgedRsa.decrypt(cTxt));
+        assertArrayEquals(pTxt, forgedPlainTxt.getBytes());
+        System.out.println("Decrypted ciphertext: " + new String(pTxt) );
     }
 
     @DisplayName("Matrix operations over a field of reals")

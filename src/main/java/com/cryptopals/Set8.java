@@ -492,7 +492,7 @@ public class Set8 {
     }
 
     /**
-     * Finds a DLog of {@code y} base {@code g} in group Z<sub>p</sub>* determined by prime {@code p}. The method
+     * Finds a DLog of {@code y} base {@code g} in group Z<sub>p</sub><sup>*</sup> determined by prime {@code p}. The method
      * uses a combination of <a href="https://en.wikipedia.org/wiki/Pohlig–Hellman_algorithm">Pohlig-Hellman</a>
      * and Pollard's algorithms
      * @param y  an element of Zp* whose DLog base {@code g} needs to be found
@@ -552,8 +552,10 @@ public class Set8 {
         final int   freq = 10;
         final int   smallPrimes[] = DiffieHellmanUtils.findSmallPrimes((1 << 20) + (1 << 16));
 
-        // minProd is a heuristically established minimum product of factors to make DLog tractable
-        final BigInteger   minProd = new BigInteger("3700000000000000000000000000000000");
+        // minProd is a heuristically established minimum product of factors to make DLog tractable for RSA moduli
+        // of approximately 320 bits. For smaller moduli I divide it by 2^(0.7 * (320 - RSA_Modulus_bit_length)).
+        final BigInteger   minProd = new BigInteger("3700000000000000000000000000000000")
+                .shiftRight(bitLength < 320 ? (int) ((320 - bitLength) * .7) : 0);
         DiffieHellmanUtils.PrimeAndFactors[]  res = new DiffieHellmanUtils.PrimeAndFactors[2];
         AtomicBoolean   stop = new AtomicBoolean();
 
@@ -597,10 +599,17 @@ public class Set8 {
         int   concurrency = Runtime.getRuntime().availableProcessors();
         ExecutorService   executor = Executors.newFixedThreadPool(concurrency);
 
-        CompletableFuture.anyOf(IntStream.range(0, concurrency)
-                .mapToObj(x -> CompletableFuture.runAsync(task, executor)).toArray(CompletableFuture[]::new)).join();
+        @SuppressWarnings("unchecked")
+        CompletableFuture<Void>[] tasks = IntStream.range(0, concurrency)
+                .mapToObj(x -> CompletableFuture.runAsync(task, executor)).toArray(CompletableFuture[]::new);
+        CompletableFuture<Object>   finishedTask = CompletableFuture.anyOf(tasks);
+        finishedTask.join();
 
+        // Ensure we exit only after at least two threads have been returned to the fork-join thread pool
+        CompletableFuture.anyOf(Arrays.stream(tasks).filter(x -> !x.equals(finishedTask))
+                .toArray(CompletableFuture[]::new)).join();
         executor.shutdown();
+
         return  res;
     }
 
@@ -610,18 +619,17 @@ public class Set8 {
      *             being smooth and 2) both {@code rsaSignature} and {@code pad(msg)} being generators of the entire
      *             Zp* and Zq* groups.
      * @param bitLength   number of bits in the RSA modulus that was used to calculate {@code rsaSignature}
+     * @param signing  an indicator whether we need to find a signing or an encryption exponent
      */
-    static RSAHelper.PublicKey  breakChallenge61RSA(byte[] msg, BigInteger rsaSignature,
-                                                    DiffieHellmanUtils.PrimeAndFactors[] pq, int bitLength) {
-        BigInteger   padm = RSAHelperExt.pkcs15Pad(msg, RSAHelperExt.HashMethod.SHA1, bitLength);
-
+    static RSAHelperExt  breakChallenge61RSA(BigInteger padm, BigInteger rsaSignature,
+                                             DiffieHellmanUtils.PrimeAndFactors[] pq, int bitLength, boolean signing) {
         System.out.println("Modulus bitLength: " + bitLength);
         System.out.println("p * q bitLength: " + pq[0].getP().multiply(pq[1].getP()).bitLength());
         if (!DiffieHellmanUtils.isPrimitiveRoot(rsaSignature, pq[0].getP(), pq[0].getFactors())
             ||  !DiffieHellmanUtils.isPrimitiveRoot(rsaSignature, pq[1].getP(), pq[1].getFactors())
             ||  !DiffieHellmanUtils.isPrimitiveRoot(padm, pq[0].getP(), pq[0].getFactors())
             ||  !DiffieHellmanUtils.isPrimitiveRoot(padm, pq[1].getP(), pq[1].getFactors())) {
-            throw  new IllegalArgumentException("Primes p and q don't meet the requirement of ");
+            throw  new IllegalArgumentException("Primes p and q don't meet the requirements");
         }
 
         BigInteger   logs[] = Stream.of(pq).parallel()
@@ -646,21 +654,27 @@ public class Set8 {
                 rsaSignature.modPow(logs[0], pq[0].getP()).equals(padm.mod(pq[0].getP())),
                 rsaSignature.modPow(logs[1], pq[1].getP()).equals(padm.mod(pq[1].getP())));
 
-
-        return  new RSAHelper.PublicKey(crt(logs[0], logs[1], pq[0].getP().subtract(ONE), pq[1].getP().subtract(ONE)),
-                                        pq[0].getP().multiply(pq[1].getP()));
+        BigInteger   pOrd = pq[0].getP().subtract(ONE), qOrd = pq[1].getP().subtract(ONE),
+                     rsaExponent = crt(logs[0], logs[1], pOrd, qOrd);
+        if (!signing) {  // We found a 'd' RSA exponent, converting it to the corresponding 'e' exponent
+            BigInteger et = pOrd.multiply(qOrd);
+            rsaExponent = rsaExponent.modInverse(et);
+        }
+        return  new RSAHelperExt(pq[0].getP(), pq[1].getP(), rsaExponent);
     }
 
 
     /**
+     * @param padm a PKCS 1.5-padded hash to be signed or message to be encrypted
+     * @param rsaSignature an RSA signature of {@literal padm} if {@literal signing == true} or its encryption otherwise
      * @param bitLength   number of bits in the RSA modulus that was used to calculate {@code rsaSignature}
+     * @param signing  an indicator whether we need to find a signing or an encryption exponent
      */
-    static RSAHelper.PublicKey  breakChallenge61RSA(byte[] msg, BigInteger rsaSignature, int bitLength) {
-        BigInteger   padm = RSAHelperExt.pkcs15Pad(msg, RSAHelperExt.HashMethod.SHA1, bitLength);
+    static RSAHelperExt  breakChallenge61RSA(BigInteger padm, BigInteger rsaSignature, int bitLength, boolean signing) {
         DiffieHellmanUtils.PrimeAndFactors[]   primeAndFactors = searchForPQPar(padm, rsaSignature, bitLength);
 
         System.out.println("Suitable primes found: " + Arrays.toString(primeAndFactors));
-        return  breakChallenge61RSA(msg, rsaSignature, primeAndFactors, bitLength);
+        return  breakChallenge61RSA(padm, rsaSignature, primeAndFactors, bitLength, signing);
     }
 
     /**
@@ -931,11 +945,13 @@ public class Set8 {
 
 
             RSAHelperExt rsa = new RSAHelperExt(RSAHelper.PUBLIC_EXPONENT, 160);
-            BigInteger rsaSignature = rsa.sign(CHALLENGE56_MSG.getBytes(), RSAHelperExt.HashMethod.SHA1);
+            BigInteger rsaSignature = rsa.sign(CHALLENGE56_MSG.getBytes(), RSAHelperExt.HashMethod.SHA1),
+                       padm = RSAHelperExt.pkcs15Pad(CHALLENGE56_MSG.getBytes(), RSAHelperExt.HashMethod.SHA1,
+                                                     rsa.getPublicKey().getModulus().bitLength());
 
             RSAHelper.PublicKey legitRSAPk = rsa.getPublicKey(),
-                    forgedRSAPk = breakChallenge61RSA(CHALLENGE56_MSG.getBytes(), rsaSignature,
-                        legitRSAPk.getModulus().bitLength());
+                    forgedRSAPk = breakChallenge61RSA(padm, rsaSignature,
+                        legitRSAPk.getModulus().bitLength(), true).getPublicKey();
 
             System.out.println("Does legit key verify?: " + legitRSAPk.verify(CHALLENGE56_MSG.getBytes(), rsaSignature));
             System.out.println("Does forged key verify?: " + forgedRSAPk.verify(CHALLENGE56_MSG.getBytes(), rsaSignature));

@@ -28,7 +28,7 @@ class Set6Tests {
     @Test
     void  challenge41()  {
         RSAHelperExt rsa = new RSAHelperExt(BigInteger.valueOf(17));
-        BigInteger     cipherTxt = rsa.encrypt(new BigInteger(PLAIN_TEXT.getBytes()));
+        BigInteger   cipherTxt = rsa.encrypt(new BigInteger(PLAIN_TEXT.getBytes()));
         rsa.decrypt(cipherTxt);   // Only one decryption allowed
         assertEquals(BigInteger.ZERO, rsa.decrypt(cipherTxt));
         assertArrayEquals(PLAIN_TEXT.getBytes(),
