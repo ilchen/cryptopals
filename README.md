@@ -775,9 +775,18 @@ Mounting a DSKS attack on RSA is much more laborious. I implemented it for relat
 The biggest effort went into finding primes `p` and `q` that meet the requirements for 1) `p-1` and `q-1` being smooth, 2)
 both `s` and `pad(m)` (`s^e = pad(m) mod N`) being generators of the entire Zp* and Zq* groups, and 3) `gcd(p-1, q-1)=2`.
 I used PKCS#1 v1.5 mode 1 padding with SHA-1, just like in [Challenge 42](https://cryptopals.com/sets/6/challenges/42).
-Since the overhead of PKCS#1 padding with SHA-1 is at least 20+3+15+1=39 bytes, the minimum RSA modulus is 316 bits.
 
-I ended up writing [quite a bit of concurrent code](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L549-L615)
+To remind, PKCS#1 v1.5 mode 1 paddding looks as follows:
+```
+0x00 || 0x01 || PS || 0x00 || ASN.1 || HASH
+```
+where the padding string `PS` must consist of at least eight 0xff bytes. Given SHA-1 hashes take up 20 bytes, and ASN.1
+designation of SHA-1 another 15, this all leads to a minimum RSA modulus length of 20+15+3+8=46 bytes or 368 bits.
+This length of RSA moduli is rather difficult to work with, so I implemented this challenge by allowing the padding string
+`PS` to consist of two rather than 8 0xff bytes. This reduces the overhead of PKCS#1 padding with SHA-1 to 
+20+15+3+2=40 bytes, implying the minimum RSA modulus is 320 bits.
+
+I ended up writing [quite a bit of concurrent code](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L539-L605)
 to tackle this, and pre-calculated all small primes less than 2<sup>20</sup>
 so as to be able to find primes meeting the criterion 1) above in linear time. Even with such relatively small moduli
 (both p and q are around 160 bits), finding them takes on the order of 20 minutes on my MacBook Pro with all cores searching.
@@ -800,7 +809,7 @@ The following part of the problem description deserves a word of caution
 
          e' = crt([ep, eq], [p-1, q-1])
 The reasoning behind this formula is pretty straightforward: we know that s<sup>ep</sup>&equiv;pad(m) mod p and that
-s<sup>eq</sup>&equiv;pad(m) mod q. Since the computations are in GF(p) and GF(q) by Fermat's theorem this is equivallent to
+s<sup>eq</sup>&equiv;pad(m) mod q. Since the computations are in GF(p) and GF(q) by Fermat's theorem this is equivalent to
 s<sup>ep mod (p-1)</sup>&equiv;pad(m) mod p and s<sup>eq mod (q-1)</sup>&equiv;pad(m) mod q. Thus we need to find e such that 
 e &equiv; ep mod (p-1) and e &equiv; eq mod (q-1). However plugging it into the CRT formula
 
@@ -809,11 +818,69 @@ e &equiv; ep mod (p-1) and e &equiv; eq mod (q-1). However plugging it into the 
 will fail because (q-1) is not invertible mod (p-1) as they are both even. I used the approach delineated
 in Section 4.1 of [this paper](http://mpqs.free.fr/corr98-42.pdf) to correctly tackle it.
 
+One interesting nuance that @spdevlin doesn't explain is why the forged `e` is a valid RSA exponent. We made sure that
+we found two suitable smooth primes `p` and `q`. You will recall that one of the conditions for candidate primes was
+that both `s` and `pad(m)` be generators of the entire Z<sub>p</sub>* and Z<sub>q</sub>* groups
+(i.e. that they are both primitive roots of Z<sub>p</sub>* and Z<sub>q</sub>* respectively):
+> s shouldn't be in any subgroup that pad(m) is not in. If it is,
+the discrete logarithm won't exist. The simplest thing to do is
+make sure they're both primitive roots.
+
+This implies that `ep` (in `s^ep = pad(m) mod p`) is relatively prime with `p-1` &mdash; the order of Z<sub>p</sub>* .
+Analogously `eq` is relatively prime with `q-1`. This, in turn, implies that `e` is relatively prime with `(p-1)·(q-1)` the order
+of group Z<sub>N</sub>* and hence a valid RSA exponent.
+
 Thwarting DSKS attacks is trivial, the signer needs to attach their public key to the message before signing it. While 
 the verifier should do an extra check to ensure the public key they use to verify corresponds to the one added
-to the message. This way, the signing public key is authenticated along with the message. On top of it it makes sense
+to the message. This way, the signing public key is authenticated along with the message. On top of it, it makes sense
 to pay attention to the public keys of RSA and be suspicious of public exponents `e` that are not among the commonly
 used ones: { 3, 5, 17, 65537 }.
+
+The challenge ends with the following invitation:
+> Since RSA signing and decryption are equivalent operations, you can
+use this same technique for other surprising results. Try generating a
+random (or chosen) ciphertext and creating a key to decrypt it to a
+plaintext of your choice!
+
+I tackled it by:
+1. Generating an RSA key-pair with a 304-bit modulus. Let's call the resulting key-pair `legitRsa`.
+2. PKCS#1 v1.5 padding the plaintext message `id135: credentials invalid` using mode 2 encryption, as explained in [Challenge 47](https://cryptopals.com/sets/6/challenges/47).
+Let's call the result of this operation `padm`. This will play the role of a legit plaintext. To remind, PKCS#1 v1.5 padding
+for encryption adds randomness so that padding the same plaintext message twice results in two different pads.
+3. PKCS#1 v1.5 padding the plaintext message `id135: credentials valid!` using mode 2 encryption. Let's call the result
+of this operation `forgedPadm`. This will play the role of a forged plaintext.
+4. Encrypting `padm` using `legitRsa` public key. Let's call the result of this operation `cTxt`
+5. Searching for an RSA key-pair of approximately the same size as the modulus of `legitRsa` and for which the following equation
+holds: $cTxt^{forgedD}=forgedPadm (mod forgedN)$ .  
+  Where `forgedD` is the private key of the forged RSA key-pair and
+`forgedN` is its RSA modulus. This search is done in exactly the same way as for the DSKS attack on RSA earlier in this challenge.
+
+And it all works:
+```java
+@Test
+void challenge61RSAEncryption() {
+    RSAHelperExt rsa = new RSAHelperExt(RSAHelper.PUBLIC_EXPONENT, 152);
+    String   plainTxt = "id135: credentials invalid",  forgedPlainTxt = "id135: credentials valid!";
+    BigInteger   padm = RSAHelperExt.pkcs15Pad(plainTxt.getBytes(), rsa.getPublicKey().getModulus().bitLength()),
+    cTxt = rsa.encrypt(padm),
+    forgedPadm = RSAHelperExt.pkcs15Pad(forgedPlainTxt.getBytes(),
+    rsa.getPublicKey().getModulus().bitLength());
+    assertArrayEquals(rsa.pkcs15Unpad(rsa.decrypt(cTxt)), plainTxt.getBytes());
+
+    RSAHelperExt   forgedRsa = Set8.breakChallenge61RSA(forgedPadm, cTxt,
+    rsa.getPublicKey().getModulus().bitLength(), false);
+
+    byte[]   pTxt = rsa.pkcs15Unpad(forgedRsa.decrypt(cTxt));
+    assertArrayEquals(pTxt, forgedPlainTxt.getBytes());
+    System.out.println("Decrypted ciphertext: " + new String(pTxt) );
+}
+```
+
+The unit test passes and outputs:
+```
+Decrypted ciphertext: id135: credentials valid!
+```
+
 
 ### Challenge 62. Key-Recovery Attacks on ECDSA with Biased Nonces
 [Challenge 62](https://toadstyle.org/cryptopals/62.txt) is an excellent example of what could happen if a cryptographic
