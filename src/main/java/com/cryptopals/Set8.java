@@ -605,7 +605,7 @@ public class Set8 {
         CompletableFuture<Object>   finishedTask = CompletableFuture.anyOf(tasks);
         finishedTask.join();
 
-        // Ensure we exit only after at least two threads have been returned to the fork-join thread pool
+        // Ensure we exit only after at least two threads have been returned to the thread pool
         CompletableFuture.anyOf(Arrays.stream(tasks).filter(x -> !x.equals(finishedTask))
                 .toArray(CompletableFuture[]::new)).join();
         executor.shutdown();
