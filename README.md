@@ -784,7 +784,7 @@ where the padding string `PS` must consist of at least eight 0xff bytes. Given S
 designation of SHA-1 another 15, this all leads to a minimum RSA modulus length of 20+15+3+8=46 bytes or 368 bits.
 This length of RSA moduli is rather difficult to work with, so I implemented this challenge by allowing the padding string
 `PS` to consist of two rather than 8 0xff bytes. This reduces the overhead of PKCS#1 padding with SHA-1 to 
-20+15+3+2=40 bytes, implying the minimum RSA modulus is 320 bits.
+20+15+3+2=40 bytes, implying a minimum RSA modulus of 320 bits.
 
 I ended up writing [quite a bit of concurrent code](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L539-L605)
 to tackle this, and pre-calculated all small primes less than 2<sup>20</sup>
@@ -802,7 +802,8 @@ After that I calculate ep=log<sub>s</sub>(pad(m)) mod p and eq=log<sub>s</sub>(p
 Pohlig-Hellman and J.M. Pollard's Lambda Method](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/Set8.java#L485-L530) using a technique from [Challenge 59](https://toadstyle.org/cryptopals/58.txt).
 To make Pollard's Lambda Method tractable I ensured that the product
 of all prime factors for each of `p-1` and `q-1` is at least 3700000000000000000000000000000000. I arrived at this 
-number heuristically, for DLogs whose prime is around 160 bits long Pollard's Lambda Method works reasonably fast.
+number heuristically, for DLogs in a group whose prime is around 160 bits long Pollard's Lambda Method works reasonably fast.
+For smaller moduli I divide it by 2<sup>0.7·(320 - RSA_Modulus_bit_length)</sup>.
 
 The following part of the problem description deserves a word of caution
 > 4\. Use the Chinese Remainder Theorem to put ep and eq together:
@@ -820,15 +821,15 @@ in Section 4.1 of [this paper](http://mpqs.free.fr/corr98-42.pdf) to correctly t
 
 One interesting nuance that @spdevlin doesn't explain is why the forged `e` is a valid RSA exponent. We made sure that
 we found two suitable smooth primes `p` and `q`. You will recall that one of the conditions for candidate primes was
-that both `s` and `pad(m)` be generators of the entire Z<sub>p</sub>* and Z<sub>q</sub>* groups
-(i.e. that they are both primitive roots of Z<sub>p</sub>* and Z<sub>q</sub>* respectively):
+that both `s` and `pad(m)` be generators of the entire Z<sub>p</sub><sup>\*</sup> and Z<sub>q</sub><sup>\*</sup> groups
+(i.e. that they are both primitive roots of Z<sub>p</sub><sup>\*</sup> and Z<sub>q</sub><sup>\*</sup> respectively):
 > s shouldn't be in any subgroup that pad(m) is not in. If it is,
 the discrete logarithm won't exist. The simplest thing to do is
 make sure they're both primitive roots.
 
-This implies that `ep` (in `s^ep = pad(m) mod p`) is relatively prime with `p-1` &mdash; the order of Z<sub>p</sub>* .
+This implies that `ep` (in `s^ep = pad(m) mod p`) is relatively prime with `p-1` &mdash; the order of Z<sub>p</sub><sup>\*</sup>.
 Analogously `eq` is relatively prime with `q-1`. This, in turn, implies that `e` is relatively prime with `(p-1)·(q-1)` the order
-of group Z<sub>N</sub>* and hence a valid RSA exponent.
+of group Z<sub>N</sub><sup>\*</sup> and hence a valid RSA exponent.
 
 Thwarting DSKS attacks is trivial, the signer needs to attach their public key to the message before signing it. While 
 the verifier should do an extra check to ensure the public key they use to verify corresponds to the one added
@@ -851,7 +852,7 @@ for encryption adds randomness so that padding the same plaintext message twice 
 of this operation `forgedPadm`. This will play the role of a forged plaintext.
 4. Encrypting `padm` using `legitRsa` public key. Let's call the result of this operation `cTxt`
 5. Searching for an RSA key-pair of approximately the same size as the modulus of `legitRsa` and for which the following equation
-holds: $cTxt^{forgedD}=forgedPadm (mod forgedN)$ .  
+holds: cTxt^forgedD&equiv;forgedPadm (mod forgedN).  
   Where `forgedD` is the private key of the forged RSA key-pair and
 `forgedN` is its RSA modulus. This search is done in exactly the same way as for the DSKS attack on RSA earlier in this challenge.
 
