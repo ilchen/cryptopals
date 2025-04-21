@@ -1,8 +1,17 @@
 # cryptopals
 Solutions to all cryptopals problems: [Sets 1-7](https://cryptopals.com), [Set 8](https://toadstyle.org/cryptopals/).
 
-The only dependency on top of standard JRE 8 runtime is that on [Lombok](https://projectlombok.org). The project runs
-on all subsequent versions of the Java platform such as Java 11 and Java 17.
+The only dependency on top of standard JRE 17 runtime is that on [Lombok](https://projectlombok.org). The project runs
+on all subsequent versions of the Java platform such as Java 21 and Java 23.
+
+Additional dependencies:
+* [Spring Boot 3.x](https://spring.io/projects/spring-boot) for problems requiring a server side part in addition to a client part
+* [The GNU Multiple Precision Arithmentic Library (GMP)](https://gmplib.org)
+and [the JNA-GMP wrapper](https://github.com/square/jna-gmp/tree/master/jnagmp) for it for a more optimized implementation
+of modular exponentiation than that provided by [BigInteger::modPow](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/math/BigInteger.html#modPow(java.math.BigInteger,java.math.BigInteger)).
+This is relevant only for a few challenges starting with [Challenge 48](https://github.com/ilchen/cryptopals#challenge-48-bleichenbachers-pkcs-15-padding-oracle-complete-case).
+* [GraalJS engine](https://www.graalvm.org/javascript/) for [Challange 50](https://cryptopals.com/sets/7/challenges/50).
+In the past JRE provided a JavaScript engine called Nashorn, but this was discontinued in Java15.
 
 ## How to run
 The majority of the challenges of a set can be run by executing the `com.cryptopals.Setx.main` method of the set or
@@ -20,7 +29,7 @@ This can be produced with `mvn install` and executed with
 ```
 java -jar cryptopals_server-0.2.0.jar
 ```
-as a typical SpringBoot application. This application provides either a RESTful API or an RMI component depending on
+as a typical SpringBoot 3.x application. This application provides either a RESTful API or an RMI component depending on
 a challenge.
 
 For the more advanced problems I created a proper explanation about the implementation of each of these attacks, which you
@@ -88,7 +97,7 @@ it takes about 30 seconds. Yet, in the real world such small RSA moduli are long
 for 1024-bits moduli and longer let the implementation spin for longer than I wanted to wait. To address that I switched
 to an optimized implementation of infinite precision integers based on [The GNU Multiple Precision Arithmentic Library (GMP)](https://gmplib.org).
 Thanks to [the JNA-GMP wrapper](https://github.com/square/jna-gmp/tree/master/jnagmp) this was very easy to do.
-If you are on macOS, you probably already installed gmp when you installed python with [Homebrew](https://brew.sh).
+If you are on macOS, you probably already installed gmp when you installed Python with [Homebrew](https://brew.sh).
 
 With tiny changes to the [RSAHelper](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_5/RSAHelper.java#L25-L27)
 and [RSAHelperExt](https://github.com/ilchen/cryptopals/blob/master/src/main/java/com/cryptopals/set_6/RSAHelperExt.java#L66-L67) classes the speedup was
