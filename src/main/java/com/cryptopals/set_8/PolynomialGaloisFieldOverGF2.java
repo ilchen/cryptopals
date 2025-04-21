@@ -83,7 +83,7 @@ public class PolynomialGaloisFieldOverGF2 {
     /**
      * Represents an element of a Polynomial Galois field over GF(2).
      */
-    final public class FieldElement implements FiniteFieldElement {
+    final public class FieldElement implements FiniteFieldElement<FieldElement> {
         private final BigInteger   polynomial;
 
         FieldElement(BigInteger poly) {
@@ -112,13 +112,12 @@ public class PolynomialGaloisFieldOverGF2 {
             return  valueOf(2);
         }
 
-        public FieldElement add(FiniteFieldElement t) {
-            FieldElement  that = (FieldElement) t;
-            if (!group().equals(that.group()))  throw  new IllegalArgumentException();
-            return  new FieldElement(polynomial.xor(that.polynomial));
+        public FieldElement add(FieldElement t) {
+            if (!group().equals(t.group()))  throw  new IllegalArgumentException();
+            return  new FieldElement(polynomial.xor(t.polynomial));
         }
 
-        public FieldElement subtract(FiniteFieldElement t) {
+        public FieldElement subtract(FieldElement t) {
             return  add(t);
         }
 
@@ -179,11 +178,10 @@ public class PolynomialGaloisFieldOverGF2 {
             return  polynomial.testBit(pow);
         }
 
-        public FieldElement  multiply(FiniteFieldElement t) {
-            FieldElement  that = (FieldElement) t;
+        public FieldElement  multiply(FieldElement t) {
             assert  polynomial.signum() >= 0;
-            assert  that.polynomial.signum() >= 0;
-            BigInteger product = ZERO, a = polynomial, b = that.polynomial;
+            assert  t.polynomial.signum() >= 0;
+            BigInteger product = ZERO, a = polynomial, b = t.polynomial;
             while (!a.equals(ZERO)) {
                 if (a.and(ONE).equals(ONE)) {
                     product = product.xor(b);
@@ -232,8 +230,7 @@ public class PolynomialGaloisFieldOverGF2 {
         @Override
         public boolean equals(Object that) {
             if (that == this)  return  true;
-            if (!(that instanceof FieldElement))  return  false;
-            FieldElement el = (FieldElement) that;
+            if (!(that instanceof FieldElement el))  return  false;
             if (!PolynomialGaloisFieldOverGF2.this.equals(el.group()))  return  false;
             return  polynomial.equals(el.polynomial);
         }
@@ -285,7 +282,7 @@ public class PolynomialGaloisFieldOverGF2 {
 
         for (int i=2; i < len; i++, polynomial=polynomial.shiftRight(1)) {
             if (polynomial.and(ONE).equals(ONE)) {
-                sb.insert(0, sb.length() > 0  ?  String.format("x^%d + ", i) : String.format("x^%d", i));
+                sb.insert(0, sb.length() > 0  ?  "x^%d + ".formatted(i) : "x^%d".formatted(i));
             }
         }
         return  sb.toString();

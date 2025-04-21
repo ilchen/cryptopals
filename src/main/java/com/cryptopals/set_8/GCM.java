@@ -162,7 +162,7 @@ public class GCM extends Set3 {
         int    plainTextLen = cipherText.length - (tLen >> 3),
                 assocDataPaddedLen = (assocData.length / BLOCK_SIZE + (assocData.length % BLOCK_SIZE != 0  ?  1 : 0)) * BLOCK_SIZE,
                 plainTextPaddedLen = (plainTextLen / BLOCK_SIZE + (plainTextLen % BLOCK_SIZE != 0  ?  1 : 0)) * BLOCK_SIZE;
-        byte[]   buf = new byte[assocDataPaddedLen + plainTextPaddedLen + BLOCK_SIZE + (includeTag ? BLOCK_SIZE : 0)],  res,  s;
+        byte[]   buf = new byte[assocDataPaddedLen + plainTextPaddedLen + BLOCK_SIZE + (includeTag ? BLOCK_SIZE : 0)];
         System.arraycopy(assocData, 0, buf, 0, assocData.length);
         System.arraycopy(cipherText, 0, buf, assocDataPaddedLen, plainTextLen);
         ByteBuffer nonceBuf = ByteBuffer.allocate(BLOCK_SIZE).order(ByteOrder.BIG_ENDIAN)
@@ -228,7 +228,7 @@ public class GCM extends Set3 {
         //System.out.printf("Length: %d,  # blocks: %d,  # power 2 blocks: %d%n", plnTextLen, paddedPlnTextLen >> 4, n);
         PolynomialGaloisFieldOverGF2.FieldElement[]   ret = IntStream.range(1, n+1)
                 .mapToObj(i -> {
-                    int  low = paddedPlnTextLen - ((1 << i) - 1) * BLOCK_SIZE,  high = low + BLOCK_SIZE > plnTextLen  ?  plnTextLen : low + BLOCK_SIZE;
+                    int  low = paddedPlnTextLen - ((1 << i) - 1) * BLOCK_SIZE,  high = Math.min(low + BLOCK_SIZE, plnTextLen);
                     //System.out.printf("[%d, %d]", low, low+BLOCK_SIZE);
                     return  toFE(low + BLOCK_SIZE > plnTextLen  ?  Arrays.copyOf(Arrays.copyOfRange(cipherText, low, plnTextLen), BLOCK_SIZE)
                                                                 :  Arrays.copyOfRange(cipherText, low, low + BLOCK_SIZE));

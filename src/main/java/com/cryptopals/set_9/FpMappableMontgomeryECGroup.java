@@ -3,6 +3,7 @@ package com.cryptopals.set_9;
 import com.cryptopals.Set8;
 import com.cryptopals.set_8.MontgomeryECGroup;
 
+import java.io.Serial;
 import java.math.BigInteger;
 
 import java.util.function.UnaryOperator;
@@ -17,6 +18,7 @@ import static java.math.BigInteger.*;
 public class FpMappableMontgomeryECGroup extends MontgomeryECGroup {
     public static final BigInteger   TWO = valueOf(2),  THREE = valueOf(3),
                                      FIVE = valueOf(5),  EIGHT = valueOf(8);
+    @Serial
     private static final long serialVersionUID = -8108634203005429831L;
     private final UnaryOperator<BigInteger>   squareRoot;
     private final BigInteger                  smallNonSquare;
@@ -47,7 +49,7 @@ public class FpMappableMontgomeryECGroup extends MontgomeryECGroup {
      */
     public ECGroupElement  mapFromFp(BigInteger r) {
         if (r.compareTo(getModulus().shiftRight(1)) > 0)  {
-            throw  new IllegalArgumentException(String.format("%d is not in the range [0, 1, ..., p/2]", r));
+            throw  new IllegalArgumentException("%d is not in the range [0, 1, ..., p/2]".formatted(r));
         }
         BigInteger   rSquared = r.multiply(r),  rSquaredTimesNonSquarePlus1 = ONE.add(smallNonSquare.multiply(rSquared));
         // Check if mappable

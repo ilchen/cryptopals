@@ -1,9 +1,8 @@
 package com.cryptopals.set_6;
 
 import com.cryptopals.set_5.RSAHelper;
-import lombok.SneakyThrows;
-
 import com.squareup.jnagmp.Gmp;
+import lombok.SneakyThrows;
 
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -53,23 +52,26 @@ public class RSAHelperExt extends RSAHelper {
 
     @Override
     public RSAHelper.PublicKey getPublicKey() {
-        return  new PublicKey(super.getPublicKey().getE(), n);
+        return  new PublicKey(super.getPublicKey().e(), n);
     }
 
     @SneakyThrows
     public BigInteger  decrypt(BigInteger cipherTxt) {
         MessageDigest  sha = MessageDigest.getInstance("SHA-1");
-        return  processed.add(ByteBuffer.wrap(sha.digest(cipherTxt.toByteArray())))  ?  cipherTxt.modPow(d, n)
+                                                                                      // cipherTxt.modPow(d, n)
+        return  processed.add(ByteBuffer.wrap(sha.digest(cipherTxt.toByteArray())))  ?  Gmp.modPowInsecure(cipherTxt, d, n)
                                                                                      :  BigInteger.ZERO;
     }
 
     public boolean  decryptionOracle(BigInteger cipherTxt) {
         byte   repr[] = Gmp.modPowInsecure(cipherTxt, d, n).toByteArray();
+        // byte   repr[] = cipherTxt.modPow(d, n).toByteArray();
         return  (repr[repr.length - 1] & 0x01) == 0;
     }
 
     public boolean  paddingOracle(BigInteger cipherTxt) {
         byte   repr[] = Gmp.modPowInsecure(cipherTxt, d, n).toByteArray();
+        // byte   repr[] = cipherTxt.modPow(d, n).toByteArray();
         return  repr.length == numBytes - 1  &&  repr[0] == 2;
     }
 

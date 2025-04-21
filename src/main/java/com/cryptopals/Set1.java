@@ -21,7 +21,6 @@ import lombok.Data;
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSession;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import java.security.cert.X509Certificate;
@@ -229,7 +228,7 @@ public class Set1 {
             String plainText = new String(challenge5Helper(fileBytes, sb.toString()));
             res.add(VigenereCipherAttackReporter.builder().keySize(kSize).key(sb.toString())
                     .plainText(plainText).build());
-            System.out.printf("key: %s%nplain text:%n%s", sb.toString(), plainText);
+            System.out.printf("key: %s%nplain text:%n%s", sb, plainText);
         }
         return  res;
     }
@@ -280,11 +279,7 @@ public class Set1 {
         HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
 
         // Create all-trusting host name verifier
-        HostnameVerifier allHostsValid = new HostnameVerifier() {
-            public boolean verify(String hostname, SSLSession session) {
-                return true;
-            }
-        };
+        HostnameVerifier allHostsValid = (hostname, session) -> true;
         // Install the all-trusting host verifier
         HttpsURLConnection.setDefaultHostnameVerifier(allHostsValid);
     }

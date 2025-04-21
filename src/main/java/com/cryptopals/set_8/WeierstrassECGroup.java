@@ -5,6 +5,7 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigInteger;
 
@@ -17,6 +18,7 @@ import static java.math.BigInteger.ZERO;
 @EqualsAndHashCode
 @ToString
 final public class WeierstrassECGroup implements ECGroup, Serializable {
+    @Serial
     private static final long serialVersionUID = -2465568918540999150L;
     static final BigInteger   TWO = BigInteger.valueOf(2),  THREE = BigInteger.valueOf(3);
     @Getter
@@ -73,6 +75,7 @@ final public class WeierstrassECGroup implements ECGroup, Serializable {
      */
     @ToString
     final public class ECGroupElement implements com.cryptopals.set_8.ECGroupElement, Serializable {
+        @Serial
         private static final long serialVersionUID = 8474348316221211363L;
         final BigInteger   x,  y;
 
@@ -100,8 +103,7 @@ final public class WeierstrassECGroup implements ECGroup, Serializable {
         @Override
         public boolean equals(Object that) {
             if (that == this)  return  true;
-            if (!(that instanceof ECGroupElement))  return  false;
-            ECGroupElement el = (ECGroupElement) that;
+            if (!(that instanceof ECGroupElement el))  return  false;
             if (!WeierstrassECGroup.this.equals(el.group()))  return  false;
             return  x.equals(el.x)  &&  y.equals(el.y);
         }

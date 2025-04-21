@@ -20,7 +20,6 @@ public class LatticeAttackHelper {
     private final BigDecimal  TWO_TO_THE_L_TH;
     private final BigDecimal[][]   pairs,  lattice,  reducedLattice;
     private final BigDecimal   q;
-    private final int   l;
 
     /**
      * @param tuPairs an array of (t, u) pairs obtained from different ECDSA signatures with the same key and biased
@@ -37,7 +36,6 @@ public class LatticeAttackHelper {
         }).toArray(BigDecimal[][]::new);
         q = new BigDecimal(modulus);
         TWO_TO_THE_L_TH = valueOf(1 << l);
-        this.l = l;
         lattice = constructLattice();
         reducedLattice = lLL(lattice, BigDecimal.valueOf(.99));
     }

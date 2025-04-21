@@ -1,7 +1,6 @@
 package com.cryptopals.set_8;
 
 import com.cryptopals.Set5;
-import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.lang.reflect.Array;
@@ -15,7 +14,7 @@ import static java.math.BigInteger.valueOf;
  * @param <T>  a class representing a finite field
  */
 @EqualsAndHashCode
-public class PolynomialRing<T extends FiniteFieldElement> {
+public class PolynomialRing<T extends FiniteFieldElement<T>> {
 
     /** The element with index {@code i} represents the coefficient of {@code x}<sup>i</sup> */
     private final T[]   coefficients;
@@ -25,8 +24,8 @@ public class PolynomialRing<T extends FiniteFieldElement> {
 
     @SuppressWarnings("unchecked")
     public PolynomialRing(int degree, T lastCoeff) {
-        ZERO = (T) lastCoeff.getAdditiveIdentity();
-        ONE = (T) lastCoeff.getMultiplicativeIdentity();
+        ZERO = lastCoeff.getAdditiveIdentity();
+        ONE = lastCoeff.getMultiplicativeIdentity();
         coefficients = (T[]) Array.newInstance(lastCoeff.getClass(), degree + 1);
         coefficients[degree] = lastCoeff;
         while (degree > 0) {
@@ -34,10 +33,9 @@ public class PolynomialRing<T extends FiniteFieldElement> {
         }
     }
 
-    @SuppressWarnings("unchecked")
     public PolynomialRing(T[] coeffs) {
-        ZERO = (T) coeffs[0].getAdditiveIdentity();
-        ONE = (T) coeffs[0].getMultiplicativeIdentity();
+        ZERO = coeffs[0].getAdditiveIdentity();
+        ONE = coeffs[0].getMultiplicativeIdentity();
         if (coeffs[coeffs.length-1].equals(ZERO)  &&  coeffs.length > 1) {
             int  idx = coeffs.length - 2;
             for (; idx > 0; idx--) {
@@ -55,22 +53,19 @@ public class PolynomialRing<T extends FiniteFieldElement> {
         return  coefficients.length - 1;
     }
 
-    @SuppressWarnings("unchecked")
     public PolynomialRing<T> getZeroPolynomial() {
         return new PolynomialRing<>(0, ZERO);
     }
 
-    @SuppressWarnings("unchecked")
     public PolynomialRing<T> getMultiplicativeIdentity() {
         return new PolynomialRing<>(0, ONE);
     }
 
-    @SuppressWarnings("unchecked")
     public PolynomialRing<T> toMonicPolynomial() {
         if (coefficients[coefficients.length - 1].equals(ONE))  return  this;
-        T   newCoeffs[] = coefficients.clone(),  inv = (T) coefficients[coefficients.length - 1].modInverse();
+        T   newCoeffs[] = coefficients.clone(),  inv = coefficients[coefficients.length - 1].modInverse();
         for (int i=0; i < newCoeffs.length; i++) {
-            newCoeffs[i] = (T) newCoeffs[i].multiply(inv);
+            newCoeffs[i] = newCoeffs[i].multiply(inv);
         }
         return  new PolynomialRing<>(newCoeffs);
     }
@@ -80,11 +75,10 @@ public class PolynomialRing<T extends FiniteFieldElement> {
               shortest = coefficients.length >= that.coefficients.length  ?  that.coefficients : coefficients;
         for (int i=0; i < shortest.length; i++) {
             /* All subclasses of FiniteFieldElement return objects of their respective class. */
-            @SuppressWarnings("unchecked")
-            T  newCoeff = (T) newCoeffs[i].add(shortest[i]);
+            T  newCoeff = newCoeffs[i].add(shortest[i]);
             newCoeffs[i] = newCoeff;
         }
-        return  new PolynomialRing<T>(newCoeffs);
+        return  new PolynomialRing<>(newCoeffs);
     }
 
     public PolynomialRing<T>  subtract(PolynomialRing<T> that) {
@@ -92,18 +86,16 @@ public class PolynomialRing<T extends FiniteFieldElement> {
                 shortest = coefficients.length >= that.coefficients.length  ?  that.coefficients : coefficients;
         for (int i=0; i < shortest.length; i++) {
             /* All subclasses of FiniteFieldElement return objects of their respective class. */
-            @SuppressWarnings("unchecked")
-            T  newCoeff = (T) coefficients[i].subtract(that.coefficients[i]);
+            T  newCoeff = coefficients[i].subtract(that.coefficients[i]);
             newCoeffs[i] = newCoeff;
         }
         int  len = newCoeffs.length;
-        @SuppressWarnings("unchecked")
-        T  zero = (T) coefficients[0].getAdditiveIdentity();
+        T  zero = coefficients[0].getAdditiveIdentity();
         while (len > 0  &&  newCoeffs[len - 1].equals(zero))  len--;
         if (len < newCoeffs.length) {
             newCoeffs = Arrays.copyOf(newCoeffs, len > 0  ?  len : 1);
         }
-        return  new PolynomialRing<T>(newCoeffs);
+        return  new PolynomialRing<>(newCoeffs);
     }
 
     public PolynomialRing<T>  multiply(PolynomialRing<T> that) {
@@ -112,8 +104,7 @@ public class PolynomialRing<T extends FiniteFieldElement> {
         Arrays.fill(newCoeffs, coefficients[0].getAdditiveIdentity());
         for (int i=0; i < p; i++) {
             for (int j=0; j < q; j++) {
-                @SuppressWarnings("unchecked")
-                T coeff = (T) coefficients[i].multiply(that.coefficients[j]).add(newCoeffs[i + j]);
+                T coeff = coefficients[i].multiply(that.coefficients[j]).add(newCoeffs[i + j]);
                 newCoeffs[i + j] = coeff;
             }
         }
@@ -127,8 +118,7 @@ public class PolynomialRing<T extends FiniteFieldElement> {
         if (degree() < d.degree()) {
             return  getZeroPolynomial();
         }
-        @SuppressWarnings("unchecked")
-        T   coeff = (T) coefficients[coefficients.length-1].multiply(d.coefficients[d.coefficients.length-1].modInverse());
+        T   coeff = coefficients[coefficients.length-1].multiply(d.coefficients[d.coefficients.length-1].modInverse());
         PolynomialRing<T>   c = new PolynomialRing<>(degree() - d.degree(), coeff);
         return  c.add(subtract(d.multiply(c)).divide(d));
     }
@@ -142,7 +132,7 @@ public class PolynomialRing<T extends FiniteFieldElement> {
             return  (PolynomialRing<T>[]) new PolynomialRing[] { zero, this } ;
         }
         while (!r.equals(zero)  &&  r.degree() >= d.degree()) {
-            T coeff = (T) r.coefficients[r.coefficients.length - 1].multiply(d.coefficients[d.coefficients.length - 1].modInverse());
+            T coeff = r.coefficients[r.coefficients.length - 1].multiply(d.coefficients[d.coefficients.length - 1].modInverse());
             PolynomialRing<T> c = new PolynomialRing<>(r.degree() - d.degree(), coeff);
             q = q.add(c);
             r = r.subtract(c.multiply(d));
@@ -156,8 +146,7 @@ public class PolynomialRing<T extends FiniteFieldElement> {
         }
         T[]   newCoeffs = Arrays.copyOfRange(coefficients, 1, coefficients.length);
         for (int i=2; i < coefficients.length; i++) {
-            @SuppressWarnings("unchecked")
-            T  newCoef = (T) newCoeffs[i-1].times(valueOf(i));
+            T  newCoef = newCoeffs[i-1].times(valueOf(i));
             newCoeffs[i-1] = newCoef;
         }
         return  new PolynomialRing<>(newCoeffs);
@@ -181,11 +170,7 @@ public class PolynomialRing<T extends FiniteFieldElement> {
         return  res;
     }
 
-    @Data
-    public static final class PolynomialAndPower<T extends FiniteFieldElement> {
-        final PolynomialRing<T>   factor;
-        final int  power;
-    }
+    public static record PolynomialAndPower<U extends FiniteFieldElement<U>>(PolynomialRing<U> factor, int power) {  }
 
     /**
      * Returns square-free factorization of this polynomial using
@@ -256,7 +241,7 @@ public class PolynomialRing<T extends FiniteFieldElement> {
             T   coeff = coefficients[i];
             if (coeff.equals(ZERO)  &&  coefficients.length > 1)  continue;
             if (sb.length() > 0)  sb.append(" + ");
-            if (!coeff.equals(ONE)  ||  i == 0)  sb.append(coeff.toString());
+            if (!coeff.equals(ONE)  ||  i == 0)  sb.append(coeff);
             if (i > 1) {
                 sb.append("x^").append(i);
             } else if (i == 1) {

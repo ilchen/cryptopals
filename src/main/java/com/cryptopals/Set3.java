@@ -36,7 +36,7 @@ public class Set3 extends Set2 {
         CHALLENGE_18_CIPHERTEXT[] = Base64.getDecoder().decode("L77na/nrFsKvynd6HzOoG7GHTLXsTVu9qvY/2syLXzhPweyyMTJULu/6/kXX0KSvoOLSFQ==");
     private static final int   BLOCK_SIZE = 0x10;
 
-    private byte   randomIV[];
+    private final byte[] randomIV;
 
     public Set3(int mode, SecretKey key) throws InvalidKeyException, NoSuchPaddingException, NoSuchAlgorithmException {
         super(mode, key);

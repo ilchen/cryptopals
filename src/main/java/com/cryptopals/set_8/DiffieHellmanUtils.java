@@ -1,7 +1,6 @@
 package com.cryptopals.set_8;
 
 import com.squareup.jnagmp.Gmp;
-import lombok.Data;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -88,7 +87,8 @@ final public class DiffieHellmanUtils {
         Random   rnd = new Random();
         BigInteger   otherOrder = p.subtract(ONE).divide(order),  h;
         do {
-            h = new BigInteger(p.bitLength(), rnd).modPow(otherOrder, p);
+            // h = new BigInteger(p.bitLength(), rnd).modPow(otherOrder, p);
+            h = Gmp.modPowInsecure(new BigInteger(p.bitLength(), rnd), otherOrder, p);
         }  while (h.equals(ONE));
         return  h;
     }
@@ -96,16 +96,13 @@ final public class DiffieHellmanUtils {
     public static boolean  isPrimitiveRoot(BigInteger pRoot, BigInteger p, List<BigInteger> smallOrders) {
         for (BigInteger smallOrder : smallOrders) {
             BigInteger otherOrder = p.subtract(ONE).divide(smallOrder);
-            if (Gmp.modPowInsecure(pRoot, otherOrder, p)/*pRoot.modPow(otherOrder, p)*/.equals(ONE))  return  false;
+            // if (pRoot.modPow(otherOrder, p).equals(ONE))  return  false;
+            if (Gmp.modPowInsecure(pRoot, otherOrder, p).equals(ONE))  return  false;
         }
         return  true;
     }
 
-    @Data
-    public static class  PrimeAndFactors {
-        final BigInteger   p;
-        final List<BigInteger>   factors;
-    }
+    public static record  PrimeAndFactors(BigInteger p, List<BigInteger> factors) {  }
 
     /**
      * Finds a prime {@code p} whose Zp* group contains at least 10 subgroups

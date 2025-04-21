@@ -3,26 +3,18 @@ package com.cryptopals.server;
 import com.cryptopals.Set1;
 import com.cryptopals.Set4;
 import com.cryptopals.Set7;
-import com.cryptopals.set_5.*;
-import com.cryptopals.set_8.DiffieHellmanBobService;
-import com.cryptopals.set_8.ECDiffieHellmanBobService;
+
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
-import org.springframework.remoting.rmi.RmiServiceExporter;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
-import java.net.MalformedURLException;
-import java.rmi.NotBoundException;
-import java.rmi.RemoteException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 
 @SpringBootApplication
@@ -51,57 +43,8 @@ public class CryptopalsServerApplication {
     }
 
     @Bean
-    public RmiServiceExporter rmiDHServiceExporter() {
-        RmiServiceExporter rmiExporter = new RmiServiceExporter();
-        rmiExporter.setService(new DiffieHellmanService());
-        rmiExporter.setServiceName("DiffieHellmanService");
-        rmiExporter.setServiceInterface(DiffieHellman.class);
-        return rmiExporter;
-    }
-
-    @Bean
-    public RmiServiceExporter rmiDHMITMServiceExporter() throws RemoteException, MalformedURLException,
-                                 NoSuchAlgorithmException, NoSuchPaddingException, NotBoundException {
-        RmiServiceExporter rmiExporter = new RmiServiceExporter();
-        rmiExporter.setService(new DiffieHellmanMITMService());
-        rmiExporter.setServiceName("DiffieHellmanMITMService");
-        rmiExporter.setServiceInterface(DiffieHellman.class);
-        return rmiExporter;
-    }
-
-    @Bean
-    public RmiServiceExporter rmiDHBobServiceExporter() {
-        RmiServiceExporter rmiExporter = new RmiServiceExporter();
-        rmiExporter.setService(new DiffieHellmanBobService());
-        rmiExporter.setServiceName("DiffieHellmanBobService");
-        rmiExporter.setServiceInterface(com.cryptopals.set_8.DiffieHellman.class);
-        return rmiExporter;
-    }
-
-    @Bean
-    public RmiServiceExporter rmiECDHBobServiceExporter() {
-        RmiServiceExporter rmiExporter = new RmiServiceExporter();
-        rmiExporter.setService(new ECDiffieHellmanBobService());
-        rmiExporter.setServiceName("ECDiffieHellmanBobService");
-        rmiExporter.setServiceInterface(com.cryptopals.set_8.ECDiffieHellman.class);
-        return rmiExporter;
-    }
-
-    @Bean
-    public RmiServiceExporter rmiSRPServiceExporter() {
-        RmiServiceExporter rmiExporter = new RmiServiceExporter();
-        rmiExporter.setService(new SRPService());
-        rmiExporter.setServiceName("SRPService");
-        rmiExporter.setServiceInterface(SRP.class);
-        return rmiExporter;
-    }
-
-    @Bean
     public Map<String, SecretKey>  getHeaderToKeyMap() {
-        Map<String, SecretKey>   res = new HashMap<>();
-        res.put("id100000012", Set1.YELLOW_SUBMARINE_SK);
-        res.put("id100000013", Set7.BLACK_SUBMARINE_SK);
-        return  Collections.unmodifiableMap(res);
+        return Map.of("id100000012", Set1.YELLOW_SUBMARINE_SK, "id100000013", Set7.BLACK_SUBMARINE_SK);
     }
 
 }

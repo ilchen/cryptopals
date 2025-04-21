@@ -14,6 +14,7 @@ import javax.crypto.*;
 import javax.crypto.spec.GCMParameterSpec;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.RoundingMode;
 import java.net.MalformedURLException;
 import java.rmi.Naming;
 import java.rmi.NotBoundException;
@@ -227,20 +228,20 @@ class Set8Tests {
         RSAHelperExt rsa = new RSAHelperExt(RSAHelper.PUBLIC_EXPONENT, 160);
         BigInteger rsaSignature = rsa.sign(CHALLENGE56_MSG.getBytes(), RSAHelperExt.HashMethod.SHA1),
                    padm = RSAHelperExt.pkcs15Pad(CHALLENGE56_MSG.getBytes(), RSAHelperExt.HashMethod.SHA1,
-                                                 rsa.getPublicKey().getModulus().bitLength());
+                                                 rsa.getPublicKey().modulus().bitLength());
 
         RSAHelper.PublicKey legitRSAPk = rsa.getPublicKey(),
                 forgedRSAPk = Set8.breakChallenge61RSA(padm, rsaSignature,
-                                                       legitRSAPk.getModulus().bitLength(), true).getPublicKey();
+                                                       legitRSAPk.modulus().bitLength(), true).getPublicKey();
         assertEquals(padm, RSAHelperExt.pkcs15Pad(CHALLENGE56_MSG.getBytes(), RSAHelperExt.HashMethod.SHA1,
-                                                  forgedRSAPk.getModulus().bitLength()));
+                                                  forgedRSAPk.modulus().bitLength()));
         assertTrue(legitRSAPk.verify(CHALLENGE56_MSG.getBytes(), rsaSignature));
         assertTrue(forgedRSAPk.verify(CHALLENGE56_MSG.getBytes(), rsaSignature));
     }
 
     @DisplayName("https://toadstyle.org/cryptopals/61.txt#RSA_Signing_Precomputed_Primes")
     @Test
-    void challenge61RSAPrecomputedPrimes() {
+    void  challenge61RSAPrecomputedPrimes() {
         RSAHelperExt rsa = new RSAHelperExt(new BigInteger("914870568795060946847120153269016785730918605601"),
                 new BigInteger("1451643663050147586365902596364187789387069394377"), RSAHelper.PUBLIC_EXPONENT);
         BigInteger rsaSignature = rsa.sign(CHALLENGE56_MSG.getBytes(), RSAHelperExt.HashMethod.SHA1);
@@ -257,30 +258,30 @@ class Set8Tests {
         };
 
         BigInteger   padm = RSAHelperExt.pkcs15Pad(CHALLENGE56_MSG.getBytes(), RSAHelperExt.HashMethod.SHA1,
-                                                   rsa.getPublicKey().getModulus().bitLength());
+                                                   rsa.getPublicKey().modulus().bitLength());
         assertEquals(padm, RSAHelperExt.pkcs15Pad(CHALLENGE56_MSG.getBytes(), RSAHelperExt.HashMethod.SHA1,
-                                                  pq[0].getP().multiply(pq[1].getP()).bitLength()));
+                                                  pq[0].p().multiply(pq[1].p()).bitLength()));
 
         RSAHelper.PublicKey legitRSAPk = rsa.getPublicKey(),
                             forgedRSAPk = Set8.breakChallenge61RSA(padm, rsaSignature, pq,
-                                                                   legitRSAPk.getModulus().bitLength(), true).getPublicKey();
+                                                                   legitRSAPk.modulus().bitLength(), true).getPublicKey();
         assertTrue(legitRSAPk.verify(CHALLENGE56_MSG.getBytes(), rsaSignature));
         assertTrue(forgedRSAPk.verify(CHALLENGE56_MSG.getBytes(), rsaSignature));
     }
 
     @DisplayName("https://toadstyle.org/cryptopals/61.txt#RSA_Encryption")
     @Test
-    void challenge61RSAEncryption() {
+    void  challenge61RSAEncryption() {
         RSAHelperExt rsa = new RSAHelperExt(RSAHelper.PUBLIC_EXPONENT, 152);
         String   plainTxt = "id135: credentials invalid",  forgedPlainTxt = "id135: credentials valid!";
-        BigInteger   padm = RSAHelperExt.pkcs15Pad(plainTxt.getBytes(), rsa.getPublicKey().getModulus().bitLength()),
+        BigInteger   padm = RSAHelperExt.pkcs15Pad(plainTxt.getBytes(), rsa.getPublicKey().modulus().bitLength()),
                      cTxt = rsa.encrypt(padm),
                      forgedPadm = RSAHelperExt.pkcs15Pad(forgedPlainTxt.getBytes(),
-                                                         rsa.getPublicKey().getModulus().bitLength());
+                                                         rsa.getPublicKey().modulus().bitLength());
         assertArrayEquals(rsa.pkcs15Unpad(rsa.decrypt(cTxt)), plainTxt.getBytes());
 
         RSAHelperExt   forgedRsa = Set8.breakChallenge61RSA(forgedPadm, cTxt,
-                rsa.getPublicKey().getModulus().bitLength(), false);
+                rsa.getPublicKey().modulus().bitLength(), false);
 
         byte[]   pTxt = rsa.pkcs15Unpad(forgedRsa.decrypt(cTxt));
         assertArrayEquals(pTxt, forgedPlainTxt.getBytes());
@@ -307,7 +308,7 @@ class Set8Tests {
         for (int i=0; i < orthogonalBasis.length; i++) {
             for (int j=i+1; j < orthogonalBasis.length; j++) {
                 assertEquals(0, BigDecimal.ZERO.compareTo( /* The dot product of each pair of distinct vectors must be 0 */
-                        RealMatrixOperations.innerProduct(orthogonalBasis[i], orthogonalBasis[j]).setScale(10, BigDecimal.ROUND_HALF_EVEN)));
+                        RealMatrixOperations.innerProduct(orthogonalBasis[i], orthogonalBasis[j]).setScale(10, RoundingMode.HALF_EVEN)));
             }
         }
 
@@ -475,7 +476,7 @@ class Set8Tests {
                         IntStream.of(2, 1).mapToObj(field::createElement).toArray(ZpField.ZpFieldElement[]::new)),
                 factor3 = new PolynomialRing2<>(
                         IntStream.of(1, 0, 1).mapToObj(field::createElement).toArray(ZpField.ZpFieldElement[]::new));
-        ;
+
         List<PolynomialRing2.PolynomialAndPower<ZpField.ZpFieldElement>>  factors = poly1.squareFreeFactorization(),
                 expectedFactors = new ArrayList<>();
         expectedFactors.add(new PolynomialRing2.PolynomialAndPower<>(factor1, 1));
@@ -485,13 +486,13 @@ class Set8Tests {
 
         System.out.print("\nThe factorization of " + poly1 + " is: ");
         for (PolynomialRing2.PolynomialAndPower<ZpField.ZpFieldElement> factor : factors) {
-            System.out.print("(" + factor.getFactor() + ")");
-            if (factor.getPower() > 1) System.out.printf("^%d", factor.getPower());
+            System.out.print("(" + factor.factor() + ")");
+            if (factor.power() > 1) System.out.printf("^%d", factor.power());
         }
 
         for (PolynomialRing2.PolynomialAndPower<ZpField.ZpFieldElement> factor : factors) {
-            System.out.printf("%nFactor: %s breaks down into: ", factor.getFactor().toString());
-            List<PolynomialRing2<ZpField.ZpFieldElement>>  factors__ = factor.getFactor().distinctDegreeFactorization();
+            System.out.printf("%nFactor: %s breaks down into: ", factor.factor().toString());
+            List<PolynomialRing2<ZpField.ZpFieldElement>>  factors__ = factor.factor().distinctDegreeFactorization();
             factors__.forEach(x -> System.out.print("(" + x + ")"));
         }
 
@@ -520,7 +521,7 @@ class Set8Tests {
         System.out.println("Equation: " + equation);
 
         List<PolynomialRing2<PolynomialGaloisFieldOverGF2.FieldElement>>
-                allFactors = equation.squareFreeFactorization().stream().map(PolynomialRing2.PolynomialAndPower::getFactor)
+                allFactors = equation.squareFreeFactorization().stream().map(PolynomialRing2.PolynomialAndPower::factor)
                         .flatMap(x -> x.distinctDegreeFactorization().stream()).collect(Collectors.toList()),
 
                 oneDegreeFactors = allFactors.stream().filter(x -> x.intDegree() == 1).collect(Collectors.toList()),
@@ -603,7 +604,7 @@ class Set8Tests {
                             { true, true, false, true, false, false },
                             { false, true, true, true, false, false  },
                             { false, false, true, false, false, false },
-                            { false, false, false, true, true, false } },  mTransposed = transpose(m),  t,  t2;
+                            { false, false, false, true, true, false } },  mTransposed = transpose(m);
 
         // Confirm that transposition works correctly
         assertTrue(BooleanMatrixOperations.equals(m, transpose(mTransposed)));
@@ -629,13 +630,14 @@ class Set8Tests {
         int   numValid = 0;
         for (int cnt=0; cnt < 3; cnt++) {
 
-            for (int i = 0; i < m.length; i++) {
-                for (int j = 0; j < m[0].length; j++) {
+            for (int i = 0; i < mTransposed.length; i++) {
+                for (int j = 0; j < mTransposed[0].length; j++) {
                     mTransposed[i][j] = rnd.nextBoolean();
                 }
             }
 
-            basis = kernelOfTransposed(mTransposed);
+            // Need to make a copy since kernelOfTransposed makes a modificaition to the matrix passed to it in place
+            basis = kernelOfTransposed(BooleanMatrixOperations.copy(mTransposed));
             System.out.println("Basis size: " + basis.length);
             int   len = 0;
 

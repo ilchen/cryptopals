@@ -13,6 +13,7 @@ import java.net.MalformedURLException;
 import java.rmi.Naming;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
+import java.rmi.server.UnicastRemoteObject;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
@@ -20,11 +21,11 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
 @Component
-public class DiffieHellmanMITMService implements DiffieHellman {
-    private DiffieHellman   server;
-    private Cipher   cipher;
+public class DiffieHellmanMITMService extends UnicastRemoteObject implements DiffieHellman {
+    private final DiffieHellman   server;
+    private final Cipher   cipher;
     //private BigInteger A,  B,  modulus;
-    private SecretKeySpec   symKey;
+    private final SecretKeySpec   symKey;
 
 
     public DiffieHellmanMITMService() throws RemoteException, NotBoundException, MalformedURLException,

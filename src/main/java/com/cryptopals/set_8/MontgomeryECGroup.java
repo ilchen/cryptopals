@@ -1,10 +1,12 @@
 package com.cryptopals.set_8;
 
 import com.cryptopals.Set8;
+import com.squareup.jnagmp.Gmp;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigInteger;
 
@@ -21,6 +23,7 @@ import static java.math.BigInteger.ZERO;
 @ToString
 public class MontgomeryECGroup implements ECGroup, Serializable {
     protected static final BigInteger   FOUR = BigInteger.valueOf(4);
+    @Serial
     private static final long serialVersionUID = 1194952055574519819L;
     @Getter
     private final BigInteger   modulus,  A,  B,  order,  cyclicOrder;
@@ -86,7 +89,8 @@ public class MontgomeryECGroup implements ECGroup, Serializable {
             cswap(u2u3, b);
             cswap(w2w3, b);
         }
-        return u2u3[0].multiply(w2w3[0].modPow(modulus.subtract(TWO), modulus)).mod(modulus);
+        // return u2u3[0].multiply(w2w3[0].modPow(modulus.subtract(TWO), modulus)).mod(modulus);
+        return u2u3[0].multiply(Gmp.modPowInsecure(w2w3[0], modulus.subtract(TWO), modulus)).mod(modulus);
     }
 
     /**
@@ -95,6 +99,7 @@ public class MontgomeryECGroup implements ECGroup, Serializable {
      */
     @ToString
     final public class ECGroupElement implements com.cryptopals.set_8.ECGroupElement, Serializable {
+        @Serial
         private static final long serialVersionUID = 8474348316221211364L;
         final BigInteger   u,  v;
 
@@ -118,8 +123,7 @@ public class MontgomeryECGroup implements ECGroup, Serializable {
         @Override
         public boolean equals(Object that) {
             if (that == this)  return  true;
-            if (!(that instanceof ECGroupElement))  return  false;
-            ECGroupElement el = (ECGroupElement) that;
+            if (!(that instanceof ECGroupElement el))  return  false;
             if (!MontgomeryECGroup.this.equals(el.group()))  return  false;
             return  u.equals(el.u)  &&  v.equals(el.v);
         }

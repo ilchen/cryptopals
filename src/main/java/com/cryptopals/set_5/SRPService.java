@@ -7,6 +7,7 @@ import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 import java.math.BigInteger;
 import java.rmi.RemoteException;
+import java.rmi.server.UnicastRemoteObject;
 import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.Map;
@@ -14,9 +15,13 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static com.cryptopals.set_5.DiffieHellmanHelper.decryptMessage;
 
-public class SRPService implements SRP {
+public class SRPService extends UnicastRemoteObject implements SRP {
     private final Map<String, SRPClientState>   clientState = new ConcurrentHashMap<>();
     private final Map<String, SRPClientSession> sessions = new ConcurrentHashMap<>();
+
+    public SRPService() throws RemoteException {
+        super();
+    }
 
     @Override
     public void register(BigInteger p, BigInteger g, BigInteger k, byte[] I, byte[] P) throws RemoteException {
@@ -29,11 +34,11 @@ public class SRPService implements SRP {
     public SRPServerResponse initiate(byte[] I, BigInteger A) throws RemoteException {
         String   email = new String(I);
         SRPClientState   state = clientState.get(email);
-        SRPHelper    helper = state.getSrpHelper();
-        BigInteger   b = helper.generateExp(),  B = helper.generatePublicServerKey(state.getVerifier(), b);
-        SRPClientSession   s = new SRPClientSession(state, helper.generateKeyServer(A, B, b, state.getVerifier()));
+        SRPHelper    helper = state.srpHelper();
+        BigInteger   b = helper.generateExp(),  B = helper.generatePublicServerKey(state.verifier(), b);
+        SRPClientSession   s = new SRPClientSession(state, helper.generateKeyServer(A, B, b, state.verifier()));
         sessions.put(email, s);
-        return  new SRPServerResponse(state.getSalt(), B);
+        return  new SRPServerResponse(state.salt(), B);
     }
 
     @Override
@@ -43,7 +48,7 @@ public class SRPService implements SRP {
         try {
             // Unlimited strength JCE required
             Set4   encryptor = new Set4(Cipher.ENCRYPT_MODE, new SecretKeySpec(s.getK(), "AES"));
-            byte   expectedHmac[]= encryptor.hmac(SRPHelper.longAsBytes(s.getState().getSalt()),
+            byte   expectedHmac[]= encryptor.hmac(SRPHelper.longAsBytes(s.getState().salt()),
                                                   MessageDigest.getInstance("SHA-256"));
             if (Arrays.equals(hmac, expectedHmac)) {
                 s.setValid(true);
@@ -65,7 +70,7 @@ public class SRPService implements SRP {
         }
         byte   msg[] = decryptMessage(cipherText, s.getK());
         System.out.printf("%nReceived message '%s'%n", new String(msg));
-        SRPHelper  helper = s.getState().getSrpHelper();
+        SRPHelper  helper = s.getState().srpHelper();
         return  helper.encryptMessage(msg, s.getK());
     }
 }

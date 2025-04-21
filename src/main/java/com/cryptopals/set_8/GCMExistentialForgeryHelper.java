@@ -8,7 +8,6 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.BiFunction;
 import java.util.function.UnaryOperator;
 
 import static com.cryptopals.set_8.BooleanMatrixOperations.*;
@@ -131,11 +130,11 @@ public final class GCMExistentialForgeryHelper {
                 while (h < tWithCol.length && k < tWithCol.length) {
                     if (tWithCol[h][k]) {
                         d[k] = tWithCol[h][tTransposed.length];
-                        h++;     k++;
+                        h++;
                     } else {
                         d[k] = false;
-                        k++;
                     }
+                    k++;
                 }
             }
             if (mReduced < m) {

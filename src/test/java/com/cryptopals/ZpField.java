@@ -33,7 +33,7 @@ public class ZpField {
      * Represents elements of the final field Zp
      */
     @EqualsAndHashCode
-    public class  ZpFieldElement implements FiniteFieldElement {
+    public class  ZpFieldElement implements FiniteFieldElement<ZpFieldElement> {
         /** Invariant: e is always >= 0 */
         private final long   e;
 
@@ -50,15 +50,13 @@ public class ZpField {
         }
 
         @Override
-        public ZpFieldElement add(FiniteFieldElement that) {
-            ZpFieldElement zpFieldElem = (ZpFieldElement) that;
-            return  new ZpFieldElement(e + zpFieldElem.e);
+        public ZpFieldElement add(ZpFieldElement that) {
+            return  new ZpFieldElement(e + that.e);
         }
 
         @Override
-        public ZpFieldElement subtract(FiniteFieldElement that) {
-            ZpFieldElement zpFieldElem = (ZpFieldElement) that;
-            return  new ZpFieldElement(e - zpFieldElem.e);
+        public ZpFieldElement subtract(ZpFieldElement that) {
+            return  new ZpFieldElement(e - that.e);
         }
 
         @Override
@@ -67,9 +65,8 @@ public class ZpField {
         }
 
         @Override
-        public ZpFieldElement multiply(FiniteFieldElement that) {
-            ZpFieldElement zpFieldElem = (ZpFieldElement) that;
-            return  new ZpFieldElement(e * zpFieldElem.e);
+        public ZpFieldElement multiply(ZpFieldElement that) {
+            return  new ZpFieldElement(e * that.e);
         }
 
         @Override

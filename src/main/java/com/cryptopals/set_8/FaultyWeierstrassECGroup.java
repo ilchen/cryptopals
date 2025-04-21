@@ -5,6 +5,7 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigInteger;
 import java.util.Random;
@@ -20,6 +21,7 @@ import static java.math.BigInteger.*;
 @EqualsAndHashCode
 @ToString
 final public class FaultyWeierstrassECGroup implements ECGroup, Serializable {
+    @Serial
     private static final long serialVersionUID = 349435680439580034L;
     private static final Random   rnd = new Random();
     static final BigInteger   TWO = BigInteger.valueOf(2),  THREE = BigInteger.valueOf(3);
@@ -51,7 +53,7 @@ final public class FaultyWeierstrassECGroup implements ECGroup, Serializable {
 
     /**
      * Calculates the y coordinate of a point on this curve using its x coordinate
-     * @param x
+     * @param x an x coordinate of a point on this elliptic curve
      * @return the y coordinate or {@link Set8#NON_RESIDUE} if there's no point on the curve with the given x coordinate
      */
     public BigInteger  mapToY(BigInteger x) {
@@ -89,6 +91,7 @@ final public class FaultyWeierstrassECGroup implements ECGroup, Serializable {
      */
     @ToString
     final public class ECGroupElement implements com.cryptopals.set_8.ECGroupElement, Serializable {
+        @Serial
         private static final long serialVersionUID = -118582543424541427L;
         final BigInteger   x,  y;
 
@@ -116,8 +119,7 @@ final public class FaultyWeierstrassECGroup implements ECGroup, Serializable {
         @Override
         public boolean equals(Object that) {
             if (that == this)  return  true;
-            if (!(that instanceof ECGroupElement))  return  false;
-            ECGroupElement el = (ECGroupElement) that;
+            if (!(that instanceof ECGroupElement el))  return  false;
             if (!FaultyWeierstrassECGroup.this.equals(el.group()))  return  false;
             return  x.equals(el.x)  &&  y.equals(el.y);
         }

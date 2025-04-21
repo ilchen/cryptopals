@@ -1,7 +1,6 @@
 package com.cryptopals.set_5;
 
 import com.cryptopals.set_6.RSAHelperExt;
-import lombok.Data;
 
 import com.squareup.jnagmp.Gmp;
 import lombok.SneakyThrows;
@@ -19,13 +18,14 @@ import static java.math.BigInteger.ONE;
  * Created by Andrei Ilchenko on 18-03-19.
  */
 public class RSAHelper {
-    @Data
-    public static class PublicKey {
-        final BigInteger  e,  modulus;
+
+    public static record PublicKey(BigInteger e, BigInteger modulus) {
         public BigInteger  encrypt(BigInteger plainText) {
             if (plainText.compareTo(modulus) >= 0)  throw  new IllegalArgumentException("Plain text too large");
+            // return  plainText.modPow(e, modulus);
             return  Gmp.modPowInsecure(plainText, e, modulus);
         }
+
         @SneakyThrows
         public boolean  verify(byte msg[], BigInteger signature) {
             byte[]  paddedMsg = encrypt(signature).toByteArray(),  hash;

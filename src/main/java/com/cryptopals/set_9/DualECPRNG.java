@@ -30,7 +30,7 @@ public class DualECPRNG extends Random {
     // NIST's recommended Q
     public static final WeierstrassECGroup.ECGroupElement   NIST_Q = secp256r1.createPoint(
             new BigInteger("c97445f45cdef9f0d3e05e1e585fc297235b82b5be8ff3efca67c59852018192", 16),
-            new BigInteger("b28ef557ba31dfcbdd21ac46e2a91e3c304f44cb87058ada2cb815151e610046", 16));;
+            new BigInteger("b28ef557ba31dfcbdd21ac46e2a91e3c304f44cb87058ada2cb815151e610046", 16));
     private BigInteger   s;
     private long   blockCounter;
     private final WeierstrassECGroup.ECGroupElement  Q;
@@ -44,7 +44,7 @@ public class DualECPRNG extends Random {
      */
     public DualECPRNG(byte[] seed, WeierstrassECGroup.ECGroupElement q) {
         if (seed.length != INTERNAL_STATE_BYTE_LENGTH)  throw  new IllegalArgumentException("Seed is not 32 bytes long");
-        if (q.equals(P))  throw  new IllegalArgumentException(String.format("Supplied Q point %s is the same as P", q));
+        if (q.equals(P))  throw  new IllegalArgumentException("Supplied Q point %s is the same as P".formatted(q));
 
         // Prepends an extra zero-byte to care of two's complement binary representation used by BigInteger
         byte  appendedSeed[] = new byte[INTERNAL_STATE_BYTE_LENGTH + 1];

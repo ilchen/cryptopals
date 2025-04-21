@@ -1,8 +1,8 @@
 package com.cryptopals.set_8;
 
 import com.cryptopals.Set5;
-import lombok.Data;
 import lombok.EqualsAndHashCode;
+
 
 import java.math.BigInteger;
 import java.util.*;
@@ -16,7 +16,7 @@ import static java.math.BigInteger.valueOf;
  * @param <T>  a class representing a finite field
  */
 @EqualsAndHashCode
-public final class PolynomialRing2<T extends FiniteFieldElement> implements Comparable<PolynomialRing2<T>> {
+public final class PolynomialRing2<T extends FiniteFieldElement<T>> implements Comparable<PolynomialRing2<T>> {
 
     /**
      * The element with key {@code i} represents the coefficient of {@code x}<sup>i</sup>. The invariant of this
@@ -32,18 +32,16 @@ public final class PolynomialRing2<T extends FiniteFieldElement> implements Comp
         this(valueOf(degree), lastCoeff);
     }
 
-    @SuppressWarnings("unchecked")
     public PolynomialRing2(BigInteger deg, T lastCoeff) {
         coefficientsMap.put(deg, lastCoeff);
         degree = deg;
-        ZERO = (T) lastCoeff.getAdditiveIdentity();
-        ONE = (T) lastCoeff.getMultiplicativeIdentity();
+        ZERO = lastCoeff.getAdditiveIdentity();
+        ONE = lastCoeff.getMultiplicativeIdentity();
     }
 
-    @SuppressWarnings("unchecked")
     public PolynomialRing2(T[] coeffs) {
-        ZERO = (T) coeffs[0].getAdditiveIdentity();
-        ONE = (T) coeffs[0].getMultiplicativeIdentity();
+        ZERO = coeffs[0].getAdditiveIdentity();
+        ONE = coeffs[0].getMultiplicativeIdentity();
         degree = valueOf(coeffs.length - 1);
         for (int i=0; i < coeffs.length; i++) {
             if (!coeffs[i].equals(ZERO)) {
@@ -52,7 +50,6 @@ public final class PolynomialRing2<T extends FiniteFieldElement> implements Comp
         }
     }
 
-    @SuppressWarnings("unchecked")
     public PolynomialRing2(Map<BigInteger, T> map) {
         BigInteger   deg = BigInteger.ZERO;
         for (Map.Entry<BigInteger, T> entry : map.entrySet()) {
@@ -64,8 +61,8 @@ public final class PolynomialRing2<T extends FiniteFieldElement> implements Comp
             }
         }
         degree = deg;
-        ZERO = (T) map.values().iterator().next().getAdditiveIdentity();
-        ONE = (T) ZERO.getMultiplicativeIdentity();
+        ZERO = map.values().iterator().next().getAdditiveIdentity();
+        ONE = ZERO.getMultiplicativeIdentity();
         if (coefficientsMap.isEmpty()) {
             assert  degree.equals(BigInteger.ZERO);
             coefficientsMap.put(degree, ZERO);
@@ -101,27 +98,25 @@ public final class PolynomialRing2<T extends FiniteFieldElement> implements Comp
         return new PolynomialRing2<>(0, ONE);
     }
 
-    @SuppressWarnings("unchecked")
     public PolynomialRing2<T> toMonicPolynomial() {
         if (getLeadingCoefficient().equals(ONE))  return  this;
-        T   inv = (T) getLeadingCoefficient().modInverse();
+        T   inv = getLeadingCoefficient().modInverse();
         Map<BigInteger, T>   newMap = new HashMap<>();
         for (Map.Entry<BigInteger, T> entry : coefficientsMap.entrySet()) {
-            newMap.put(entry.getKey(), (T) entry.getValue().multiply(inv));
+            newMap.put(entry.getKey(), entry.getValue().multiply(inv));
 
         }
         return  new PolynomialRing2<>(newMap);
     }
 
-    @SuppressWarnings("unchecked")
-    private PolynomialRing2<T>  doOp(PolynomialRing2<T> that, BinaryOperator<FiniteFieldElement> op) {
+    private PolynomialRing2<T>  doOp(PolynomialRing2<T> that, BinaryOperator<T> op) {
         SortedSet<BigInteger>   keys = new TreeSet<>(coefficientsMap.keySet());
         keys.addAll(that.coefficientsMap.keySet());
         Map<BigInteger, T>   newMap = new HashMap<>();
         for (BigInteger key : keys) {
-            newMap.put(key, (T) op.apply(getCoef(key), that.getCoef(key)));
+            newMap.put(key, op.apply(getCoef(key), that.getCoef(key)));
         }
-        return  new PolynomialRing2<T>(newMap);
+        return  new PolynomialRing2<>(newMap);
     }
 
     public PolynomialRing2<T>  add(PolynomialRing2<T> that) {
@@ -132,7 +127,6 @@ public final class PolynomialRing2<T extends FiniteFieldElement> implements Comp
         return  doOp(that, FiniteFieldElement::subtract);
     }
 
-
     public PolynomialRing2<T>  multiply(PolynomialRing2<T> that) {
         SortedSet<BigInteger>   thisKeys = new TreeSet<>(coefficientsMap.keySet()),
                 thatKeys = new TreeSet<>(that.coefficientsMap.keySet());
@@ -141,15 +135,13 @@ public final class PolynomialRing2<T extends FiniteFieldElement> implements Comp
         for (BigInteger thisKey : thisKeys) {
             for (BigInteger thatKey : thatKeys) {
                 BigInteger   idx = thisKey.add(thatKey);
-                @SuppressWarnings("unchecked")
-                T coeff = (T) coefficientsMap.get(thisKey).multiply(that.coefficientsMap.get(thatKey))
+                T coeff = coefficientsMap.get(thisKey).multiply(that.coefficientsMap.get(thatKey))
                         .add(newMap.getOrDefault(idx, ZERO));
                 newMap.put(idx, coeff);
             }
         }
         return  new PolynomialRing2<>(newMap);
     }
-
 
     public PolynomialRing2<T>  divide(PolynomialRing2<T> d) {
         if (d.degree.equals(BigInteger.ZERO)  &&  d.getLeadingCoefficient().equals(ZERO))
@@ -158,8 +150,7 @@ public final class PolynomialRing2<T extends FiniteFieldElement> implements Comp
         if (degree.compareTo(d.degree) < 0) {
             return  getZeroPolynomial();
         }
-        @SuppressWarnings("unchecked")
-        T   coeff = (T) getLeadingCoefficient().multiply(d.getLeadingCoefficient().modInverse());
+        T   coeff = getLeadingCoefficient().multiply(d.getLeadingCoefficient().modInverse());
         PolynomialRing2<T>   c = new PolynomialRing2<>(degree.subtract(d.degree), coeff);
         return  c.add(subtract(d.multiply(c)).divide(d));
     }
@@ -173,14 +164,13 @@ public final class PolynomialRing2<T extends FiniteFieldElement> implements Comp
             return  (PolynomialRing2<T>[]) new PolynomialRing2[] { zero, this } ;
         }
         while (!r.equals(zero)  &&  r.degree.compareTo(d.degree) >= 0) {
-            T coeff = (T) r.getLeadingCoefficient().multiply(d.getLeadingCoefficient().modInverse());
+            T coeff = r.getLeadingCoefficient().multiply(d.getLeadingCoefficient().modInverse());
             PolynomialRing2<T> c = new PolynomialRing2<>(r.degree.subtract(d.degree), coeff);
             q = q.add(c);
             r = r.subtract(c.multiply(d));
         }
         return  (PolynomialRing2<T>[]) new PolynomialRing2[] { q, r } ;
     }
-
 
     public PolynomialRing2<T>  differentiate() {
         if (degree.equals(BigInteger.ZERO)) {
@@ -190,8 +180,7 @@ public final class PolynomialRing2<T extends FiniteFieldElement> implements Comp
         Map<BigInteger, T>   newMap = new HashMap<>();
         for (BigInteger i : coefficientsMap.keySet()) {
             if (i.equals(BigInteger.ZERO))  continue;
-            @SuppressWarnings("unchecked")
-            T  newCoef = (T) coefficientsMap.get(i).times(i);
+            T  newCoef = coefficientsMap.get(i).times(i);
             if (!newCoef.equals(ZERO)) {
                 newMap.put(i.subtract(BigInteger.ONE), newCoef);
             }
@@ -208,8 +197,8 @@ public final class PolynomialRing2<T extends FiniteFieldElement> implements Comp
     }
 
     public PolynomialRing2<T>  extendedGcd(PolynomialRing2<T> h) {
-        PolynomialRing2<T>   zero = getZeroPolynomial(),  r0 = this,  r1 = h,  s0 = getMultiplicativeIdentity(),  s1 = zero, t0 = s1,  t1 = s0,  q,  tmp;
-        int   i = 1;
+        PolynomialRing2<T>   zero = getZeroPolynomial(),  r0 = this,  r1 = h,  s0 = getMultiplicativeIdentity(),
+                s1 = zero, t0 = s1,  t1 = s0,  q,  tmp;
 
         while (!r1.equals(zero)) {
             r1 = r1.toMonicPolynomial();
@@ -220,7 +209,6 @@ public final class PolynomialRing2<T extends FiniteFieldElement> implements Comp
         }
         return  r0;
     }
-
 
     public PolynomialRing2<T>  scale(BigInteger k) {
         PolynomialRing2<T> res = getMultiplicativeIdentity(),  x = this;
@@ -234,9 +222,8 @@ public final class PolynomialRing2<T extends FiniteFieldElement> implements Comp
 
     /**
      * Calculates  this<sup>k</sup> mod modulus using repeated squaring
-     * @param k
-     * @param modulus
-     * @return
+     * @param k the power to which to raise this polynomial
+     * @param modulus the modulus to apply to the result
      */
     public PolynomialRing2<T>  scaleMod(BigInteger k, PolynomialRing2<T> modulus) {
         PolynomialRing2<T> res = getMultiplicativeIdentity(),  x = this;
@@ -256,7 +243,6 @@ public final class PolynomialRing2<T extends FiniteFieldElement> implements Comp
         return  res;
     }
 
-
     /**
      * Performs a lexicographic compare.
      */
@@ -270,11 +256,7 @@ public final class PolynomialRing2<T extends FiniteFieldElement> implements Comp
         return 0;
     }
 
-    @Data
-    public static final class PolynomialAndPower<T extends FiniteFieldElement> {
-        final PolynomialRing2<T>   factor;
-        final int  power;
-    }
+    public static record PolynomialAndPower<U extends FiniteFieldElement<U>>(PolynomialRing2<U> factor, int power) {  }
 
     /**
      * Returns square-free factorization of this polynomial using
@@ -424,8 +406,7 @@ public final class PolynomialRing2<T extends FiniteFieldElement> implements Comp
         if (degree < 1)  throw  new IllegalArgumentException("Degree is less than 1: " + degree);
         PolynomialRing2<T>   res = new PolynomialRing2<>(degree, ONE);
         while (--degree >= 0) {
-            @SuppressWarnings("unchecked")
-            PolynomialRing2<T>   next = new PolynomialRing2<>(degree, (T) ONE.getRandomElement());
+            PolynomialRing2<T>   next = new PolynomialRing2<>(degree, ONE.getRandomElement());
             res = res.add(next);
         }
         return  res;
@@ -481,7 +462,7 @@ public final class PolynomialRing2<T extends FiniteFieldElement> implements Comp
             T   coeff = coefficientsMap.get(i);
             if (coeff.equals(ZERO)  &&  degree.compareTo(BigInteger.ZERO) > 0)  continue;
             if (sb.length() > 0)  sb.append(" + ");
-            if (!coeff.equals(ONE)  ||  i.equals(BigInteger.ZERO))  sb.append(coeff.toString());
+            if (!coeff.equals(ONE)  ||  i.equals(BigInteger.ZERO))  sb.append(coeff);
             if (i.compareTo(BigInteger.ONE) > 0) {
                 sb.append("x^").append(i);
             } else if (i.equals(BigInteger.ONE)) {

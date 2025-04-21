@@ -12,7 +12,6 @@ public interface DiffieHellman extends Remote {
      * @param g  a generator of a (sub)group of Zp*
      * @param q  the order of the generator
      * @param A  Alice's public key
-     * @throws RemoteException
      */
     Set8.Challenge57DHBobResponse  initiate(BigInteger p, BigInteger g, BigInteger q, BigInteger A) throws RemoteException;
 

@@ -7,7 +7,6 @@ import lombok.ToString;
 import java.math.BigInteger;
 import java.util.*;
 import java.util.function.Predicate;
-import java.util.stream.Stream;
 
 import static com.cryptopals.set_6.DSAHelper.TWO;
 import static java.math.BigInteger.*;
@@ -59,7 +58,6 @@ public class PaddingOracleHelper {
     private final static BigInteger   THREE = valueOf(3L);
     private final BigInteger   cipherText;
     private final RSAHelper.PublicKey   pubKey;
-    private final int   k;
     private final BigInteger   B,  _2B,  _3B,  _3B_MIN_1;
     private final Predicate<BigInteger>   paddingOracle;
     private BigInteger   s;
@@ -68,13 +66,13 @@ public class PaddingOracleHelper {
     private PaddingOracleHelper(BigInteger cipherTxt, RSAHelper.PublicKey pk, Predicate<BigInteger> oracle) {
         cipherText = cipherTxt;
         pubKey = pk;
-        k = (pk.getModulus().bitLength() + 7 & ~7) / 8;
+        int k = (pk.modulus().bitLength() + 7 & ~7) / 8;
         B = TWO.pow(8 * (k - 2));
         paddingOracle = oracle;
         _2B = TWO.multiply(B);
         _3B = THREE.multiply(B);
         _3B_MIN_1 = _3B.subtract(ONE);
-        s = divideAndRoundUp(pk.getModulus(), _3B);
+        s = divideAndRoundUp(pk.modulus(), _3B);
         intervals.add(new Interval(_2B,  _3B_MIN_1));
         assert oracle.test(pk.encrypt(_2B));
         assert oracle.test(pk.encrypt(_3B_MIN_1));
@@ -101,8 +99,8 @@ public class PaddingOracleHelper {
     private BigInteger  step2c() {
         assert  intervals.size() == 1;
         Interval   interval = intervals.iterator().next();
-        BigInteger   r = divideAndRoundUp(interval.upper.multiply(s).subtract(_2B).multiply(TWO), pubKey.getModulus()),
-                     rn = r.multiply(pubKey.getModulus());
+        BigInteger   r = divideAndRoundUp(interval.upper.multiply(s).subtract(_2B).multiply(TWO), pubKey.modulus()),
+                     rn = r.multiply(pubKey.modulus());
 
         while (true) {
             BigInteger   lower = divideAndRoundUp(_2B.add(rn), interval.upper),
@@ -110,7 +108,7 @@ public class PaddingOracleHelper {
             for (BigInteger nextS=lower; nextS.compareTo(upper) <= 0; nextS = nextS.add(ONE)) {
                 if (paddingOracle.test(pubKey.encrypt(nextS).multiply(cipherText)))  return  s = nextS;
             }
-            rn = rn.add(pubKey.getModulus());
+            rn = rn.add(pubKey.modulus());
         }
 //        return  s = Stream.iterate(r, ri -> ri.add(BigInteger.ONE))
 //                .flatMap(ri -> {
@@ -126,11 +124,11 @@ public class PaddingOracleHelper {
         System.out.printf("s =  %x%n", s);
         for (Interval interval : intervals) {
             System.out.printf("m \u2208 [%x,%n     %x]%n", interval.lower, interval.upper);
-            BigInteger   lowerBound = divideAndRoundUp(interval.lower.multiply(s).subtract(_3B_MIN_1), pubKey.getModulus());
-            BigInteger   upperBound = interval.upper.multiply(s).subtract(_2B).divide(pubKey.getModulus());
+            BigInteger   lowerBound = divideAndRoundUp(interval.lower.multiply(s).subtract(_3B_MIN_1), pubKey.modulus());
+            BigInteger   upperBound = interval.upper.multiply(s).subtract(_2B).divide(pubKey.modulus());
             System.out.printf("r \u2208 [%x,%n     %x]%n", lowerBound, upperBound);
             for (BigInteger r = lowerBound; r.compareTo(upperBound) <= 0; r = r.add(ONE)) {
-                BigInteger   rn = r.multiply(pubKey.getModulus()),
+                BigInteger   rn = r.multiply(pubKey.modulus()),
                              a = divideAndRoundUp(_2B.add(rn), s),  b = _3B_MIN_1.add(rn).divide(s);
                 if (a.compareTo(b) > 0)  continue;
                 Interval   newInterval = new Interval(a.max(interval.lower), b.min(interval.upper));

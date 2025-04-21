@@ -57,10 +57,7 @@ public class Set7 extends Set3 {
 
     private static final Map<SecretKey, String>   KEYS_TO_ACCOUNTS;
     static {
-        Map<SecretKey, String>   tmp = new HashMap<>();
-        tmp.put(Set1.YELLOW_SUBMARINE_SK, "id100000012");
-        tmp.put(BLACK_SUBMARINE_SK, "id100000013");
-        KEYS_TO_ACCOUNTS = Collections.unmodifiableMap(tmp);
+        KEYS_TO_ACCOUNTS = Map.of(Set1.YELLOW_SUBMARINE_SK, "id100000012", BLACK_SUBMARINE_SK, "id100000013");
     }
 
     private final SecretKey   sk;
@@ -230,7 +227,7 @@ public class Set7 extends Set3 {
     }
 
     private static byte[]  challege51OracleHelper(String msg) {
-        String   request = String.format(CHALLENGE51_REQUEST_TEMPLATE, msg.length(), msg);
+        String   request = CHALLENGE51_REQUEST_TEMPLATE.formatted(msg.length(), msg);
         Deflater compresser = new Deflater();
         byte[]   requestBytes = new byte[request.length()];
         compresser.setInput(request.getBytes());
@@ -301,7 +298,7 @@ public class Set7 extends Set3 {
                     k = oracle.applyAsInt(sb.toString() + padding);
                     if (isCBC && k > bestLen  ||  !isCBC && k == bestLen + 1) {
                         if (isCBC  &&  oracle.applyAsInt(
-                                sb.toString() + padding.substring(0, padding.length() - 1)) > bestLen)  continue;
+                                sb + padding.substring(0, padding.length() - 1)) > bestLen)  continue;
                         if (idxPossibleMatch != -1) {
                             StringBuilder sb2 = new StringBuilder(sb);
                             sb2.replace(sb2.length() - 2, sb2.length(), BASE64_BIGRAMS[idxPossibleMatch]);

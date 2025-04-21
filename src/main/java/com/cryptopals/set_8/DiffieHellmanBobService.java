@@ -7,18 +7,19 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.math.BigInteger;
 import java.rmi.RemoteException;
+import java.rmi.server.UnicastRemoteObject;
 
 import static java.math.BigInteger.ZERO;
 import static java.math.BigInteger.ONE;
 
-public class  DiffieHellmanBobService implements DiffieHellman {
+public class  DiffieHellmanBobService extends UnicastRemoteObject implements DiffieHellman {
     private DiffieHellmanHelperExt   df;
-    private SecretKeySpec   macKey;
     private BigInteger  privateKey;
     private final Mac   mac;
 
     @SneakyThrows
-    public DiffieHellmanBobService() {
+    public DiffieHellmanBobService() throws RemoteException {
+        super();
         mac = Mac.getInstance(Set8.MAC_ALGORITHM_NAME);
     }
 
@@ -41,7 +42,7 @@ public class  DiffieHellmanBobService implements DiffieHellman {
         }
 
         // System.out.printf("b mod 37220200115549684379403037 = %d%n", privateKey.mod(new BigInteger("37220200115549684379403037")));
-        macKey = df.generateSymmetricKey(A, privateKey, 32, Set8.MAC_ALGORITHM_NAME);
+        SecretKeySpec macKey = df.generateSymmetricKey(A, privateKey, 32, Set8.MAC_ALGORITHM_NAME);
         mac.init(macKey);
         return  new Set8.Challenge57DHBobResponse(g.modPow(privateKey, df.getModulus()), Set8.CHALLENGE56_MSG,
                                                   mac.doFinal(Set8.CHALLENGE56_MSG.getBytes()) );

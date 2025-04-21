@@ -1,7 +1,6 @@
 package com.cryptopals.server;
 
 import com.cryptopals.Set7;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -9,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.util.Locale;
@@ -21,15 +20,14 @@ public class Challenge49Controller {
     private final Map<String, SecretKey>   headerToKeyMap;
     private final NumberFormat   currencyFormatter;
 
-    @Autowired
     Challenge49Controller(Map<String, SecretKey>  h2keyMap) {
         headerToKeyMap = h2keyMap;
         currencyFormatter = NumberFormat.getCurrencyInstance(Locale.US);
     }
 
     @PostMapping(value = "/sct", params = { "from", "to", "amount" }, headers = { "userid" })
-    public ResponseEntity<?> checkSignature(@RequestParam("from") String from,
-                                            @RequestParam("to") String to,
+    public ResponseEntity<?> checkSignature(@RequestParam String from,
+                                            @RequestParam String to,
                                             /*@RequestParam("amount") String amount, easier to extract it from the qs */
                                             @RequestHeader("userid") String userId,
                                             HttpServletRequest request) {
@@ -57,7 +55,7 @@ public class Challenge49Controller {
     }
 
     @PostMapping(value = "/mct", params = { "from" , "tx_list" }, headers = { "userid" })
-    public ResponseEntity<?> checkSignatureMct(@RequestParam("from") String from,
+    public ResponseEntity<?> checkSignatureMct(@RequestParam String from,
                                                @RequestParam(name="tx_list") String txLists[],
                                                @RequestHeader("userid") String userId/*,
                                                HttpServletRequest request*/) {
@@ -84,7 +82,7 @@ public class Challenge49Controller {
             System.out.printf("On request of user %s transferring:%n", userId);
             for (String tx : txs) {
                 int   colonIdx = tx.indexOf(':');
-                BigDecimal amt = new BigDecimal(tx.substring(colonIdx + 1, tx.length()));
+                BigDecimal amt = new BigDecimal(tx.substring(colonIdx + 1));
                 System.out.printf("\t%s to %s%n", currencyFormatter.format(amt.doubleValue()), tx.substring(0, colonIdx));
             }
             return new ResponseEntity<>(HttpStatus.ACCEPTED);

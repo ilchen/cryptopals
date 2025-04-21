@@ -223,9 +223,7 @@ public class Set2 {
         int   unknownPlainTextLen = oracle.getUnknownPlainTextLength();
         int   padSize = blockSize - unknownPlainTextLen % blockSize;
         if (unknownPlainTextLen % blockSize != 0) {
-            for (int i=0; i < padSize; i++)  {
-                sb.append('A');
-            }
+            sb.append("A".repeat(Math.max(0, padSize)));
         }
 
         int   cipherTextSize = oracle.apply(sb.toString().getBytes()).length;
@@ -328,7 +326,7 @@ public class Set2 {
                 + challenge16Oracle.isExpectedParamPresent(cipherText, decryptor));
     }
 
-    public static void main(String[] args) {
+    public static void  main(String[] args) {
 
         try {
             // Import DST Root CA X3 certificate into $JAVA_HOME/jre/lib/security/cacerts or uncomment the next line

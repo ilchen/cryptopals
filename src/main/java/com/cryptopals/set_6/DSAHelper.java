@@ -1,7 +1,9 @@
 package com.cryptopals.set_6;
 
 import com.cryptopals.Set1;
-import lombok.*;
+import lombok.Builder;
+import lombok.Data;
+import lombok.SneakyThrows;
 
 import java.math.BigInteger;
 import java.security.MessageDigest;
@@ -16,10 +18,8 @@ import static java.math.BigInteger.*;
  * Created by Andrei Ilchenko on 30-03-19.
  */
 public class DSAHelper {
-    @Data
-    public static class PublicKey {
-        private final BigInteger  p,  q,  g,  y;
 
+    public static record PublicKey(BigInteger p, BigInteger q, BigInteger g, BigInteger y) {
         public boolean   verifySignature(byte msg[], Signature signature) {
             BigInteger   w = signature.getS().modInverse(q),  u1 = hashAsBigInteger(msg).multiply(w).mod(q),
                          u2 = signature.getR().multiply(w).mod(q);
@@ -82,9 +82,9 @@ public class DSAHelper {
             final BigInteger  NN = N;
             W = IntStream.rangeClosed(0, n).mapToObj(k ->
                     new Object() {
-                        BigInteger v = newBigInteger(
+                        final BigInteger v = newBigInteger(
                                 sha.digest(S.add(NN).add(BigInteger.valueOf(k)).mod(TWO.pow(S.bitLength())).toByteArray()));
-                        int i = k;
+                        final int i = k;
                     }).map(pair -> TWO.pow(160 * pair.i).multiply(pair.i == n ? pair.v.mod(TWO.pow(b)) : pair.v))
                     .reduce(ZERO, BigInteger::add);
             X = W.add(TWO.pow(L - 1));

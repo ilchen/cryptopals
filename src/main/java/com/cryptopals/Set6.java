@@ -9,7 +9,6 @@ import lombok.SneakyThrows;
 import com.cryptopals.set_6.RSAHelperExt;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.math.BigInteger;
@@ -27,12 +26,16 @@ import static com.cryptopals.set_6.DSAHelper.TWO;
  * Created by Andrei Ilchenko on 20-03-19.
  */
 public class Set6 {
-    static final String   PLAIN_TEXT = "{\n" +
-            "  time: 1356304276,\n" +
-            "  social: '555-55-5555',\n" +
-            "}",
-            CHALLENGE_43_TEXT = "For those that envy a MC it can be hazardous to your health\n"
-                    + "So be friendly, a matter of life and death, just like a etch-a-sketch\n",
+    static final String   PLAIN_TEXT = """
+            {
+              time: 1356304276,
+              social: '555-55-5555',
+            }\
+            """,
+            CHALLENGE_43_TEXT = """
+                    For those that envy a MC it can be hazardous to your health
+                    So be friendly, a matter of life and death, just like a etch-a-sketch
+                    """,
             CHALLANGE_47_PLAINTEXT = "kick it, CC";
     static final BigInteger   CHALLENGE_43_Y = new BigInteger("84ad4719d044495496a3201c8ff484feb45b962e7302e56a392aee4" +
             "abab3e4bdebf2955b4736012f21a08084056b19bcd7fee56048e004" +
@@ -55,9 +58,9 @@ public class Set6 {
     static BigInteger  breakChallenge41(BigInteger cipherTxt, RSAHelper.PublicKey pk,
                                         UnaryOperator<BigInteger> oracle) {
         BigInteger   s;
-        while (BigInteger.ONE.compareTo(s = new BigInteger(pk.getModulus().bitLength(), RANDOM).mod(pk.getModulus())) >= 0);
-        return  oracle.apply(s.modPow(pk.getE(), pk.getModulus()).multiply(cipherTxt).mod(pk.getModulus()))
-                .multiply(s.modInverse(pk.getModulus())).mod(pk.getModulus());
+        while (BigInteger.ONE.compareTo(s = new BigInteger(pk.modulus().bitLength(), RANDOM).mod(pk.modulus())) >= 0);
+        return  oracle.apply(s.modPow(pk.e(), pk.modulus()).multiply(cipherTxt).mod(pk.modulus()))
+                .multiply(s.modInverse(pk.modulus())).mod(pk.modulus());
     }
 
     @SneakyThrows
@@ -65,7 +68,7 @@ public class Set6 {
         final int   MIN_PAD = 4;   // \x00\x01\xff\x00"
         MessageDigest md = MessageDigest.getInstance(method.toString());
         byte[]   hash = md.digest(msg),  paddedMsg;
-        int      lenPad = pk.getModulus().bitLength() / 8 - (hash.length + method.getASN1Encoding().length + MIN_PAD + 1);
+        int      lenPad = pk.modulus().bitLength() / 8 - (hash.length + method.getASN1Encoding().length + MIN_PAD + 1);
         paddedMsg = new byte[lenPad + hash.length + method.getASN1Encoding().length + MIN_PAD];
         paddedMsg[1] = 1;     paddedMsg[2] = -1;
         System.arraycopy(method.getASN1Encoding(), 0, paddedMsg, MIN_PAD , method.getASN1Encoding().length);
@@ -75,14 +78,13 @@ public class Set6 {
         return  forgedSignature.add(BigInteger.ONE);
     }
 
-
     @SneakyThrows
     static BigInteger  breakChallenge43(byte msg[], DSAHelper.Signature signature, DSAHelper.PublicKey pk) {
         MessageDigest   sha = MessageDigest.getInstance("SHA-1");
         BigInteger   h = newBigInteger(sha.digest(msg));
         return IntStream.rangeClosed(0, 0xffff).parallel().mapToObj(BigInteger::valueOf)
-                .map(k -> signature.getS().multiply(k).subtract(h).multiply(signature.getR().modInverse(pk.getQ())).mod(pk.getQ()))
-                .filter(x -> pk.getG().modPow(x, pk.getP()).equals(pk.getY())).findFirst().orElseThrow(IllegalStateException::new);
+                .map(k -> signature.getS().multiply(k).subtract(h).multiply(signature.getR().modInverse(pk.q())).mod(pk.q()))
+                .filter(x -> pk.g().modPow(x, pk.p()).equals(pk.y())).findFirst().orElseThrow(IllegalStateException::new);
     }
 
     @Data @Builder
@@ -93,7 +95,7 @@ public class Set6 {
     }
 
     @SneakyThrows
-    static List<SignedMessage>  extractSignatures(String url) throws IOException {
+    static List<SignedMessage>  extractSignatures(String url) {
         final String   MSG = "msg: ",  S = "s: ",  R = "r: ",  M = "m: ";
         final int   maxLines = 600;
         try (InputStream is = new URL(url).openStream(); BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
@@ -115,7 +117,7 @@ public class Set6 {
                     SignedMessage  sm = smb.build();
                     BigInteger   m = new BigInteger(line.substring(M.length()), 16);
                     if (!m.equals(sm.getM())) {
-                        throw  new IllegalStateException(String.format("The hash of msg %s 0x%x != 0x%x",
+                        throw  new IllegalStateException("The hash of msg %s 0x%x != 0x%x".formatted(
                                 sm.getMsg(), m, sm.getM()));
                     }
                     res.add(sm);
@@ -131,9 +133,9 @@ public class Set6 {
                 BigInteger   m1 = signatures.get(i).getM(),  m2 = signatures.get(j).getM(),
                              s1 = signatures.get(i).getSignature().getS(),  s2 = signatures.get(j).getSignature().getS(),
                              r1 = signatures.get(i).getSignature().getR();
-                BigInteger   k = m1.subtract(m2).multiply(s1.subtract(s2).modInverse(pk.getQ())),
-                             x = s1.multiply(k).subtract(m1).multiply(r1.modInverse(pk.getQ())).mod(pk.getQ());
-                if (pk.getG().modPow(x, pk.getP()).equals(pk.getY())) {
+                BigInteger   k = m1.subtract(m2).multiply(s1.subtract(s2).modInverse(pk.q())),
+                             x = s1.multiply(k).subtract(m1).multiply(r1.modInverse(pk.q())).mod(pk.q());
+                if (pk.g().modPow(x, pk.p()).equals(pk.y())) {
                     return  x;
                 }
             }
@@ -144,8 +146,8 @@ public class Set6 {
     static BigInteger  breakChallenge46(BigInteger cipherTxt, RSAHelper.PublicKey pk,
                                         Predicate<BigInteger> oracle) {
         System.out.printf("Ciphertext: %x%n", cipherTxt);
-        BigInteger   modulus = pk.getModulus(),  lower = BigInteger.ZERO,  upper = BigInteger.ONE,  denom = BigInteger.ONE,
-                     multiplier = TWO.modPow(pk.getE(), modulus),  cur = cipherTxt,  d;
+        BigInteger   modulus = pk.modulus(),  lower = BigInteger.ZERO,  upper = BigInteger.ONE,  denom = BigInteger.ONE,
+                     multiplier = TWO.modPow(pk.e(), modulus),  cur = cipherTxt,  d;
         int   n = modulus.bitLength();
         for (int i=0; i < n; i++) {
             cur = cur.multiply(multiplier);
@@ -234,7 +236,7 @@ public class Set6 {
 
             System.out.println("\nChallenge 47");
             rsa = new RSAHelperExt(BigInteger.valueOf(17), 384);
-            plainText = RSAHelperExt.pkcs15Pad(CHALLANGE_47_PLAINTEXT.getBytes(), rsa.getPublicKey().getModulus().bitLength());
+            plainText = RSAHelperExt.pkcs15Pad(CHALLANGE_47_PLAINTEXT.getBytes(), rsa.getPublicKey().modulus().bitLength());
             cipherTxt = rsa.encrypt(plainText);
             BigInteger   crackedPlainText = PaddingOracleHelper.solve(cipherTxt, rsa.getPublicKey(), rsa::paddingOracle);
             System.out.printf("%nPlaintext: %x%nCiphertext: %x%nRecovered plaintext: %x%n", plainText, cipherTxt, crackedPlainText);

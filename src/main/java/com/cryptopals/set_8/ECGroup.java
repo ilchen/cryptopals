@@ -59,8 +59,8 @@ public interface ECGroup {
         BigInteger[]   otherOrder = (useFullGroup  ?  getOrder() : getCyclicOrder()).divideAndRemainder(order);
         if (!otherOrder[1].equals(BigInteger.ZERO))  {
             throw  new IllegalArgumentException(
-                    String.format("This curve doesn't contain a subgroup of order %d in its %s",
-                            order, useFullGroup  ?  "full group" : "largest cyclic subgroup"));
+                    "This curve doesn't contain a subgroup of order %d in its %s".formatted(
+                            order, useFullGroup ? "full group" : "largest cyclic subgroup"));
         }
         Random   rnd = ThreadLocalRandom.current();
         BigInteger     x,  y;

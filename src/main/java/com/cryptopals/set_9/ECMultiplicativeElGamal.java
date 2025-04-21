@@ -2,7 +2,6 @@ package com.cryptopals.set_9;
 
 import com.cryptopals.set_6.DSAHelper;
 import com.cryptopals.set_8.ECGroupElement;
-import lombok.Data;
 
 import java.math.BigInteger;
 
@@ -14,11 +13,7 @@ import java.math.BigInteger;
  */
 public class ECMultiplicativeElGamal {
 
-    @Data
-    public static final class  PublicKey {
-        private final ECGroupElement G;
-        private final BigInteger n;
-        private final ECGroupElement   u;
+    public static final record  PublicKey(ECGroupElement G, BigInteger n, ECGroupElement u) {
 
         /**
          * Encrypts {@code msg} using the public key {@code u} and an ephemeral sk/pk pair.

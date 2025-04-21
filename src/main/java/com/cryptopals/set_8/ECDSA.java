@@ -3,8 +3,6 @@ package com.cryptopals.set_8;
 import com.cryptopals.set_6.DSAHelper;
 import static com.cryptopals.set_6.DSAHelper.hashAsBigInteger;
 
-import lombok.Data;
-
 import java.math.BigInteger;
 
 /**
@@ -13,11 +11,7 @@ import java.math.BigInteger;
  * Created by Andrei Ilchenko on 12-10-19.
  */
 public class ECDSA {
-    @Data
-    public static final class  PublicKey {
-        private final ECGroupElement   G;
-        private final BigInteger       n;
-        private final ECGroupElement   Q;
+    public static final record  PublicKey(ECGroupElement G, BigInteger n, ECGroupElement Q) {
 
         public boolean  verifySignature(byte msg[], DSAHelper.Signature signature) {
             BigInteger   w = signature.getS().modInverse(n),  u1 = hashAsBigInteger(msg).multiply(w).mod(n),

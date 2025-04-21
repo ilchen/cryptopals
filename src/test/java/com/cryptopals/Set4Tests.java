@@ -48,26 +48,27 @@ class Set4Tests {
 
     @DisplayName("https://cryptopals.com/sets/4/challenges/29")
     @Test
-    void  challenge29() throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, BadPaddingException {
+    void  challenge29() throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException {
         KeyGenerator aesKeyGen = KeyGenerator.getInstance("AES");
         SecretKey key = aesKeyGen.generateKey();
         Set4   encryptor = new Set4(Cipher.ENCRYPT_MODE, key);
         Set4.ExistentialForgeryPair   existForgery = Set4.breakSHA1KeyedMAC(encryptor,
                 CHALLANGE_29_ORIGINAL_MESSAGE.getBytes(), CHALLANGE_29_EXTENSION.getBytes());
-        assertArrayEquals(encryptor.keyedMac(existForgery.getForgedMessage()), existForgery.getForgedMAC());
+        assertArrayEquals(encryptor.keyedMac(existForgery.forgedMessage()), existForgery.forgedMAC());
     }
 
     @DisplayName("https://cryptopals.com/sets/4/challenges/30")
     @Test
-    void  challenge30() throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, BadPaddingException {
+    void  challenge30() throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException {
         KeyGenerator aesKeyGen = KeyGenerator.getInstance("AES");
         SecretKey key = aesKeyGen.generateKey();
         Set4   encryptor = new Set4(Cipher.ENCRYPT_MODE, key);
         Set4.ExistentialForgeryPair   existForgery = Set4.breakMD4KeyedMAC(encryptor,
                 CHALLANGE_29_ORIGINAL_MESSAGE.getBytes(), CHALLANGE_29_EXTENSION.getBytes());
-        assertArrayEquals(encryptor.keyedMacMD4(existForgery.getForgedMessage()), existForgery.getForgedMAC());
+        assertArrayEquals(encryptor.keyedMacMD4(existForgery.forgedMessage()), existForgery.forgedMAC());
     }
 
+    // The corresponding SpringBoot server application must be running.
     @DisplayName("https://cryptopals.com/sets/4/challenges/32")
     @Test
     void  challenge32() {

@@ -5,7 +5,7 @@ import com.cryptopals.set_5.RSAHelper;
 import com.cryptopals.set_6.DSAHelper;
 import com.cryptopals.set_6.RSAHelperExt;
 import com.cryptopals.set_8.*;
-import lombok.Data;
+import com.squareup.jnagmp.Gmp;
 import lombok.SneakyThrows;
 
 import javax.crypto.Mac;
@@ -57,26 +57,11 @@ public class Set8 {
     private static final BigInteger   TWO = valueOf(2),  THREE = valueOf(3),  FOUR = valueOf(4),  FIVE = valueOf(5),
                                       EIGHT = valueOf(8);
 
-    @Data
-    public static class Challenge57DHBobResponse implements Serializable {
-        final BigInteger B;
-        final String   msg;
-        final byte[]   mac;
-    }
+    public static record Challenge57DHBobResponse(BigInteger B, String msg, byte[] mac) implements Serializable {  }
 
-    @Data
-    public static class Challenge59ECDHBobResponse implements Serializable {
-        final ECGroupElement B;
-        final String   msg;
-        final byte[]   mac;
-    }
+    public static record Challenge59ECDHBobResponse(ECGroupElement B, String msg, byte[] mac) implements Serializable {}
 
-    @Data
-    public static class Challenge60ECDHBobResponse implements Serializable {
-        final BigInteger xB;
-        final String   msg;
-        final byte[]   mac;
-    }
+    public static record Challenge60ECDHBobResponse(BigInteger xB, String msg, byte[] mac) implements Serializable {  }
 
     /**
      * An oracle for Challenge 64 that returns a GHASH error polynomial calculated over differences between the coefficients
@@ -96,7 +81,8 @@ public class Set8 {
      *           -1 if {@code a} is a quadratic non-residue modulo {@code p}.
      */
     public static BigInteger  legendreSymbol(BigInteger a, BigInteger p) {
-        return  a.modPow(p.subtract(ONE).shiftRight(1), p);
+        // return  a.modPow(p.subtract(ONE).shiftRight(1), p);
+        return Gmp.modPowInsecure(a, p.subtract(ONE).shiftRight(1), p);
     }
 
     /**
@@ -106,15 +92,21 @@ public class Set8 {
      * @return  &radic;n mod p if n is a quadratic residue, {@link #NON_RESIDUE} otherwise
      */
     public static BigInteger  squareRoot(BigInteger n, BigInteger p) {
-        BiFunction<BigInteger, BigInteger, BigInteger>   powModP = (BigInteger a, BigInteger e) -> a.modPow(e, p);
+        BiFunction<BigInteger, BigInteger, BigInteger>   powModP =
+                (BigInteger a, BigInteger e) -> Gmp.modPowInsecure(a, e, p); //a.modPow(e, p);
         if (!legendreSymbol(n, p).equals(ONE))  return  NON_RESIDUE;
-        if (p.mod(FOUR).equals(THREE))  return  n.modPow(p.add(ONE).shiftRight(2), p);  // Principal square root
+        // if (p.mod(FOUR).equals(THREE))  return  n.modPow(p.add(ONE).shiftRight(2), p);  // Principal square root
+        if (p.mod(FOUR).equals(THREE))  return  Gmp.modPowInsecure(n, p.add(ONE).shiftRight(2), p);
         if (p.mod(EIGHT).equals(FIVE)) {
             // 2^((p−1)/4) is a square root of -1 modulo p
-            BigInteger   d = n.modPow(p.subtract(ONE).shiftRight(2), p);
-            return  d.equals(ONE)  ?  n.modPow(p.add(THREE).shiftRight(3), p)
+            // BigInteger   d = n.modPow(p.subtract(ONE).shiftRight(2), p);
+            // return  d.equals(ONE)  ?  n.modPow(p.add(THREE).shiftRight(3), p)
+            //                       :  n.shiftLeft(1).multiply(
+            //                               n.shiftLeft(2).modPow(p.subtract(FIVE).shiftRight(3), p)).mod(p);
+            BigInteger   d = Gmp.modPowInsecure(n, p.subtract(ONE).shiftRight(2), p);
+            return  d.equals(ONE)  ?  Gmp.modPowInsecure(n, p.add(THREE).shiftRight(3), p)
                                    :  n.shiftLeft(1).multiply(
-                                           n.shiftLeft(2).modPow(p.subtract(FIVE).shiftRight(3), p)).mod(p);
+                                        Gmp.modPowInsecure(n.shiftLeft(2), p.subtract(FIVE).shiftRight(3), p)).mod(p);
         }
         BigInteger  q = p.subtract(ONE),  ss = ZERO,  z = TWO;
         while (q.and(ONE).equals(ZERO)) {
@@ -170,7 +162,7 @@ public class Set8 {
                 cVec[i] = cVec[i].multiply(u).mod(residues.get(i)[1]);
             }
         }
-        x = u = residues.get(0)[0];
+        x = residues.get(0)[0];
         for (int i=1; i < n; i++) {
             u = residues.get(i)[0].subtract(x).multiply(cVec[i]).mod(residues.get(i)[1]);
             prd = ONE;
@@ -258,7 +250,8 @@ public class Set8 {
             mac.init(dh.generateSymmetricKey(h, b, 32, MAC_ALGORITHM_NAME));
             if (Arrays.equals(res.mac, mac.doFinal(res.msg.getBytes())))  {
                 System.out.printf("Found b mod %d: %d%n", r, b);
-                BigInteger  gPrime = g.pow(r.intValue()), yPrime = res.B.multiply(g.modPow(b.negate(), p)),
+                                                                // res.B.multiply(g.modPow(b.negate(), p)),
+                BigInteger  gPrime = g.pow(r.intValue()), yPrime = res.B.multiply(Gmp.modPowInsecure(g, b.negate(), p)),
                         m = new DiffieHellmanHelper(p, gPrime).dlog(yPrime, q.subtract(ONE).divide(r), DiffieHellmanHelper::f);
                 return  b.add(m.multiply(r));
             }
@@ -482,13 +475,13 @@ public class Set8 {
      * @return a forged public key that validates the msg and signature combination
      */
     static ECDSA.PublicKey  breakChallenge61ECDSA(byte[] msg, DSAHelper.Signature signature, ECDSA.PublicKey pk) {
-        BigInteger   w = signature.getS().modInverse(pk.getN()),  u1 = hashAsBigInteger(msg).multiply(w).mod(pk.getN()),
-                     u2 = signature.getR().multiply(w).mod(pk.getN()),
-                     d_ = DSAHelper.generateK(pk.getN()),
-                     t = u1.add(u2.multiply(d_)).mod(pk.getN());
-        ECGroupElement   R = pk.getG().scale(u1).combine(pk.getQ().scale(u2)),  G_= R.scale(t.modInverse(pk.getN())),
+        BigInteger   w = signature.getS().modInverse(pk.n()),  u1 = hashAsBigInteger(msg).multiply(w).mod(pk.n()),
+                     u2 = signature.getR().multiply(w).mod(pk.n()),
+                     d_ = DSAHelper.generateK(pk.n()),
+                     t = u1.add(u2.multiply(d_)).mod(pk.n());
+        ECGroupElement   R = pk.G().scale(u1).combine(pk.Q().scale(u2)),  G_= R.scale(t.modInverse(pk.n())),
                          Q_ = G_.scale(d_);
-        return  new ECDSA.PublicKey(G_, pk.getN(), Q_);
+        return  new ECDSA.PublicKey(G_, pk.n(), Q_);
     }
 
     /**
@@ -507,9 +500,11 @@ public class Set8 {
 
         for (BigInteger r : factors) {
             BigInteger   otherOrder = p.subtract(ONE).divide(r),
-                         gi = g.modPow(otherOrder, p),  hi = y.modPow(otherOrder, p);
+                         gi = Gmp.modPowInsecure(g, otherOrder, p),  hi = Gmp.modPowInsecure(y, otherOrder, p);
+            //           gi = g.modPow(otherOrder, p),  hi = y.modPow(otherOrder, p);
             for (BigInteger b = ZERO; b.compareTo(r) < 0; b = b.add(ONE)) {
-                if (gi.modPow(b, p).equals(hi)) {
+                // if (gi.modPow(b, p).equals(hi)) {
+                if (Gmp.modPowInsecure(gi, b, p).equals(hi)) {
                     System.out.printf("Found b mod %d: %d%n", r, b);
                     residues.add(new BigInteger[]{b, r});
                     prod = prod.multiply(r);
@@ -573,10 +568,10 @@ public class Set8 {
                     }
                     // An extra bit to ensure the product is at least bitLength long
                     primeAndFactors = DiffieHellmanUtils.findSmoothPrime(bitLength / 2 + 1, smallPrimes);
-                    product = primeAndFactors.getFactors().stream().reduce(ONE, BigInteger::multiply);
+                    product = primeAndFactors.factors().stream().reduce(ONE, BigInteger::multiply);
                 } while (product.compareTo(minProd) < 0
-                        || !DiffieHellmanUtils.isPrimitiveRoot(padm, primeAndFactors.getP(), primeAndFactors.getFactors())
-                        || !DiffieHellmanUtils.isPrimitiveRoot(sign, primeAndFactors.getP(), primeAndFactors.getFactors()));
+                        || !DiffieHellmanUtils.isPrimitiveRoot(padm, primeAndFactors.p(), primeAndFactors.factors())
+                        || !DiffieHellmanUtils.isPrimitiveRoot(sign, primeAndFactors.p(), primeAndFactors.factors()));
 
                 synchronized (res) {
                     if (res[0] == null) {
@@ -584,7 +579,7 @@ public class Set8 {
                         System.out.println("One prime found: " + primeAndFactors);
                     } else {
                         // The only shared factor between p-1 and q-1 must be 2
-                        if (primeAndFactors.getP().subtract(ONE).gcd(res[0].getP().subtract(ONE)).equals(TWO)) {
+                        if (primeAndFactors.p().subtract(ONE).gcd(res[0].p().subtract(ONE)).equals(TWO)) {
                             if (res[1] == null) {
                                 res[1] = primeAndFactors;
                             }
@@ -624,43 +619,43 @@ public class Set8 {
     static RSAHelperExt  breakChallenge61RSA(BigInteger padm, BigInteger rsaSignature,
                                              DiffieHellmanUtils.PrimeAndFactors[] pq, int bitLength, boolean signing) {
         System.out.println("Modulus bitLength: " + bitLength);
-        System.out.println("p * q bitLength: " + pq[0].getP().multiply(pq[1].getP()).bitLength());
-        if (!DiffieHellmanUtils.isPrimitiveRoot(rsaSignature, pq[0].getP(), pq[0].getFactors())
-            ||  !DiffieHellmanUtils.isPrimitiveRoot(rsaSignature, pq[1].getP(), pq[1].getFactors())
-            ||  !DiffieHellmanUtils.isPrimitiveRoot(padm, pq[0].getP(), pq[0].getFactors())
-            ||  !DiffieHellmanUtils.isPrimitiveRoot(padm, pq[1].getP(), pq[1].getFactors())) {
+        System.out.println("p * q bitLength: " + pq[0].p().multiply(pq[1].p()).bitLength());
+        if (!DiffieHellmanUtils.isPrimitiveRoot(rsaSignature, pq[0].p(), pq[0].factors())
+            ||  !DiffieHellmanUtils.isPrimitiveRoot(rsaSignature, pq[1].p(), pq[1].factors())
+            ||  !DiffieHellmanUtils.isPrimitiveRoot(padm, pq[0].p(), pq[0].factors())
+            ||  !DiffieHellmanUtils.isPrimitiveRoot(padm, pq[1].p(), pq[1].factors())) {
             throw  new IllegalArgumentException("Primes p and q don't meet the requirements");
         }
 
         BigInteger   logs[] = Stream.of(pq).parallel()
-                .map(x -> findDLog(padm, rsaSignature, x.getP(), x.getFactors())).toArray(BigInteger[]::new);
+                .map(x -> findDLog(padm, rsaSignature, x.p(), x.factors())).toArray(BigInteger[]::new);
 
         System.out.println("s: " + rsaSignature);
         System.out.println("pad(m): " + padm);
-        System.out.println("p: " + pq[0].getP());
-        System.out.println("q: " + pq[1].getP());
+        System.out.println("p: " + pq[0].p());
+        System.out.println("q: " + pq[1].p());
         System.out.println("logP: " + logs[0]);
         System.out.println("logQ: " + logs[1]);
 
         System.out.printf("s^logs(pad(m)) mod p: %d%ns^logs(pad(m)) mod q: %d%n",
-                rsaSignature.modPow(logs[0], pq[0].getP()),
-                rsaSignature.modPow(logs[1], pq[1].getP()));
+                rsaSignature.modPow(logs[0], pq[0].p()),
+                rsaSignature.modPow(logs[1], pq[1].p()));
 
         System.out.printf("pad(msg) mod p: %d%npad(msg) mod q: %d%n",
-                padm.mod(pq[0].getP()),
-                padm.mod(pq[1].getP()) );
+                padm.mod(pq[0].p()),
+                padm.mod(pq[1].p()) );
 
         System.out.printf("s^log(p) = pad(msg) mod p: %b%ns^log(q) = pad(msg) mod q: %b%n",
-                rsaSignature.modPow(logs[0], pq[0].getP()).equals(padm.mod(pq[0].getP())),
-                rsaSignature.modPow(logs[1], pq[1].getP()).equals(padm.mod(pq[1].getP())));
+                rsaSignature.modPow(logs[0], pq[0].p()).equals(padm.mod(pq[0].p())),
+                rsaSignature.modPow(logs[1], pq[1].p()).equals(padm.mod(pq[1].p())));
 
-        BigInteger   pOrd = pq[0].getP().subtract(ONE), qOrd = pq[1].getP().subtract(ONE),
+        BigInteger   pOrd = pq[0].p().subtract(ONE), qOrd = pq[1].p().subtract(ONE),
                      rsaExponent = crt(logs[0], logs[1], pOrd, qOrd);
         if (!signing) {  // We found a 'd' RSA exponent, converting it to the corresponding 'e' exponent
             BigInteger et = pOrd.multiply(qOrd);
             rsaExponent = rsaExponent.modInverse(et);
         }
-        return  new RSAHelperExt(pq[0].getP(), pq[1].getP(), rsaExponent);
+        return  new RSAHelperExt(pq[0].p(), pq[1].p(), rsaExponent);
     }
 
 
@@ -947,11 +942,11 @@ public class Set8 {
             RSAHelperExt rsa = new RSAHelperExt(RSAHelper.PUBLIC_EXPONENT, 160);
             BigInteger rsaSignature = rsa.sign(CHALLENGE56_MSG.getBytes(), RSAHelperExt.HashMethod.SHA1),
                        padm = RSAHelperExt.pkcs15Pad(CHALLENGE56_MSG.getBytes(), RSAHelperExt.HashMethod.SHA1,
-                                                     rsa.getPublicKey().getModulus().bitLength());
+                                                     rsa.getPublicKey().modulus().bitLength());
 
             RSAHelper.PublicKey legitRSAPk = rsa.getPublicKey(),
                     forgedRSAPk = breakChallenge61RSA(padm, rsaSignature,
-                        legitRSAPk.getModulus().bitLength(), true).getPublicKey();
+                        legitRSAPk.modulus().bitLength(), true).getPublicKey();
 
             System.out.println("Does legit key verify?: " + legitRSAPk.verify(CHALLENGE56_MSG.getBytes(), rsaSignature));
             System.out.println("Does forged key verify?: " + forgedRSAPk.verify(CHALLENGE56_MSG.getBytes(), rsaSignature));

@@ -89,7 +89,7 @@ public class MDHelper {
         msg = Set4.mdPad(msg, ByteOrder.BIG_ENDIAN);
         if (msg.length % keyLen != 0) {
             throw  new IllegalArgumentException(
-                    String.format("Key len %d is not a divisor of padded message length %d", keyLen, msg.length));
+                    "Key len %d is not a divisor of padded message length %d".formatted(keyLen, msg.length));
         }
 
         return  mdInner(msg, H, from, msg.length / keyLen);

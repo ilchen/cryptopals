@@ -8,17 +8,20 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.math.BigInteger;
+import java.rmi.RemoteException;
+import java.rmi.server.UnicastRemoteObject;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.util.Arrays;
 
-public class DiffieHellmanService implements DiffieHellman {
+public class DiffieHellmanService extends UnicastRemoteObject implements DiffieHellman {
     private DiffieHellmanHelper df;
     private final Cipher   cipher;
     private SecretKeySpec   symKey;
 
     @SneakyThrows
-    public DiffieHellmanService() {
+    public DiffieHellmanService() throws RemoteException {
+        super();
         cipher = Cipher.getInstance(DiffieHellmanHelper.AES_TRANSFORMATION);
     }
 

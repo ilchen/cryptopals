@@ -94,11 +94,10 @@ public class Set9 {
                                     ECGroupElement fullGroupGen) {
         long[]   emptyRes = new long[] {  0,  0  };
         // Check if the curve is mappable to Fp
-        if (!(pk.getG().group() instanceof FpMappableMontgomeryECGroup))  return  emptyRes;
+        if (!(pk.G().group() instanceof FpMappableMontgomeryECGroup fpMappableGroup))  return  emptyRes;
 
         // First check if the ciphertext message is indeed member of the whole elliptic curve group
-        FpMappableMontgomeryECGroup   fpMappableGroup = (FpMappableMontgomeryECGroup) pk.getG().group();
-        ECGroupElement   elem = megCipherTxt[1].scale(pk.getN());
+        ECGroupElement   elem = megCipherTxt[1].scale(pk.n());
 
         // Check if the plaintext message was encoded as a member of the prime-order subgroup
         if (elem.equals(fpMappableGroup.O))  return  emptyRes;

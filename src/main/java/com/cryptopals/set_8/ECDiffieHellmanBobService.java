@@ -7,9 +7,11 @@ import lombok.SneakyThrows;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.math.BigInteger;
+import java.rmi.RemoteException;
+import java.rmi.server.UnicastRemoteObject;
 
 
-public class ECDiffieHellmanBobService implements ECDiffieHellman {
+public class ECDiffieHellmanBobService extends UnicastRemoteObject implements ECDiffieHellman {
     private ECGroup ecg;
     private ECGroupElement   g;
     private SecretKeySpec macKey;
@@ -17,7 +19,8 @@ public class ECDiffieHellmanBobService implements ECDiffieHellman {
     private final Mac mac;
 
     @SneakyThrows
-    public ECDiffieHellmanBobService() {
+    public ECDiffieHellmanBobService() throws RemoteException {
+        super();
         mac = Mac.getInstance(Set8.MAC_ALGORITHM_NAME);
     }
 

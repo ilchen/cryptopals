@@ -49,7 +49,7 @@ public class Set5 {
         return  ithroot(res.mod(n012), TIMES);
     }
 
-    public static void main(String[] args) {
+    public static void  main(String[] args) {
 
         try {
             System.out.println("Challenge 34");
@@ -75,7 +75,7 @@ public class Set5 {
             byte[]   key = srp.generateKeyClient(A, resp, a, pass),  cipherText;
             // Unlimited strength JCE required
             Set4   encryptor = new Set4(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, "AES"));
-            if (server.handshake(email, encryptor.hmac(SRPHelper.longAsBytes(resp.getSalt()),
+            if (server.handshake(email, encryptor.hmac(SRPHelper.longAsBytes(resp.salt()),
                                                        MessageDigest.getInstance("SHA-256")))) {
                 cipherText = server.echo(email, srp.encryptMessage(msg.getBytes(), key));
                 System.out.printf("-> '%s'%n<- '%s'%n", msg, new String(decryptMessage(cipherText, key)));
@@ -90,7 +90,7 @@ public class Set5 {
                 resp = server.initiate(email, craftedA);     // We don't know the actual password
                 key = srp.generateKeyClient(craftedA, resp, a, "dummy@gmail.com".getBytes());
                 encryptor = new Set4(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, "AES"));
-                if (server.handshake(email, encryptor.hmac(SRPHelper.longAsBytes(resp.getSalt()),
+                if (server.handshake(email, encryptor.hmac(SRPHelper.longAsBytes(resp.salt()),
                         MessageDigest.getInstance("SHA-256")))) {
                     cipherText = server.echo(email, srp.encryptMessage(msg.getBytes(), key));
                     System.out.printf("With A == %d%n-> '%s'%n<- '%s'%n", craftedA,
@@ -100,7 +100,7 @@ public class Set5 {
 
             System.out.printf("%nChallenge 40%nEncrypting message \"%s\" %d times with different RSA key pairs%n", msg, TIMES);
             List<BigInteger[]> stream = IntStream.range(0, TIMES).mapToObj(x -> new RSAHelper()).map(helper ->
-                new BigInteger[] { helper.getPublicKey().getModulus(), helper.encrypt(new BigInteger(msg.getBytes())) })
+                new BigInteger[] { helper.getPublicKey().modulus(), helper.encrypt(new BigInteger(msg.getBytes())) })
                     .collect(Collectors.toList());
 
             BigInteger  res = recoverPlainText(stream);

@@ -47,29 +47,28 @@ public class DiamondStructure {
                             mdh.mdOneBlock(diamondStructure[i][j][1], diamondStructure[i][j][0]);
                 } else {
                     diamondStructure[i][j][1] = mdh.findCollisionWith(diamondStructure[i][j][0], diamondStructure[i+1][j >> 1][0]);
-                    assert diamondStructure[i][j][1] != null : String.format("Happened for [%d][%d][1]%n", i, j);
+                    assert diamondStructure[i][j][1] != null : "Happened for [%d][%d][1]%n".formatted(i, j);
                 }
             }
             return  null;
         }
     }
 
-    private final ExecutorService executor;
     private final byte   diamondStructure[][][][],  targetHash[];
     private final String   cipher;
     private final int      keyLen;
     /** This is the easiest way to do a binary search on the hashes stored at the leaves */
-    private final List<byte[]>   listView = new AbstractList<byte[]>() {
+    private final List<byte[]>   listView = new AbstractList<>() {
         @Override
         public byte[] get(int index) {
-            return  diamondStructure[0][index][0];
+            return diamondStructure[0][index][0];
         }
+
         @Override
         public int size() {
-            return  diamondStructure[0].length;
+            return diamondStructure[0].length;
         }
     };
-
 
     public DiamondStructure(final int k, byte trgtHash[], final String cipher, final int keyLen)
             throws NoSuchPaddingException, NoSuchAlgorithmException, ExecutionException, InterruptedException,
@@ -80,7 +79,7 @@ public class DiamondStructure {
         this.keyLen = keyLen;
         targetHash = trgtHash;
         int   concurrency = Runtime.getRuntime().availableProcessors();
-        executor = Executors.newFixedThreadPool(concurrency);
+        ExecutorService executor = Executors.newFixedThreadPool(concurrency);
         try {
             List<Future<Void>> futures = new ArrayList<>(concurrency);
 
@@ -126,18 +125,15 @@ public class DiamondStructure {
 
     public byte[]  constructSuffix(byte hash[]) {
         // here we take advantage of the fact that the hashes in diamondStructure[0][j][0] are sorted
-        int   idx = Collections.binarySearch(listView, hash, new Comparator<byte[]>() {
-            @Override
-            public int compare(byte[] o1, byte[] o2) {
-                int  len = Math.min(o1.length, o2.length);
-                for (int i=0; i < len; i++) {
-                    int   a = o1[i] & 0xff,  b = o2[i] & 0xff;
-                    if (a != b) {
-                        return  a - b;
-                    }
+        int   idx = Collections.binarySearch(listView, hash, (o1, o2) -> {
+            int  len = Math.min(o1.length, o2.length);
+            for (int i=0; i < len; i++) {
+                int   a = o1[i] & 0xff,  b = o2[i] & 0xff;
+                if (a != b) {
+                    return  a - b;
                 }
-                return o1.length - o2.length;
             }
+            return o1.length - o2.length;
         });
         if (idx < 0) {
             System.out.println("The correct index would be " + idx);

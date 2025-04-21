@@ -54,10 +54,10 @@ public class SRPHelper extends DiffieHellmanHelper {
             return  sha256.digest(BigInteger.ZERO.toByteArray());
         }
         sha256.update(A.toByteArray());
-        BigInteger   u = new BigInteger(sha256.digest(resp.getB().toByteArray()));
-        sha256.update(longAsBytes(resp.getSalt()));
+        BigInteger   u = new BigInteger(sha256.digest(resp.B().toByteArray()));
+        sha256.update(longAsBytes(resp.salt()));
         BigInteger   x = new BigInteger(sha256.digest(P)),
-                     S = resp.getB().subtract(k.multiply(g.modPow(x, p))).modPow(a.add(u.multiply(x)), p);
+                     S = resp.B().subtract(k.multiply(g.modPow(x, p))).modPow(a.add(u.multiply(x)), p);
         return  sha256.digest(S.toByteArray());
     }
 

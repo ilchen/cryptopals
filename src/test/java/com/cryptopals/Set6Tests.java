@@ -12,7 +12,6 @@ import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import java.io.IOException;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -85,7 +84,7 @@ class Set6Tests {
     @DisplayName("https://cryptopals.com/sets/6/challenges/44")
     @ParameterizedTest
     @ArgumentsSource(Challenge44ArgumentsProvider.class)
-    void  challenge44(String url) throws IOException, NoSuchAlgorithmException {
+    void  challenge44(String url) throws NoSuchAlgorithmException {
         MessageDigest   sha = MessageDigest.getInstance("SHA-1");
         List<SignedMessage> signatures = extractSignatures(url);
         DSAHelper.PublicKey   pk = new DSAHelper.PublicKey(DSAHelper.P, DSAHelper.Q, DSAHelper.G, CHALLENGE_44_Y);
@@ -119,7 +118,7 @@ class Set6Tests {
     void  challenges47and48(int numBits) {
         RSAHelperExt rsa = new RSAHelperExt(BigInteger.valueOf(17), numBits);
         BigInteger   plainText = RSAHelperExt.pkcs15Pad(CHALLANGE_47_PLAINTEXT.getBytes(),
-                                                        rsa.getPublicKey().getModulus().bitLength());
+                                                        rsa.getPublicKey().modulus().bitLength());
         BigInteger   cipherTxt = rsa.encrypt(plainText);
         BigInteger   crackedPlainText = PaddingOracleHelper.solve(cipherTxt, rsa.getPublicKey(), rsa::paddingOracle);
         assertArrayEquals(CHALLANGE_47_PLAINTEXT.getBytes(), rsa.pkcs15Unpad(crackedPlainText));

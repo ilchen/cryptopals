@@ -1,7 +1,5 @@
 package com.cryptopals;
 
-import lombok.Data;
-
 import sun.security.modifiedprovider.MD4Ext;
 import sun.security.modifiedprovider.SHA1;
 
@@ -111,7 +109,7 @@ public class Set4 extends Set3 {
         }
     }
 
-    private static void  breakChallenge26Oracle(Challenge26Oracle challenge26Oracle) throws BadPaddingException {
+    private static void  breakChallenge26Oracle(Challenge26Oracle challenge26Oracle) {
         // Now the actual challenge, which it to mount a CCA attack using the oracle to ensure that
         // we get a piece of crafted cipher text that forces the oracle to return true.
         // The left pad that 'challenge16Encrypt' prepends is 32 bytes long. So the piece of text
@@ -193,13 +191,11 @@ public class Set4 extends Set3 {
         bb.put(message);
         bb.put((byte) 0x80);
         bb.put(new byte[lenPadding - 1]);
-        bb.order(order).putLong(message.length << 3);
+        bb.order(order).putLong((long) message.length << 3);
         return  bb.array();
     }
 
-    @Data
-    static class  ExistentialForgeryPair  {
-        private final byte[]   forgedMessage,  forgedMAC;
+    static record  ExistentialForgeryPair(byte[] forgedMessage,  byte[] forgedMAC)  {
     }
 
     static ExistentialForgeryPair  breakSHA1KeyedMAC(Set4 encryptor, byte message[], byte extension[]) {
@@ -341,17 +337,17 @@ public class Set4 extends Set3 {
             ExistentialForgeryPair existForgery = breakSHA1KeyedMAC(encryptor, CHALLANGE_29_ORIGINAL_MESSAGE.getBytes(),
                                                                                CHALLANGE_29_EXTENSION.getBytes());
             System.out.printf("Forged message: %s%nForged MAC: %s%nActual MAC: %s%n",
-                    new String(existForgery.getForgedMessage()),
-                    Set1.printHexBinary(existForgery.getForgedMAC()),
-                    Set1.printHexBinary(encryptor.keyedMac(existForgery.getForgedMessage())) );
+                    new String(existForgery.forgedMessage()),
+                    Set1.printHexBinary(existForgery.forgedMAC()),
+                    Set1.printHexBinary(encryptor.keyedMac(existForgery.forgedMessage())) );
 
             System.out.println("\nChallenge 30");
             existForgery = breakMD4KeyedMAC(encryptor, CHALLANGE_29_ORIGINAL_MESSAGE.getBytes(),
                                                        CHALLANGE_29_EXTENSION.getBytes());
             System.out.printf("Forged message: %s%nForged MAC: %s%nActual MAC: %s%n",
-                    new String(existForgery.getForgedMessage()),
-                    Set1.printHexBinary(existForgery.getForgedMAC()),
-                    Set1.printHexBinary(encryptor.keyedMacMD4(existForgery.getForgedMessage())) );
+                    new String(existForgery.forgedMessage()),
+                    Set1.printHexBinary(existForgery.forgedMAC()),
+                    Set1.printHexBinary(encryptor.keyedMacMD4(existForgery.forgedMessage())) );
 
             encryptor = new Set4(Cipher.ENCRYPT_MODE, new SecretKeySpec(Arrays.copyOf("key".getBytes(), 32), "AES"));
             System.out.printf("The HMAC-SHA1 of '' is: %s", Set1.printHexBinary(

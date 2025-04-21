@@ -13,7 +13,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
@@ -63,8 +62,8 @@ class Set3Tests {
         @Override
         public Stream<? extends Arguments>  provideArguments(ExtensionContext context) throws IOException {
             ClassLoader classLoader = getClass().getClassLoader();
-            Path path = Paths.get(Objects.requireNonNull(classLoader.getResource("challenge20_expected_plain.txt")).getFile()),
-                 pathAlt = Paths.get(Objects.requireNonNull(classLoader.getResource("challenge20_expected_plain_alt.txt")).getFile());
+            Path path = Path.of(Objects.requireNonNull(classLoader.getResource("challenge20_expected_plain.txt")).getFile()),
+                 pathAlt = Path.of(Objects.requireNonNull(classLoader.getResource("challenge20_expected_plain_alt.txt")).getFile());
             return Stream.of(
                     Arguments.of("challenge20.txt", Files.lines(path)),
                     Arguments.of("challenge20_alt.txt", Files.lines(pathAlt).map(
@@ -85,7 +84,7 @@ class Set3Tests {
 
     static class  Challenge21ArgumentsProvider implements ArgumentsProvider {
         @Override
-        public Stream<? extends Arguments>  provideArguments(ExtensionContext context) throws IOException {
+        public Stream<? extends Arguments>  provideArguments(ExtensionContext context) {
             int   res[] = { 37, 0, 53, 29, 11, 46, 15, 61, 57, 31, 47, 61, 4, 0, 34, 7, 47, 32, 36, 9, 58, 2, 12, 39,
                             5, 37, 23, 62, 20, 17, 41, 23, 54, 19, 18, 42, 54, 42, 41, 16, 17, 6, 31, 23, 55, 30, 63, 47,
                             43, 30, 27, 35, 56, 62, 7, 8, 6, 31, 14, 57, 57, 26, 46, 33, 22, 51, 8, 30, 33, 8, 7, 13, 38,

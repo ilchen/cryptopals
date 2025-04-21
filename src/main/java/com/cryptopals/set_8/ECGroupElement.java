@@ -94,7 +94,7 @@ public interface ECGroupElement {
      * A most simplistic pseudo random function from set {1, 2, ..., p-1} to set {0, 1, ..., k-1},
      * which is used by J.M. Pollard as an example in his paper
      */
-    public static BigInteger  f(ECGroupElement y, int k) {
+    static BigInteger  f(ECGroupElement y, int k) {
         return BigInteger.valueOf(1L << y.getX().remainder(BigInteger.valueOf(k)).intValue());
     }
 

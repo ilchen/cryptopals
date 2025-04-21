@@ -1,6 +1,7 @@
 package com.cryptopals.set_5;
 
 import com.cryptopals.set_8.DiffieHellmanUtils;
+
 import com.squareup.jnagmp.Gmp;
 import lombok.SneakyThrows;
 
@@ -161,7 +162,7 @@ public class DiffieHellmanHelper {
         BigInteger   xt = ZERO,  yt = g.modPow(b, p);
         for (BigInteger i=ZERO; i.compareTo(n) < 0; i=i.add(ONE)) {
             xt = xt.add(f.apply(yt, k));
-            //yt = yt.multiply(g.modPow(f(yt, k), p)).remainder(p);
+            // yt = yt.multiply(g.modPow(f(yt, k), p)).remainder(p);
             yt = yt.multiply(Gmp.modPowInsecure(g, f.apply(yt, k), p)).remainder(p);
         }
         System.out.printf("xt=%d, upperBound=%d%nyt=%d%n", xt, b.add(xt), yt);

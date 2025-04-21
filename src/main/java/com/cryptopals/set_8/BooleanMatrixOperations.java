@@ -56,7 +56,7 @@ public class BooleanMatrixOperations {
      * A similar algorithm albeit with a small omission can be found in
      * <a href="http://www.hyperelliptic.org/tanja/SHARCS/talks06/smith_revised.pdf">this paper</a>.
      *
-     * @param mat  a matrix that will modified in place
+     * @param mat  a matrix that will be modified in place
      * @param n  the number of columns to use when applying Gaussian elimination
      * @param identMat  an optional identity matrix, can be {@code null}. If provided, it will be modified in place
      *                  as though its rows were appended to the right of {@code mat}
@@ -75,10 +75,8 @@ public class BooleanMatrixOperations {
             /* Find the k-th pivot: */
             for (iMax=h; iMax < m  &&  !mat[iMax][k]; iMax++);
 
-            if (iMax == m) {
-                /* No pivot in this column, pass to next column */
-                k++;
-            } else {
+            //  No pivot in this column if iMax == m
+            if (iMax != m) {
                 tmp = mat[h];     mat[h] = mat[iMax];     mat[iMax] = tmp;
                 if (identMat != null) {
                     tmp = identMat[h];     identMat[h] = identMat[iMax];     identMat[iMax] = tmp;
@@ -98,8 +96,9 @@ public class BooleanMatrixOperations {
                     }
                 }
                 /* Increase pivot row and column */
-                h++;     k++;
+                h++;
             }
+            k++;
         }
 
         return  h;
@@ -117,12 +116,12 @@ public class BooleanMatrixOperations {
         int   h = 0,  k = 0,  delta;
         while (h < mTransposed.length  &&  k < n) {
             if (mTransposed[h][k])  {
-                h++;     k++;
+                h++;
             }  else  {
                 delta = n - m.size();
                 m.remove(k - delta);
-                k++;
             }
+            k++;
         }
     }
 
@@ -155,6 +154,7 @@ public class BooleanMatrixOperations {
         // Doing it in one go by using only the columns of T transposed during Gaussian elimination
         boolean[][]  tmp = identityMatrix(mTransposed.length);
         int   rank = gaussianElimination(mTransposed, n, tmp);
+        if (rank > n)  rank = n;
 
         return  Arrays.copyOfRange(tmp, rank, tmp.length);
     }
