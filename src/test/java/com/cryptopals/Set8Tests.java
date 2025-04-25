@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -623,7 +624,7 @@ class Set8Tests {
 
         // Confirm that basis extraction works correctly for random-filled 2048x2176 GF(2) matrices
         mTransposed = new boolean[17 << 7][16 << 7];
-        Random rnd = new Random();
+        Random rnd = ThreadLocalRandom.current();
         expectedProduct = new boolean[mTransposed[0].length];
 
         // 3 tries should be enough to ascertain correctness
